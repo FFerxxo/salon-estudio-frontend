@@ -1,7 +1,7 @@
 # Salón de Estudio Colaborativo en Tiempo Real — Frontend (`salon-estudio-frontend`)
 
 Aplicación web en **React + TypeScript + Vite + Tailwind CSS + React Router** desplegada en **Vercel**.
-Se comunica exclusivamente con `salon-estudio-api` mediante HTTP/REST (`VITE_API_URL`) y **nunca consulta Firestore directamente**.
+Se comunica exclusivamente con `salon-estudio-backend` mediante HTTP/REST (`VITE_API_URL`) y **nunca consulta Firestore directamente**.
 
 ## Rutas del mapa del sitio (Sprint 0 — TS-00)
 
