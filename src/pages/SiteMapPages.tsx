@@ -1,6 +1,9 @@
 import { Link, useParams } from 'react-router-dom';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 export function HomePage() {
+  useDocumentTitle('Inicio');
+
   return (
     <section className="space-y-6">
       <h1 className="text-3xl font-bold text-slate-900">
@@ -13,13 +16,13 @@ export function HomePage() {
       <div className="flex flex-wrap gap-4">
         <Link
           to="/base-tecnica"
-          className="px-4 py-2 rounded-md bg-sky-700 text-white font-medium hover:bg-sky-800"
+          className="px-4 py-2 rounded-md bg-sky-800 text-white font-medium hover:bg-sky-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-800 transition-colors"
         >
           Ver Base técnica
         </Link>
         <Link
           to="/ingresar"
-          className="px-4 py-2 rounded-md border border-slate-300 bg-white text-slate-800 font-medium hover:bg-slate-100"
+          className="px-4 py-2 rounded-md border border-slate-300 bg-white text-slate-800 font-medium hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-800 transition-colors"
         >
           Ingresar
         </Link>
@@ -29,6 +32,8 @@ export function HomePage() {
 }
 
 export function LoginPage() {
+  useDocumentTitle('Ingresar');
+
   return (
     <section className="space-y-4">
       <h1 className="text-3xl font-bold text-slate-900">Ingresar</h1>
@@ -41,6 +46,8 @@ export function LoginPage() {
 }
 
 export function RegisterPage() {
+  useDocumentTitle('Registro');
+
   return (
     <section className="space-y-4">
       <h1 className="text-3xl font-bold text-slate-900">Registro</h1>
@@ -53,6 +60,8 @@ export function RegisterPage() {
 }
 
 export function DashboardPage() {
+  useDocumentTitle('Panel');
+
   return (
     <section className="space-y-4">
       <h1 className="text-3xl font-bold text-slate-900">Panel</h1>
@@ -62,7 +71,7 @@ export function DashboardPage() {
       <div>
         <Link
           to="/salas/demo-1"
-          className="inline-block px-4 py-2 rounded-md bg-sky-700 text-white font-medium hover:bg-sky-800"
+          className="inline-block px-4 py-2 rounded-md bg-sky-800 text-white font-medium hover:bg-sky-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-800 transition-colors"
         >
           Explorar Sala de demostración
         </Link>
@@ -72,6 +81,8 @@ export function DashboardPage() {
 }
 
 export function ProfilePage() {
+  useDocumentTitle('Perfil');
+
   return (
     <section className="space-y-4">
       <h1 className="text-3xl font-bold text-slate-900">Perfil</h1>
@@ -84,6 +95,8 @@ export function ProfilePage() {
 
 export function RoomPage() {
   const { id } = useParams<{ id: string }>();
+  useDocumentTitle(id ? `Sala ${id}` : 'Sala');
+
   return (
     <section className="space-y-4">
       <h1 className="text-3xl font-bold text-slate-900">Sala: {id}</h1>
@@ -95,6 +108,8 @@ export function RoomPage() {
 }
 
 export function HelpPage() {
+  useDocumentTitle('Ayuda');
+
   return (
     <section className="space-y-4">
       <h1 className="text-3xl font-bold text-slate-900">Ayuda</h1>
@@ -107,6 +122,8 @@ export function HelpPage() {
 }
 
 export function NotFoundPage() {
+  useDocumentTitle('404 · Página no encontrada');
+
   return (
     <section className="space-y-4">
       <h1 className="text-3xl font-bold text-slate-900">404 · Página no encontrada</h1>
@@ -116,7 +133,7 @@ export function NotFoundPage() {
       <div>
         <Link
           to="/"
-          className="inline-block px-4 py-2 rounded-md bg-sky-700 text-white font-medium hover:bg-sky-800"
+          className="inline-block px-4 py-2 rounded-md bg-sky-800 text-white font-medium hover:bg-sky-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-800 transition-colors"
         >
           Volver al Inicio
         </Link>
