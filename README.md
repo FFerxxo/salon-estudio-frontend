@@ -24,7 +24,7 @@ cp .env.example .env
 ```
 
 - `VITE_API_URL`: URL base del backend (ej. `http://localhost:3000` en local o la URL del servicio en Render para producción).
-- **En Vercel (Producción):** Configurar la variable de entorno `VITE_API_URL` con el dominio público del backend en Render (ej. `https://salon-estudio-backend.onrender.com`).
+- **En Vercel (Producción):** Configurar la variable de entorno `VITE_API_URL` con el dominio público del backend en Render (en producción: `https://salon-estudio-backend-ndzf.onrender.com`).
 
 ## Scripts disponibles
 
