@@ -101,7 +101,7 @@ export function Layout() {
     return (
       <div
         className={`relative min-h-screen flex flex-col md:flex-row transition-colors duration-300 ${
-          isDark ? 'bg-[#162238] text-[#f8fafc]' : 'bg-[#f8fafc] text-[#0f172a]'
+          isDark ? 'bg-[#162238] text-[#f8fafc]' : 'bg-[#e0f2fe] text-[#0f172a]'
         }`}
       >
         <AmbientMotionBackdrop subtle />
@@ -125,7 +125,7 @@ export function Layout() {
           } ${mobileMenuOpen ? 'flex' : 'hidden md:flex'} ${
             isDark
               ? 'bg-[#0f172a] border-slate-400/20 text-[#f8fafc]'
-              : 'bg-[#e9eff6] border-slate-300/80 text-[#0f172a]'
+              : 'bg-[#f0f9ff]/60 backdrop-blur-sm border-[#075985]/15 text-[#0f172a]'
           }`}
         >
           <div
@@ -265,7 +265,7 @@ export function Layout() {
             className={`min-h-[68px] px-4 sm:px-6 py-3 border-b flex items-center justify-between gap-3 transition-colors ${
               isDark
                 ? 'bg-[#162238] border-slate-400/20 text-[#f8fafc]'
-                : 'bg-[#f8fafc] border-slate-300/80 text-[#0f172a]'
+                : 'bg-[#f0f9ff]/70 backdrop-blur-sm border-[#075985]/15 text-[#0f172a]'
             }`}
           >
             <div className="flex items-center gap-3 min-w-0">
@@ -346,7 +346,7 @@ export function Layout() {
             className={`border-t py-4 text-center text-xs sm:text-sm ${
               isDark
                 ? 'bg-[#121c30] border-slate-400/20 text-[#cbd5e1]'
-                : 'bg-[#eef3f8] border-slate-300/80 text-[#334155]'
+                : 'bg-[#f0f9ff]/70 backdrop-blur-sm border-[#075985]/15 text-[#334155]'
             }`}
           >
             <div className="max-w-5xl mx-auto px-4">
@@ -361,7 +361,7 @@ export function Layout() {
   return (
     <div
       className={`relative min-h-[100svh] flex flex-col transition-colors duration-300 ${
-        isDark ? 'bg-[#0b1220] text-[#f8fafc]' : 'bg-[#f8fafc] text-[#0f172a]'
+        isDark ? 'bg-[#0b1220] text-[#f8fafc]' : 'bg-[#e0f2fe] text-[#0f172a]'
       }`}
     >
       <AmbientMotionBackdrop subtle={!isAccessRoute} />
@@ -434,6 +434,7 @@ export function Layout() {
         <Outlet />
       </main>
 
+      {location.pathname !== '/' && (
       <footer
         className={`relative z-10 py-2 text-center text-xs ${
           isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'
@@ -515,6 +516,7 @@ export function Layout() {
           </div>
         </div>
       </footer>
+      )}
     </div>
   );
 }

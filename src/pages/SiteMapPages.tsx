@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react';
-import { ArrowRight, Music, Sparkles, Waves } from 'lucide-react';
+import { ArrowRight, CalendarDays, Globe, KeyRound, Mail, Music, ShieldCheck, Sparkles, Waves } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { TugaStage } from '../components/TugaStage';
 import { selectTugaGreeting } from '../content/vozTuga';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { firebaseAuth } from '../services/firebase';
 import {
   getGlassCardClasses,
   getPrimaryCtaClasses,
@@ -204,32 +205,103 @@ export function ProfilePage() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const initial = (user?.nombres || user?.username || 'E').trim().charAt(0).toUpperCase();
+  const correo = user?.correo?.trim() || '';
+  const dominio = correo.includes('@') ? correo.split('@')[1] : '';
+  const esUnivalle = /(^|\.)(correo)?univalle\.edu\.co$/i.test(dominio);
+  const providerIds = firebaseAuth?.currentUser?.providerData.map((p) => p.providerId) ?? [];
+  const metodo =
+    user?.provider ??
+    (providerIds.includes('google.com') ? 'google' : providerIds.includes('password') ? 'password' : undefined);
+  const fechaAlta = user?.creadoEn ? new Date(user.creadoEn) : null;
+  const miembroDesde =
+    fechaAlta && !Number.isNaN(fechaAlta.getTime())
+      ? fechaAlta.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })
+      : '';
+
+  const filas = [
+    correo && { Icon: Mail, label: 'Correo', value: correo },
+    dominio && {
+      Icon: Globe,
+      label: 'Dominio',
+      value: esUnivalle ? `${dominio} · Universidad del Valle` : dominio,
+    },
+    metodo && {
+      Icon: metodo === 'google' ? ShieldCheck : KeyRound,
+      label: 'Acceso',
+      value: metodo === 'google' ? 'Cuenta de Google' : 'Correo y contraseña',
+    },
+    miembroDesde && { Icon: CalendarDays, label: 'Miembro desde', value: miembroDesde },
+  ].filter(Boolean) as { Icon: typeof Mail; label: string; value: string }[];
 
   return (
     <section
       aria-labelledby="perfil-heading"
-      className={`max-w-md mx-auto rounded-[20px] p-6 sm:p-8 text-center ${getSolidSurfaceClasses(theme)}`}
+      className={`max-w-lg mx-auto rounded-[20px] p-6 sm:p-8 ${getSolidSurfaceClasses(theme)}`}
     >
       <h1 id="perfil-heading" className="sr-only">
         Perfil
       </h1>
       {user && (
-        <div className="flex flex-col items-center gap-3">
-          {user.avatarUrl?.startsWith('https://') ? (
-            <img src={user.avatarUrl} alt="" className="h-20 w-20 rounded-full object-cover" />
-          ) : (
-            <span
-              aria-hidden="true"
-              className="h-20 w-20 rounded-full bg-[#0f766e] text-white text-3xl font-bold inline-flex items-center justify-center"
-            >
-              {initial}
-            </span>
+        <>
+          <div className="flex flex-col items-center gap-2 text-center">
+            {user.avatarUrl?.startsWith('https://') ? (
+              <img src={user.avatarUrl} alt="" className="h-20 w-20 rounded-full object-cover" />
+            ) : (
+              <span
+                aria-hidden="true"
+                className="h-20 w-20 rounded-full bg-[#0f766e] text-white text-3xl font-bold inline-flex items-center justify-center"
+              >
+                {initial}
+              </span>
+            )}
+            <p className="mt-1 text-2xl font-bold tracking-tight">
+              {user.nombres} {user.apellidos}
+            </p>
+            <p className={`font-mono text-base ${isDark ? 'text-[#7dd3fc]' : 'text-[#075985]'}`}>@{user.username}</p>
+            {metodo === 'google' && (
+              <span
+                className={`mt-1 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${
+                  isDark ? 'bg-[#38bdf8]/15 text-[#7dd3fc] ring-[#38bdf8]/30' : 'bg-[#075985]/10 text-[#075985] ring-[#075985]/25'
+                }`}
+              >
+                <ShieldCheck className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                Conectado con Google
+              </span>
+            )}
+          </div>
+
+          {filas.length > 0 && (
+            <>
+              <h2 className="mt-7 mb-3 text-sm font-bold uppercase tracking-wide">Mi cuenta</h2>
+              <dl
+                className={`divide-y rounded-[14px] border ${
+                  isDark ? 'divide-slate-400/20 border-slate-400/30' : 'divide-slate-200 border-slate-300'
+                }`}
+              >
+                {filas.map(({ Icon, label, value }) => (
+                  <div key={label} className="px-4 py-3">
+                    <dt
+                      className={`flex items-center gap-2.5 text-xs font-semibold ${
+                        isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'
+                      }`}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`h-7 w-7 shrink-0 rounded-full inline-flex items-center justify-center ${
+                          isDark ? 'bg-[#38bdf8]/15 text-[#7dd3fc]' : 'bg-[#075985]/10 text-[#075985]'
+                        }`}
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                      </span>
+                      {label}
+                    </dt>
+                    <dd className="mt-0.5 pl-[38px] text-sm font-semibold break-words">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </>
           )}
-          <p className="text-2xl font-bold tracking-tight">
-            {user.nombres} {user.apellidos}
-          </p>
-          <p className={`font-mono text-base ${isDark ? 'text-[#7dd3fc]' : 'text-[#075985]'}`}>@{user.username}</p>
-        </div>
+        </>
       )}
     </section>
   );
