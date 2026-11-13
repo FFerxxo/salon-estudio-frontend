@@ -3,8 +3,68 @@
 @tailwind utilities;
 
 @layer base {
+  :root,
+  [data-theme='dark'] {
+    --marea-canvas: #0b1220;
+    --marea-glass: rgba(15, 23, 42, 0.85);
+    --marea-solid: #0f172a;
+    --marea-text: #f8fafc;
+    --marea-sec: #cbd5e1;
+    --marea-ph: #94a3b8;
+    --marea-field-bg: #0b1220;
+    --marea-field-border: #64748b;
+    --marea-act: #38bdf8;
+    --marea-act-text: #0b1220;
+    --marea-link: #7dd3fc;
+    --marea-f1: #0f172a;
+    --marea-f2: #38bdf8;
+    --marea-err: #fecaca;
+    --marea-err-bg: #450a0a;
+    --marea-err-border: #f87171;
+    --marea-ok: #6ee7b7;
+    --marea-ok-bg: #022c22;
+    color-scheme: dark;
+  }
+
+  [data-theme='light'] {
+    --marea-canvas: #f8fafc;
+    --marea-glass: #ffffff;
+    --marea-solid: #ffffff;
+    --marea-text: #0f172a;
+    --marea-sec: #334155;
+    --marea-ph: #475569;
+    --marea-field-bg: #ffffff;
+    --marea-field-border: #64748b;
+    --marea-act: #075985;
+    --marea-act-text: #ffffff;
+    --marea-link: #075985;
+    --marea-f1: #ffffff;
+    --marea-f2: #0369a1;
+    --marea-err: #b91c1c;
+    --marea-err-bg: #fef2f2;
+    --marea-err-border: #b91c1c;
+    --marea-ok: #047857;
+    --marea-ok-bg: #ecfdf5;
+    color-scheme: light;
+  }
+
   :focus-visible {
-    outline: 2px solid #0369a1;
+    outline: 2px solid var(--marea-f2);
     outline-offset: 2px;
+    box-shadow: 0 0 0 2px var(--marea-f1), 0 0 0 4px var(--marea-f2);
+  }
+}
+
+.marea-glass-card {
+  background-color: var(--marea-glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .marea-glass-card {
+    background-color: var(--marea-solid) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 }
