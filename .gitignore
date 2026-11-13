@@ -9,3 +9,4 @@ coverage/
 *.tsbuildinfo
 test-results/
 playwright-report/
+public/assets/marea/marea-loop-2160p.mp4
