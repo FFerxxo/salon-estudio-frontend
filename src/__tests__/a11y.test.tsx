@@ -35,9 +35,9 @@ describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () =
       );
       expect(screen.queryByRole('link', { name: /^Crear cuenta$/i })).not.toBeInTheDocument();
       expect(screen.getByRole('banner')).toBeInTheDocument();
-      expect(screen.getByRole('navigation', { name: /Navegación principal/i })).toBeInTheDocument();
+      expect(screen.getByRole('navigation', { name: /Enlaces secundarios/i })).toBeInTheDocument();
       expect(screen.getByRole('contentinfo')).toBeInTheDocument();
-      expect(screen.getByText(/Estudia en grupo, en tiempo real/i)).toBeInTheDocument();
+      expect(screen.queryByText(/Estudia en grupo, en tiempo real/i)).not.toBeInTheDocument();
       expect(screen.getByText(/Salas de estudio en vivo para enfocarte en grupo/i)).toBeInTheDocument();
       expect(screen.queryByText(/Vista previa/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/5 \/ 7 días/i)).not.toBeInTheDocument();
@@ -259,11 +259,12 @@ describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () =
       );
 
       expect(screen.getByRole('banner')).toBeInTheDocument();
-      expect(screen.getByRole('navigation', { name: /Navegación principal/i })).toBeInTheDocument();
+      expect(screen.getByRole('navigation', { name: /Enlaces secundarios/i })).toBeInTheDocument();
       expect(screen.getByRole('main')).toBeInTheDocument();
       expect(screen.getByRole('contentinfo')).toBeInTheDocument();
-      expect(screen.getByText(/Estudia en grupo, en tiempo real/i)).toBeInTheDocument();
-      expect(screen.queryByRole('link', { name: /^Base técnica$/i })).not.toBeInTheDocument();
+      expect(screen.queryByText(/Estudia en grupo, en tiempo real/i)).not.toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /^Ayuda$/i })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /^Base técnica$/i })).toBeInTheDocument();
       expect(screen.queryByText(/Vista previa/i)).not.toBeInTheDocument();
       unmount();
 

@@ -22,13 +22,6 @@ import { AmbientMotionBackdrop } from './AmbientMotionBackdrop';
 
 const ACCESS_ROUTES = new Set(['/', '/ingresar', '/registro', '/registro/google-username']);
 
-const visitorNavItems = [
-  { to: '/', label: 'Inicio', end: true },
-  { to: '/ayuda', label: 'Ayuda', end: false },
-  { to: '/base-tecnica', label: 'Base técnica', end: false },
-  { to: '/ingresar', label: 'Ingresar', end: false },
-];
-
 const workspaceTitleMap: Record<string, string> = {
   '/panel': 'Panel',
   '/perfil': 'Perfil',
@@ -355,7 +348,7 @@ export function Layout() {
 
   return (
     <div
-      className={`relative min-h-screen flex flex-col transition-colors duration-300 ${
+      className={`relative min-h-[100svh] flex flex-col transition-colors duration-300 ${
         isDark ? 'bg-[#0b1220] text-[#f8fafc]' : 'bg-[#f8fafc] text-[#0f172a]'
       }`}
     >
@@ -370,217 +363,146 @@ export function Layout() {
         Saltar al contenido
       </a>
 
-      {isAccessRoute ? (
-        <header
-          className={`relative z-20 transition-colors ${
-            isDark ? 'text-[#f8fafc]' : 'text-[#0f172a]'
+      <header
+        className={
+          isAccessRoute
+            ? 'fixed top-0 inset-x-0 z-30 pointer-events-none'
+            : 'relative z-20'
+        }
+      >
+        <div
+          role="group"
+          aria-label="Controles de tema y movimiento"
+          className={`flex items-center justify-end gap-2 px-4 pt-3.5 ${
+            isAccessRoute ? 'pointer-events-auto' : 'max-w-6xl mx-auto'
           }`}
         >
-          <div className="max-w-6xl mx-auto px-4 pt-3.5 pb-2 pr-32 sm:pr-36 flex flex-wrap items-center justify-between gap-2">
-            <Link
-              to="/"
-              viewTransition
-              className={`inline-flex items-center gap-2.5 min-h-[44px] rounded-2xl px-3 py-1 transition-colors ${
-                isDark
-                  ? 'bg-[#0f172a]/[0.80] shadow-[0_4px_16px_rgba(2,6,23,0.28)]'
-                  : 'bg-white/[0.92] shadow-[0_4px_16px_rgba(15,23,42,0.12)]'
-              }`}
+          {isAccessRoute && !prefersReducedMotion && (
+            <button
+              type="button"
+              onClick={toggleMotionPaused}
+              aria-pressed={motionPaused}
+              aria-label={motionPaused ? 'Reanudar fondo' : 'Pausar fondo'}
+              title={motionPaused ? 'Reanudar fondo' : 'Pausar fondo'}
+              className={`${floatingButtonClass} min-w-[44px] w-11 !px-0 justify-center`}
             >
-              {/* Rojo Univalle #990000 reservado exclusivamente al escudo institucional (Guía visual v3) */}
-              <span
-                aria-hidden="true"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[#990000] font-extrabold text-white text-xs shrink-0"
-              >
-                UV
-              </span>
-              <span className="leading-tight">
-                <span className="block font-bold text-sm sm:text-base tracking-tight">
-                  Salón de Estudio
-                </span>
-                <span className={`hidden sm:block text-xs ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}>
-                  Estudia en grupo, en tiempo real
-                </span>
-              </span>
-            </Link>
+              {motionPaused ? (
+                <Play className="w-4 h-4" aria-hidden="true" />
+              ) : (
+                <Pause className="w-4 h-4" aria-hidden="true" />
+              )}
+            </button>
+          )}
 
-            <nav
-              aria-label="Navegación principal"
-              className={`rounded-2xl px-2 py-0.5 transition-colors ${
-                isDark
-                  ? 'bg-[#0f172a]/[0.80] shadow-[0_4px_16px_rgba(2,6,23,0.28)]'
-                  : 'bg-white/[0.92] shadow-[0_4px_16px_rgba(15,23,42,0.12)]'
-              }`}
-            >
-              <ul className="flex items-center gap-1">
-                <li>
-                  <NavLink
-                    to="/"
-                    viewTransition
-                    className={({ isActive }) =>
-                      `inline-flex items-center min-h-[44px] px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                        isActive
-                          ? 'underline underline-offset-4'
-                          : isDark
-                            ? 'text-[#f8fafc] hover:text-[#7dd3fc]'
-                            : 'text-[#0f172a] hover:text-[#075985]'
-                      }`
-                    }
-                  >
-                    Inicio
-                  </NavLink>
-                </li>
-                <li>
-                  <NavLink
-                    to="/ayuda"
-                    className={({ isActive }) =>
-                      `inline-flex items-center min-h-[44px] px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                        isActive
-                          ? 'underline underline-offset-4'
-                          : isDark
-                            ? 'text-[#f8fafc] hover:text-[#7dd3fc]'
-                            : 'text-[#0f172a] hover:text-[#075985]'
-                      }`
-                    }
-                  >
-                    Ayuda
-                  </NavLink>
-                </li>
-              </ul>
-            </nav>
-          </div>
-        </header>
-      ) : (
-        <header
-          className={`relative z-20 border-b transition-colors ${
-            isDark
-              ? 'bg-[#0f172a] text-[#f8fafc] border-slate-400/35'
-              : 'bg-white text-[#0f172a] border-slate-300 shadow-sm'
-          }`}
-        >
-          <div className="max-w-6xl mx-auto px-4 py-3 pr-24 sm:pr-28 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-            <Link to="/" className="inline-flex items-center gap-2.5 min-h-[44px] w-fit">
-              {/* Rojo Univalle #990000 reservado exclusivamente al escudo institucional (Guía visual v3) */}
-              <span
-                aria-hidden="true"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[#990000] font-extrabold text-white text-xs shrink-0"
-              >
-                UV
-              </span>
-              <span className="font-bold text-lg sm:text-xl tracking-tight">
-                Salón de Estudio
-              </span>
-            </Link>
-
-            <nav aria-label="Navegación principal">
-              <ul className="flex flex-wrap gap-1.5">
-                {visitorNavItems.map((item) => (
-                  <li key={item.to}>
-                    <NavLink
-                      to={item.to}
-                      end={item.end}
-                      className={({ isActive }) =>
-                        `inline-flex items-center min-h-[44px] px-3.5 py-2 rounded-[10px] text-sm font-semibold transition-colors ${
-                          isActive
-                            ? isDark
-                              ? 'bg-[#38bdf8] text-[#0b1220]'
-                              : 'bg-[#075985] text-white'
-                            : isDark
-                              ? 'text-[#f8fafc] hover:bg-white/10'
-                              : 'text-[#0f172a] hover:bg-slate-100'
-                        }`
-                      }
-                    >
-                      {item.label}
-                    </NavLink>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-          </div>
-        </header>
-      )}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+            className={floatingButtonClass}
+          >
+            {isDark ? (
+              <Sun className="w-3.5 h-3.5 text-[#38bdf8]" aria-hidden="true" />
+            ) : (
+              <Moon className="w-3.5 h-3.5 text-[#075985]" aria-hidden="true" />
+            )}
+            <span>{isDark ? 'Día' : 'Noche'}</span>
+          </button>
+        </div>
+      </header>
 
       <main
         id="contenido"
         tabIndex={-1}
         className={
           isAccessRoute
-            ? 'relative z-10 flex-1 w-full grid place-items-center px-4 py-6 focus:outline-none'
-            : 'relative z-10 flex-1 max-w-6xl w-full mx-auto px-4 py-8 focus:outline-none'
+            ? 'relative z-10 flex-1 w-full flex items-center justify-center px-4 pt-12 pb-3 focus:outline-none'
+            : 'relative z-10 flex-1 max-w-6xl w-full mx-auto px-4 py-6 focus:outline-none'
         }
       >
         <Outlet />
       </main>
 
-      {/* Botones flotantes pequeños en esquina para Pausa de mar y Tema (Guía visual v3 §3) */}
-      <div
-        role="group"
-        aria-label="Controles de tema y movimiento"
-        className="fixed top-3.5 right-4 z-30 flex items-center gap-2"
+      <footer
+        className={`relative z-10 py-2 text-center text-xs ${
+          isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'
+        }`}
       >
-        {isAccessRoute && !prefersReducedMotion && (
-          <button
-            type="button"
-            onClick={toggleMotionPaused}
-            aria-pressed={motionPaused}
-            aria-label={motionPaused ? 'Reanudar fondo' : 'Pausar fondo'}
-            title={motionPaused ? 'Reanudar fondo' : 'Pausar fondo'}
-            className={`${floatingButtonClass} min-w-[44px] w-11 !px-0 justify-center`}
+        <div className="max-w-6xl mx-auto px-4 flex justify-center">
+          <div
+            className={`inline-flex flex-wrap items-center justify-center gap-x-2 rounded-2xl sm:rounded-full px-4 transition-colors ${
+              isDark
+                ? 'bg-[#0f172a]/[0.82] shadow-[0_2px_10px_rgba(2,6,23,0.28)]'
+                : 'bg-white/[0.94] shadow-[0_2px_10px_rgba(15,23,42,0.12)]'
+            }`}
           >
-            {motionPaused ? (
-              <Play className="w-4 h-4" aria-hidden="true" />
-            ) : (
-              <Pause className="w-4 h-4" aria-hidden="true" />
-            )}
-          </button>
-        )}
-
-        <button
-          type="button"
-          onClick={toggleTheme}
-          aria-label={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-          className={floatingButtonClass}
-        >
-          {isDark ? (
-            <Sun className="w-3.5 h-3.5 text-[#38bdf8]" aria-hidden="true" />
-          ) : (
-            <Moon className="w-3.5 h-3.5 text-[#075985]" aria-hidden="true" />
-          )}
-          <span>{isDark ? 'Día' : 'Noche'}</span>
-        </button>
-      </div>
-
-      {isAccessRoute ? (
-        <footer
-          className={`relative z-10 py-3 text-center text-xs ${
-            isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'
-          }`}
-        >
-          <div className="max-w-6xl mx-auto px-4">
-            <span
-              className={`inline-block rounded-full px-3.5 py-1 transition-colors ${
-                isDark
-                  ? 'bg-[#0f172a]/[0.80] shadow-[0_2px_10px_rgba(2,6,23,0.28)]'
-                  : 'bg-white/[0.92] shadow-[0_2px_10px_rgba(15,23,42,0.12)]'
-              }`}
-            >
-              Universidad del Valle · Proyecto Integrador I
-            </span>
+            <span className="py-2">Universidad del Valle · Proyecto Integrador I</span>
+            <span aria-hidden="true">·</span>
+            <nav aria-label="Enlaces secundarios" className="inline-flex items-center gap-1">
+              {(isAccessRoute ? location.pathname !== '/' : true) && (
+                <NavLink
+                  to="/"
+                  viewTransition
+                  className={({ isActive }) =>
+                    `inline-flex items-center min-h-[44px] px-2 font-semibold underline-offset-4 transition-colors ${
+                      isActive
+                        ? 'underline'
+                        : isDark
+                          ? 'text-[#cbd5e1] hover:text-[#7dd3fc] hover:underline'
+                          : 'text-[#334155] hover:text-[#075985] hover:underline'
+                    }`
+                  }
+                >
+                  Inicio
+                </NavLink>
+              )}
+              <NavLink
+                to="/ayuda"
+                className={({ isActive }) =>
+                  `inline-flex items-center min-h-[44px] px-2 font-semibold underline-offset-4 transition-colors ${
+                    isActive
+                      ? 'underline'
+                      : isDark
+                        ? 'text-[#cbd5e1] hover:text-[#7dd3fc] hover:underline'
+                        : 'text-[#334155] hover:text-[#075985] hover:underline'
+                  }`
+                }
+              >
+                Ayuda
+              </NavLink>
+              <NavLink
+                to="/base-tecnica"
+                className={({ isActive }) =>
+                  `inline-flex items-center min-h-[44px] px-2 font-semibold underline-offset-4 transition-colors ${
+                    isActive
+                      ? 'underline'
+                      : isDark
+                        ? 'text-[#cbd5e1] hover:text-[#7dd3fc] hover:underline'
+                        : 'text-[#334155] hover:text-[#075985] hover:underline'
+                  }`
+                }
+              >
+                Base técnica
+              </NavLink>
+              {!isAccessRoute && (
+                <NavLink
+                  to="/ingresar"
+                  className={({ isActive }) =>
+                    `inline-flex items-center min-h-[44px] px-2 font-semibold underline-offset-4 transition-colors ${
+                      isActive
+                        ? 'underline'
+                        : isDark
+                          ? 'text-[#cbd5e1] hover:text-[#7dd3fc] hover:underline'
+                          : 'text-[#334155] hover:text-[#075985] hover:underline'
+                    }`
+                  }
+                >
+                  Ingresar
+                </NavLink>
+              )}
+            </nav>
           </div>
-        </footer>
-      ) : (
-        <footer
-          className={`relative z-10 border-t py-5 text-center text-sm ${
-            isDark
-              ? 'bg-[#0f172a] border-slate-400/35 text-[#cbd5e1]'
-              : 'bg-white border-slate-300 text-[#334155]'
-          }`}
-        >
-          <div className="max-w-6xl mx-auto px-4">
-            Salón de Estudio Colaborativo en Tiempo Real · Universidad del Valle (Sprint 1)
-          </div>
-        </footer>
-      )}
+        </div>
+      </footer>
     </div>
   );
 }

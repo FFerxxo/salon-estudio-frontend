@@ -43,7 +43,7 @@ export function PasswordField({
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-2">
         <label
           htmlFor={fieldId}

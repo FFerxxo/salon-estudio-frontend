@@ -4,9 +4,9 @@ interface PublicRouteSpec {
   path: string;
   name: string;
   isAccessRoute: boolean;
-  expectedNav: string[];
+  expectedFooterNav: string[];
   contentLinks: string[];
-  checkUtilityAfterContent: boolean;
+  checkFooterAfterContent: boolean;
 }
 
 const publicRoutes: PublicRouteSpec[] = [
@@ -14,49 +14,49 @@ const publicRoutes: PublicRouteSpec[] = [
     path: '/',
     name: 'Inicio',
     isAccessRoute: true,
-    expectedNav: ['Inicio', 'Ayuda'],
+    expectedFooterNav: ['Ayuda', 'Base técnica'],
     contentLinks: ['Vamos a estudiar'],
-    checkUtilityAfterContent: true,
+    checkFooterAfterContent: true,
   },
   {
     path: '/ingresar',
     name: 'Ingresar',
     isAccessRoute: true,
-    expectedNav: ['Inicio', 'Ayuda'],
+    expectedFooterNav: ['Inicio', 'Ayuda', 'Base técnica'],
     contentLinks: [],
-    checkUtilityAfterContent: false,
+    checkFooterAfterContent: false,
   },
   {
     path: '/registro',
     name: 'Registro',
     isAccessRoute: true,
-    expectedNav: ['Inicio', 'Ayuda'],
+    expectedFooterNav: ['Inicio', 'Ayuda', 'Base técnica'],
     contentLinks: [],
-    checkUtilityAfterContent: false,
+    checkFooterAfterContent: false,
   },
   {
     path: '/ayuda',
     name: 'Ayuda',
     isAccessRoute: false,
-    expectedNav: ['Inicio', 'Ayuda', 'Base técnica', 'Ingresar'],
+    expectedFooterNav: ['Inicio', 'Ayuda', 'Base técnica', 'Ingresar'],
     contentLinks: [],
-    checkUtilityAfterContent: true,
+    checkFooterAfterContent: true,
   },
   {
     path: '/base-tecnica',
     name: 'Base técnica',
     isAccessRoute: false,
-    expectedNav: ['Inicio', 'Ayuda', 'Base técnica', 'Ingresar'],
+    expectedFooterNav: ['Inicio', 'Ayuda', 'Base técnica', 'Ingresar'],
     contentLinks: ['Reintentar'],
-    checkUtilityAfterContent: true,
+    checkFooterAfterContent: true,
   },
   {
     path: '/ruta-desconocida-404',
     name: '404 · Página no encontrada',
     isAccessRoute: false,
-    expectedNav: ['Inicio', 'Ayuda', 'Base técnica', 'Ingresar'],
+    expectedFooterNav: ['Inicio', 'Ayuda', 'Base técnica', 'Ingresar'],
     contentLinks: ['Volver al Inicio'],
-    checkUtilityAfterContent: true,
+    checkFooterAfterContent: true,
   },
 ];
 
@@ -74,9 +74,9 @@ test.describe('Navegación por Teclado (TS-04) y Rutas Privadas (US-03) en Chrom
     path,
     name,
     isAccessRoute,
-    expectedNav,
+    expectedFooterNav,
     contentLinks,
-    checkUtilityAfterContent,
+    checkFooterAfterContent,
   } of publicRoutes) {
     test(`Ruta pública ${path} (${name}) — Enlace de salto y orden Tab`, async ({ page }) => {
       if (path === '/base-tecnica') {
@@ -98,22 +98,17 @@ test.describe('Navegación por Teclado (TS-04) y Rutas Privadas (US-03) en Chrom
       await expect(skipLink).toBeFocused();
       await expect(skipLink).toBeVisible();
 
-      // 2. En rutas públicas, la marca del encabezado es enlace a Inicio antes del menú
-      await page.keyboard.press('Tab');
-      const brandLink = page.getByRole('link', { name: /Salón de Estudio/i });
-      await expect(brandLink).toBeFocused();
-      await expect(brandLink).toHaveAttribute('href', '/');
-      expect(await activeHasVisibleOutline(page)).toBe(true);
-
-      // 3. Siguientes Tabs recorren el menú principal visible en orden exacto con foco visible
-      for (const navLabel of expectedNav) {
+      // 2. Cabecera minimalista solo con controles de pausa (acceso) y tema Día/Noche
+      if (isAccessRoute) {
         await page.keyboard.press('Tab');
-        const activeText = await page.evaluate(() => document.activeElement?.textContent?.trim());
-        expect(activeText).toBe(navLabel);
+        await expect(page.getByRole('button', { name: /Pausar fondo/i })).toBeFocused();
         expect(await activeHasVisibleOutline(page)).toBe(true);
       }
+      await page.keyboard.press('Tab');
+      await expect(page.getByRole('button', { name: /Cambiar a modo claro/i })).toBeFocused();
+      expect(await activeHasVisibleOutline(page)).toBe(true);
 
-      // 4. Verifica enlaces/botones principales dentro de <main>
+      // 3. Enlaces/botones principales dentro de <main>
       for (const linkText of contentLinks) {
         if (path === '/base-tecnica') {
           await expect(page.getByRole('button', { name: 'Reintentar' })).toBeVisible();
@@ -121,16 +116,17 @@ test.describe('Navegación por Teclado (TS-04) y Rutas Privadas (US-03) en Chrom
         await page.keyboard.press('Tab');
         const activeText = await page.evaluate(() => document.activeElement?.textContent?.trim());
         expect(activeText).toBe(linkText);
+        expect(await activeHasVisibleOutline(page)).toBe(true);
       }
 
-      // 5. En rutas sin campos extra en <main>, los controles flotantes van después del contenido
-      if (checkUtilityAfterContent) {
-        if (isAccessRoute) {
+      // 4. En rutas sin campos extra en <main>, los enlaces secundarios del pie siguen en orden exacto
+      if (checkFooterAfterContent) {
+        for (const footerLabel of expectedFooterNav) {
           await page.keyboard.press('Tab');
-          await expect(page.getByRole('button', { name: /Pausar fondo/i })).toBeFocused();
+          const activeText = await page.evaluate(() => document.activeElement?.textContent?.trim());
+          expect(activeText).toBe(footerLabel);
+          expect(await activeHasVisibleOutline(page)).toBe(true);
         }
-        await page.keyboard.press('Tab');
-        await expect(page.getByRole('button', { name: /Cambiar a modo claro/i })).toBeFocused();
       }
     });
   }

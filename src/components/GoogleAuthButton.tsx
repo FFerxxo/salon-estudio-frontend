@@ -19,8 +19,8 @@ export function GoogleAuthButton({
   const isPrimaryPill = variant === 'primaryPill';
 
   const buttonClasses = isPrimaryPill
-    ? 'w-full h-[64px] min-h-[64px] px-6 rounded-full font-semibold text-base bg-[#FFFFFF] text-[#1F1F1F] border border-[#747775] hover:bg-[#f8fafc] inline-flex items-center justify-center gap-3.5 shadow-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed'
-    : `w-full min-h-[48px] px-4 py-2.5 rounded-xl font-semibold text-base border-[1.5px] border-[#64748b] inline-flex items-center justify-center gap-3 transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
+    ? `w-full h-[44px] min-h-[44px] px-4 rounded-xl font-semibold text-sm bg-[#FFFFFF] text-[#0f172a] border-[1.5px] border-[#64748b] hover:bg-[#f8fafc] active:scale-[0.97] motion-reduce:active:scale-100 motion-reduce:transition-none inline-flex items-center justify-center gap-2.5 shadow-sm transition-[background-color,transform] duration-150 disabled:opacity-60 disabled:cursor-not-allowed`
+    : `w-full min-h-[44px] px-4 py-2 rounded-xl font-semibold text-sm border-[1.5px] border-[#64748b] active:scale-[0.97] motion-reduce:active:scale-100 motion-reduce:transition-none inline-flex items-center justify-center gap-2.5 transition-[background-color,transform] duration-150 disabled:opacity-60 disabled:cursor-not-allowed ${
         isDark
           ? 'bg-[#0b1220] text-[#f8fafc] hover:bg-white/10'
           : 'bg-white text-[#0f172a] hover:bg-slate-50 shadow-sm'
@@ -28,11 +28,11 @@ export function GoogleAuthButton({
 
   const iconSvg = (
     <svg
-      width="24"
-      height="24"
+      width="20"
+      height="20"
       viewBox="0 0 24 24"
       aria-hidden="true"
-      className="w-6 h-6 aspect-square shrink-0"
+      className="w-5 h-5 aspect-square shrink-0"
     >
       <path
         fill="#4285F4"
