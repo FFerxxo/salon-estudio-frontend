@@ -148,9 +148,9 @@ const PANEL_ROOMS = [
 
 export function DashboardPage() {
   useDocumentTitle('Panel');
-  const { user } = useAuth();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const [avisoSala, setAvisoSala] = useState<string | null>(null);
 
   return (
     <section aria-labelledby="panel-heading" className="py-6 sm:py-10">
@@ -175,15 +175,22 @@ export function DashboardPage() {
                 <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-[#22c55e]" />0 en línea
               </p>
             </div>
-            <Link
-              to={user ? `/salas/${room.id}` : '/ingresar'}
+            <button
+              type="button"
+              onClick={() => setAvisoSala(room.id)}
               aria-label={`Entrar a ${room.name}`}
               className={`min-h-[44px] rounded-xl inline-flex items-center justify-center text-[15px] font-bold transition-colors ${
                 isDark ? 'bg-[#38bdf8] text-[#0b1220] hover:bg-[#7dd3fc]' : 'bg-[#075985] text-white hover:bg-[#0369a1]'
               }`}
             >
               Entrar
-            </Link>
+            </button>
+            <p
+              role="status"
+              className={`min-h-[20px] text-center text-sm font-semibold ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}
+            >
+              {avisoSala === room.id ? 'Sala no disponible aún.' : ''}
+            </p>
           </li>
         ))}
       </ul>
