@@ -31,20 +31,6 @@ export function HomePage() {
   );
 }
 
-export function LoginPage() {
-  useDocumentTitle('Ingresar');
-
-  return (
-    <section className="space-y-4">
-      <h1 className="text-3xl font-bold text-slate-900">Ingresar</h1>
-      <p className="text-slate-700">
-        Maqueta de inicio de sesión (Sprint 0). La autenticación estará disponible en los siguientes
-        sprints.
-      </p>
-    </section>
-  );
-}
-
 export function ProfilePage() {
   useDocumentTitle('Perfil');
 

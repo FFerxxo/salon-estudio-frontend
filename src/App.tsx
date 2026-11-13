@@ -4,12 +4,12 @@ import { RutaPrivada, RutaPublica } from './components/RutasProtegidas';
 import { AuthProvider } from './context/AuthContext';
 import { BaseTecnicaPage } from './pages/BaseTecnicaPage';
 import { ElegirUsuarioPage, RutaElegirUsuario } from './pages/ElegirUsuarioPage';
+import { IngresarPage } from './pages/IngresarPage';
 import { PanelPage } from './pages/PanelPage';
 import { RegistroPage } from './pages/RegistroPage';
 import {
   HelpPage,
   HomePage,
-  LoginPage,
   NotFoundPage,
   ProfilePage,
   RoomPage,
@@ -22,7 +22,7 @@ export function App() {
         <Route element={<Layout />}>
           <Route path="/" element={<HomePage />} />
           <Route element={<RutaPublica />}>
-            <Route path="/ingresar" element={<LoginPage />} />
+            <Route path="/ingresar" element={<IngresarPage />} />
             <Route path="/registro" element={<RegistroPage />} />
           </Route>
           <Route element={<RutaElegirUsuario />}>
