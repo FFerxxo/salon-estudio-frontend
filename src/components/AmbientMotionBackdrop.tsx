@@ -66,13 +66,6 @@ export function AmbientMotionBackdrop({ subtle = false }: { subtle?: boolean }) 
           >
             {!saveData && (
               <source
-                src={MAREA_MEDIA.video2160Url}
-                type="video/mp4"
-                media="(min-width: 2560px), (min-width: 1280px) and (-webkit-min-device-pixel-ratio: 2), (min-width: 1280px) and (min-resolution: 192dpi)"
-              />
-            )}
-            {!saveData && (
-              <source
                 src={MAREA_MEDIA.video1440Url}
                 type="video/mp4"
                 media="(min-width: 1440px), (min-width: 960px) and (-webkit-min-device-pixel-ratio: 2), (min-width: 960px) and (min-resolution: 192dpi)"

@@ -7,7 +7,7 @@ import { selectLoginGreeting } from '../content/saludos';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
-import { validateEmail, validateUsername } from '../utils/authValidation';
+import { validateEmail } from '../utils/authValidation';
 import {
   getErrorAlertClasses,
   getGlassCardClasses,
@@ -40,20 +40,9 @@ export function LoginPage() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [showRecoveryNote, setShowRecoveryNote] = useState(false);
 
-  const validateIdentifier = (raw: string): string | null => {
-    const trimmed = raw.trim();
-    if (!trimmed) {
-      return 'Ingresa tu correo institucional o usuario.';
-    }
-    if (trimmed.includes('@') && !trimmed.startsWith('@')) {
-      return validateEmail(trimmed);
-    }
-    return validateUsername(trimmed);
-  };
-
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const mailErr = validateIdentifier(correo);
+    const mailErr = validateEmail(correo);
     if (mailErr || !password) {
       setEmailError(mailErr);
       setAuthError(!password ? 'Ingresa tu contraseña para continuar.' : null);
@@ -106,7 +95,7 @@ export function LoginPage() {
   return (
     <section
       aria-labelledby="ingresar-heading"
-      className={`w-full max-w-[400px] mx-auto rounded-[16px] p-6 sm:p-8 space-y-5 ${getGlassCardClasses(
+      className={`marea-morph-card w-full max-w-[360px] mx-auto rounded-[18px] p-6 space-y-3.5 ${getGlassCardClasses(
         theme
       )}`}
     >
@@ -114,9 +103,17 @@ export function LoginPage() {
         Ingresar
       </h1>
 
+      <Link
+        to="/"
+        viewTransition
+        className={`text-xs font-medium inline-flex items-center gap-1 min-h-[44px] -my-2.5 ${getLinkClasses(theme)}`}
+      >
+        <span aria-hidden="true">←</span> Volver a la página de inicio
+      </Link>
+
       <p
         lang={greeting.lang === 'en' ? 'en' : undefined}
-        className="text-xl sm:text-2xl font-bold tracking-tight leading-snug min-h-[36px] flex items-center justify-center text-center"
+        className="text-[18px] sm:text-[19px] font-bold tracking-tight leading-snug text-center text-balance"
       >
         {greeting.text}
       </p>
@@ -124,7 +121,7 @@ export function LoginPage() {
       {authError && (
         <div
           role="alert"
-          className={`rounded-[10px] p-3.5 text-sm font-semibold flex items-center gap-2 ${getErrorAlertClasses(
+          className={`rounded-[10px] p-3 text-xs font-semibold flex items-center gap-2 ${getErrorAlertClasses(
             theme
           )}`}
         >
@@ -133,18 +130,14 @@ export function LoginPage() {
         </div>
       )}
 
-      <div className="flex justify-center">
-        <div className="w-full max-w-[300px]">
-          <GoogleAuthButton
-            variant="primaryPill"
-            onClick={() => void handleGoogleLogin()}
-            disabled={submitting}
-            label="Continuar con Google"
-          />
-        </div>
-      </div>
+      <GoogleAuthButton
+        variant="primaryPill"
+        onClick={() => void handleGoogleLogin()}
+        disabled={submitting}
+        label="Continuar con Google"
+      />
 
-      <div className="relative flex py-0.5 items-center" aria-hidden="true">
+      <div className="relative flex items-center" aria-hidden="true">
         <div className="flex-grow border-t border-[#64748b]/50" />
         <span
           className={`mx-3 text-xs font-semibold ${
@@ -156,10 +149,10 @@ export function LoginPage() {
         <div className="flex-grow border-t border-[#64748b]/50" />
       </div>
 
-      <form noValidate onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
+      <form noValidate onSubmit={(e) => void handleSubmit(e)} className="space-y-3">
         <div className="space-y-1.5">
           <label htmlFor="login-correo" className="block text-sm font-semibold">
-            Correo o usuario
+            Correo
           </label>
           <div className="relative">
             <span
@@ -172,14 +165,14 @@ export function LoginPage() {
             </span>
             <input
               id="login-correo"
-              type="text"
+              type="email"
               value={correo}
               onChange={(e) => {
                 setCorreo(e.target.value);
                 if (emailError) setEmailError(null);
               }}
-              autoComplete="username"
-              placeholder="nombre@correo.com o usuario"
+              autoComplete="email"
+              placeholder="nombre@correo.com"
               aria-invalid={Boolean(emailError)}
               aria-describedby={emailError ? 'login-correo-error' : undefined}
               className={`${getInputClasses(theme, Boolean(emailError))} pl-10`}
@@ -210,11 +203,11 @@ export function LoginPage() {
             <button
               type="button"
               onClick={() => setShowRecoveryNote((prev) => !prev)}
-              className={`text-xs font-medium min-h-[44px] inline-flex items-start pt-1.5 ${getLinkClasses(
+              className={`text-xs font-medium min-h-[44px] -my-1.5 inline-flex items-center ${getLinkClasses(
                 theme
               )}`}
             >
-              ¿Olvidaste tu contraseña o usuario?
+              ¿Olvidaste tu contraseña?
             </button>
           </div>
         </div>
@@ -222,23 +215,33 @@ export function LoginPage() {
         {showRecoveryNote && (
           <p
             role="status"
-            className={`rounded-[10px] p-3 text-xs font-medium border border-[#64748b] ${
+            className={`rounded-[10px] p-2.5 text-xs font-medium border border-[#64748b] ${
               isDark ? 'bg-[#0b1220] text-[#cbd5e1]' : 'bg-white text-[#334155]'
             }`}
           >
-            La recuperación de contraseña y usuario depende de la conexión del servicio de cuentas
-            (TS-01).
+            La recuperación de contraseña depende de la conexión del servicio de cuentas (TS-01).
           </p>
         )}
 
-        <button type="submit" disabled={submitting} className={getPrimaryCtaClasses(theme)}>
+        <button
+          type="submit"
+          disabled={submitting}
+          className={`${getPrimaryCtaClasses(
+            theme
+          )} !min-h-[44px] h-[44px] !py-2 !text-sm active:scale-[0.97] motion-reduce:active:scale-100 motion-reduce:transition-none transition-[background-color,color,transform] duration-150`}
+        >
           {submitting ? 'Ingresando...' : 'Ingresar con correo'}
         </button>
       </form>
 
-      <p className={`pt-1 text-center text-xs ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}>
+      <p className={`text-center text-xs ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}>
         ¿No tienes cuenta?{' '}
-        <Link to="/registro" className={`font-semibold ${getLinkClasses(theme)}`}>
+        <Link
+          to="/registro"
+          className={`font-semibold inline-flex items-center min-h-[44px] -my-2 px-1 ${getLinkClasses(
+            theme
+          )}`}
+        >
           Crear cuenta
         </Link>
       </p>

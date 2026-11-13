@@ -1,5 +1,8 @@
-import { LogOut } from 'lucide-react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { ArrowRight, Link2, Music, Plus, Sparkles, Waves } from 'lucide-react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { TugaStage } from '../components/TugaStage';
+import { selectTugaGreeting } from '../content/vozTuga';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
@@ -9,130 +12,287 @@ import {
   getSolidSurfaceClasses,
 } from '../utils/themeStyles';
 
+const IS_JSDOM =
+  typeof navigator !== 'undefined' && /jsdom/i.test(navigator.userAgent || '');
+const SHH_DELAY_MS = 500;
+
+interface ExampleRoom {
+  id: string;
+  title: string;
+  codeLabel: string;
+  hostHandle: string;
+}
+
+const EXAMPLE_ROOMS: ExampleRoom[] = [
+  {
+    id: 'demo-1',
+    title: 'Cálculo I',
+    codeLabel: 'Sala 01',
+    hostHandle: '@equipo6.uv',
+  },
+  {
+    id: 'fisica-parcial-2',
+    title: 'Física · parcial 2',
+    codeLabel: 'Sala 02',
+    hostHandle: '@equipo6.uv',
+  },
+  {
+    id: 'ingles-b1',
+    title: 'Inglés B1',
+    codeLabel: 'Sala 03',
+    hostHandle: '@equipo6.uv',
+  },
+];
+
 export function HomePage() {
   useDocumentTitle('Inicio');
-  const { theme } = useTheme();
+  const navigate = useNavigate();
+  const { theme, motionPaused, prefersReducedMotion } = useTheme();
   const isDark = theme === 'dark';
 
+  const [{ phrase }] = useState(() => selectTugaGreeting());
+  const [isButtonHovered, setIsButtonHovered] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
+  const ctaRef = useRef<HTMLAnchorElement | null>(null);
+  const leaveTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (leaveTimerRef.current !== null) {
+        window.clearTimeout(leaveTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleGoClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey ||
+      event.button !== 0
+    ) {
+      return;
+    }
+
+    if (typeof document !== 'undefined' && typeof window !== 'undefined') {
+      const rect = event.currentTarget.getBoundingClientRect();
+      if (rect.width > 0 && window.innerWidth > 0 && window.innerHeight > 0) {
+        const originX = ((rect.left + rect.width / 2) / window.innerWidth) * 100;
+        const originY = ((rect.top + rect.height / 2) / window.innerHeight) * 100;
+        document.documentElement.style.setProperty('--marea-origin-x', `${originX.toFixed(1)}%`);
+        document.documentElement.style.setProperty('--marea-origin-y', `${originY.toFixed(1)}%`);
+      }
+    }
+
+    if (prefersReducedMotion || motionPaused || IS_JSDOM) {
+      return;
+    }
+
+    event.preventDefault();
+    if (isLeaving) return;
+    setIsLeaving(true);
+    document.documentElement.dataset.vt = 'ingresar';
+    leaveTimerRef.current = window.setTimeout(() => {
+      navigate('/ingresar', { viewTransition: true });
+      window.setTimeout(() => {
+        delete document.documentElement.dataset.vt;
+      }, 650);
+    }, SHH_DELAY_MS);
+  };
+
   return (
-    <section
-      aria-labelledby="inicio-heading"
-      className={`w-full max-w-[440px] mx-auto rounded-[20px] p-6 sm:p-8 space-y-6 ${getGlassCardClasses(
-        theme
-      )}`}
-    >
-      <div className="flex items-center gap-2.5">
-        <span
-          aria-hidden="true"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[#990000] font-extrabold text-white text-xs shrink-0"
-        >
-          UV
-        </span>
-        <div>
-          <p className="font-bold text-sm leading-tight">Salón de Estudio</p>
-          <p className={`text-xs ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}>
-            Universidad del Valle
+    <div className="tuga-anclada w-full max-w-[720px] mx-auto flex flex-col items-center">
+      <TugaStage
+        phrase={phrase}
+        theme={theme}
+        motionPaused={motionPaused}
+        prefersReducedMotion={prefersReducedMotion}
+        isButtonHovered={isButtonHovered}
+        isLeaving={isLeaving}
+        ctaRef={ctaRef}
+      />
+
+      <section
+        aria-labelledby="inicio-heading"
+        className={`marea-morph-card inicio-card relative z-[1] -mt-14 sm:-mt-10 w-full max-w-[400px] mx-auto rounded-[22px] p-5 space-y-3.5 text-center ring-1 ${
+          isDark ? 'ring-[#38bdf8]/25' : 'ring-[#075985]/15'
+        } ${getGlassCardClasses(theme)}`}
+      >
+        <div className="space-y-1">
+          <h1 id="inicio-heading" className="text-xl sm:text-2xl font-bold tracking-tight text-balance">
+            Bienvenido a <span className={isDark ? 'text-[#38bdf8]' : 'text-[#075985]'}>Tuga</span>
+          </h1>
+          <p className={`text-sm text-pretty ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}>
+            Un espacio donde estudiar te sumerge en un mundo de ideas.
           </p>
         </div>
-      </div>
 
-      <div className="space-y-2.5">
-        <h1 id="inicio-heading" className="text-2xl sm:text-3xl font-bold tracking-tight">
-          Salón de Estudio Colaborativo en Tiempo Real
-        </h1>
-        <p className={`text-sm sm:text-base ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}>
-          Espacio accesible para organizar sesiones de estudio en grupo, compartir objetivos y
-          colaborar en una Sala.
-        </p>
-      </div>
-
-      {/* CTAs principales del Home: Ingresar y Crear cuenta */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-        <Link to="/ingresar" className={getPrimaryCtaClasses(theme)}>
-          Ingresar
-        </Link>
         <Link
-          to="/registro"
-          className={`min-h-[48px] px-5 py-3 rounded-xl border-[1.5px] border-[#64748b] font-semibold text-base transition-colors inline-flex items-center justify-center ${
-            isDark
-              ? 'bg-[#0b1220] text-[#f8fafc] hover:bg-white/10'
-              : 'bg-white text-[#0f172a] hover:bg-slate-100'
-          }`}
+          ref={ctaRef}
+          to="/ingresar"
+          viewTransition
+          onMouseEnter={() => setIsButtonHovered(true)}
+          onMouseLeave={() => setIsButtonHovered(false)}
+          onFocus={() => setIsButtonHovered(true)}
+          onBlur={() => setIsButtonHovered(false)}
+          onClick={handleGoClick}
+          className={getPrimaryCtaClasses(theme)}
         >
-          Crear cuenta
+          <span>Vamos a estudiar</span>
+          <ArrowRight className="w-4 h-4 shrink-0" aria-hidden="true" />
         </Link>
-      </div>
-    </section>
+
+        <ul className="flex flex-wrap justify-center gap-2" aria-label="Lo que encuentras en Tuga">
+          {[
+            { label: 'Tu espacio', Icon: Waves },
+            { label: 'Tu música', Icon: Music },
+            { label: 'Tu elección', Icon: Sparkles },
+          ].map(({ label, Icon }) => (
+            <li
+              key={label}
+              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${
+                isDark
+                  ? 'bg-[#38bdf8]/15 text-[#7dd3fc] ring-[#38bdf8]/30'
+                  : 'bg-[#075985]/10 text-[#075985] ring-[#075985]/25'
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+              {label}
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
   );
 }
 
 export function DashboardPage() {
-  useDocumentTitle('Panel');
-  const { user, logout } = useAuth();
+  const [searchParams] = useSearchParams();
+  const isMisSalasView = searchParams.get('vista') === 'mis-salas';
+  useDocumentTitle(isMisSalasView ? 'Mis salas' : 'Panel');
+  const { user } = useAuth();
   const { theme } = useTheme();
-  const navigate = useNavigate();
   const isDark = theme === 'dark';
-
-  const handleLogout = async () => {
-    navigate('/', { replace: true });
-    await logout();
-  };
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
 
   return (
     <section aria-labelledby="panel-heading" className="space-y-6">
-      <div className={`rounded-[20px] p-6 sm:p-8 space-y-5 ${getSolidSurfaceClasses(theme)}`}>
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <span
-              aria-hidden="true"
-              className={`h-12 w-12 rounded-2xl flex items-center justify-center text-2xl border border-[#64748b] overflow-hidden ${
-                isDark ? 'bg-[#0b1220]' : 'bg-[#f8fafc]'
-              }`}
-            >
-              {user?.avatarUrl?.startsWith('https://') ? (
-                <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
-              ) : (
-                user?.avatar || '🚀'
-              )}
-            </span>
-            <div>
-              <p
-                className={`text-xs font-bold uppercase tracking-wider ${
-                  isDark ? 'text-[#7dd3fc]' : 'text-[#075985]'
-                }`}
-              >
-                Sesión activa · @{user?.username || 'estudiante'}
-              </p>
-              <h1 id="panel-heading" className="text-2xl sm:text-3xl font-bold">
-                Panel
-              </h1>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <Link to="/salas/demo-1" className={`${getPrimaryCtaClasses(theme)} !w-auto`}>
-              Abrir Sala de demostración
-            </Link>
-            <button
-              type="button"
-              onClick={() => void handleLogout()}
-              className={`min-h-[48px] px-4 py-2.5 rounded-xl border-[1.5px] border-[#64748b] text-sm font-semibold inline-flex items-center gap-2 transition-colors ${
-                isDark
-                  ? 'bg-[#0b1220] text-[#f8fafc] hover:bg-white/10'
-                  : 'bg-white text-[#0f172a] hover:bg-slate-100'
-              }`}
-            >
-              <LogOut className="w-4 h-4" aria-hidden="true" />
-              <span>Cerrar sesión</span>
-            </button>
-          </div>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="space-y-1">
+          <p
+            className={`text-xs font-bold uppercase tracking-wider ${
+              isDark ? 'text-[#7dd3fc]' : 'text-[#075985]'
+            }`}
+          >
+            Sesión activa · @{user?.username || 'estudiante'}
+          </p>
+          <h1 id="panel-heading" className="text-2xl sm:text-3xl font-bold tracking-tight">
+            {isMisSalasView ? 'Mis salas' : 'Panel'}
+          </h1>
         </div>
 
-        <p className={`text-sm sm:text-base ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}>
-          Hola, <strong>{user?.nombres || 'Estudiante'}</strong>. Tu identidad{' '}
-          <span className="font-mono font-semibold">@{user?.username || 'estudiante'}</span> está
-          lista. La creación y listado de Salas en tiempo real se integran en el Sprint 2.
-        </p>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() =>
+              setActionNotice(
+                'La unión por código de sala se conecta con Firestore y WebSockets en el Sprint 2.'
+              )
+            }
+            className={`min-h-[44px] px-4 py-2 rounded-[12px] border-[1.5px] border-[#64748b] text-sm font-semibold inline-flex items-center gap-2 transition-colors ${
+              isDark
+                ? 'bg-[#1f2e4a] text-[#f8fafc] hover:bg-[#27395c]'
+                : 'bg-white text-[#0f172a] hover:bg-slate-100'
+            }`}
+          >
+            <Link2 className="w-4 h-4 shrink-0" aria-hidden="true" />
+            <span>Unirme con un ID</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              setActionNotice(
+                'La creación de salas reales y persistentes se habilita en el Sprint 2.'
+              )
+            }
+            className={`min-h-[44px] px-4 py-2 rounded-[12px] text-sm font-bold inline-flex items-center gap-2 transition-colors ${
+              isDark
+                ? 'bg-[#38bdf8] text-[#0b1220] hover:bg-[#7dd3fc]'
+                : 'bg-[#075985] text-white hover:bg-[#0369a1]'
+            }`}
+          >
+            <Plus className="w-4 h-4 shrink-0" aria-hidden="true" />
+            <span>Crear sala</span>
+          </button>
+        </div>
+      </div>
+
+      <p className={`text-sm text-pretty ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}>
+        {isMisSalasView
+          ? `Hola, ${user?.nombres || 'Estudiante'}. Esta vista previa muestra tarjetas de ejemplo; tus salas creadas aparecerán aquí en el Sprint 2.`
+          : `Hola, ${user?.nombres || 'Estudiante'}. Tu sesión @${user?.username || 'estudiante'} está activa. Salas de ejemplo sin contadores en vivo hasta conectar la API en el Sprint 2.`}
+      </p>
+
+      {actionNotice && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`rounded-[14px] px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-sm border ${
+            isDark
+              ? 'bg-[#1f2e4a] border-[#38bdf8]/40 text-[#f8fafc]'
+              : 'bg-[#ffffff] border-slate-300 text-[#0f172a] shadow-sm'
+          }`}
+        >
+          <span>{actionNotice}</span>
+          <button
+            type="button"
+            onClick={() => setActionNotice(null)}
+            className={`min-h-[44px] px-3 rounded-[10px] text-xs font-semibold border border-[#64748b] ${
+              isDark ? 'bg-[#121c30] text-[#f8fafc]' : 'bg-[#eef3f8] text-[#0f172a]'
+            }`}
+          >
+            Cerrar
+          </button>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {EXAMPLE_ROOMS.map((room) => (
+          <article
+            key={room.id}
+            className={`rounded-[22px] p-2.5 flex flex-col gap-2.5 transition-colors ${
+              isDark
+                ? 'bg-[#1f2e4a] text-[#f8fafc] shadow-[0_8px_24px_rgba(2,6,23,0.28)]'
+                : 'bg-[#ffffff] text-[#0f172a] shadow-[0_6px_20px_rgba(15,23,42,0.08)]'
+            }`}
+          >
+            <div
+              className={`rounded-[12px] px-4 py-5 min-h-[126px] flex flex-col items-center justify-center text-center gap-2 ${
+                isDark ? 'bg-[#121c30]' : 'bg-[#eef3f8]'
+              }`}
+            >
+              <span
+                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                  isDark
+                    ? 'bg-[#38bdf8]/15 text-[#7dd3fc]'
+                    : 'bg-[#075985]/10 text-[#075985]'
+                }`}
+              >
+                Ejemplo
+              </span>
+              <h2 className="text-lg font-bold tracking-tight text-balance">{room.title}</h2>
+              <p className={`text-xs ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}>
+                {room.codeLabel} · {room.hostHandle}
+              </p>
+            </div>
+
+            <Link to={`/salas/${room.id}`} className={getPrimaryCtaClasses(theme)}>
+              Entrar
+            </Link>
+          </article>
+        ))}
       </div>
     </section>
   );
@@ -254,7 +414,7 @@ export function NotFoundPage() {
   return (
     <section
       aria-labelledby="notfound-heading"
-      className={`rounded-[20px] p-6 sm:p-8 space-y-4 ${getGlassCardClasses(theme)}`}
+      className={`rounded-[20px] p-6 sm:p-8 space-y-4 ${getSolidSurfaceClasses(theme)}`}
     >
       <h1 id="notfound-heading" className="text-3xl font-bold">
         404 · Página no encontrada

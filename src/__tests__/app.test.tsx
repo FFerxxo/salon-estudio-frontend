@@ -41,7 +41,7 @@ describe('Frontend Base + Base Técnica (TS-00 · Paso 5)', () => {
     await waitFor(() => {
       expect(screen.getByText('Bienvenido')).toBeInTheDocument();
     });
-    expect(screen.getAllByText('Salón de Estudio').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('Salón de Estudio').length).toBeGreaterThanOrEqual(1);
   });
 
   it('muestra el error cuando la API falla y el botón «Reintentar» vuelve a pedir el dato', async () => {
