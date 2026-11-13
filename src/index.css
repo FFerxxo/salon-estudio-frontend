@@ -28,8 +28,8 @@
 
   [data-theme='light'] {
     --marea-canvas: #f8fafc;
-    --marea-glass: #ffffff;
-    --marea-solid: #ffffff;
+    --marea-glass: #eef6fb; /* Día bruma (13/11, Andres): menos blanco, mismo contraste */
+    --marea-solid: #eef6fb;
     --marea-text: #0f172a;
     --marea-sec: #334155;
     --marea-ph: #475569;

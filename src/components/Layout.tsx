@@ -71,7 +71,7 @@ export function Layout() {
   const floatingButtonClass = `min-h-[44px] px-3 py-1.5 rounded-full text-xs font-semibold border-[1.5px] border-[#64748b] inline-flex items-center gap-1.5 shadow-lg backdrop-blur-[14px] transition-colors ${
     isDark
       ? 'bg-[#0f172a]/85 text-[#f8fafc] hover:bg-[#1e293b]/90'
-      : 'bg-white/90 text-[#0f172a] hover:bg-white'
+      : 'bg-[#eef6fb]/90 text-[#0f172a] ring-1 ring-[#075985]/15 hover:bg-[#eef6fb]'
   }`;
 
   if (isAppWorkspace && user) {
@@ -441,7 +441,7 @@ export function Layout() {
             className={`inline-flex flex-wrap items-center justify-center gap-x-2 rounded-2xl sm:rounded-full px-4 transition-colors ${
               isDark
                 ? 'bg-[#0f172a]/[0.82] shadow-[0_2px_10px_rgba(2,6,23,0.28)]'
-                : 'bg-white/[0.94] shadow-[0_2px_10px_rgba(15,23,42,0.12)]'
+                : 'bg-[#eef6fb]/[0.92] ring-1 ring-[#075985]/15 shadow-[0_2px_10px_rgba(15,23,42,0.12)]'
             }`}
           >
             <span className="py-2">Universidad del Valle · Proyecto Integrador I</span>
