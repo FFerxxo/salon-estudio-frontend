@@ -38,9 +38,13 @@ describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () =
       expect(screen.queryByText(/Vista previa/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/5 \/ 7 días/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/En vivo/i)).not.toBeInTheDocument();
-      expect(
-        screen.getByRole('button', { name: /Pausar animación de fondo/i })
-      ).toBeInTheDocument();
+      const pauseBtn = screen.getByRole('button', { name: /^Pausar fondo$/i });
+      expect(pauseBtn).toHaveAttribute('aria-pressed', 'false');
+      await userEvent.click(pauseBtn);
+      expect(screen.getByRole('button', { name: /^Reanudar fondo$/i })).toHaveAttribute(
+        'aria-pressed',
+        'true'
+      );
       expect(screen.getByRole('button', { name: /Cambiar a modo claro/i })).toBeInTheDocument();
 
       const results = await axe(container);
@@ -99,7 +103,9 @@ describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () =
       );
 
       expect(screen.getByRole('heading', { name: /^Ingresar$/i })).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: /Volver al inicio/i })).toHaveAttribute('href', '/');
+      expect(screen.queryByRole('link', { name: /Volver al inicio/i })).not.toBeInTheDocument();
+      const greetingEl = container.querySelector('section p.text-center');
+      expect(greetingEl).toBeInTheDocument();
       expect(screen.getByLabelText(/Correo o usuario/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/^Contraseña$/i)).toBeInTheDocument();
       expect(
@@ -169,6 +175,35 @@ describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () =
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
+    });
+
+    it('oculta el botón de pausar fondo cuando prefers-reduced-motion está activo', () => {
+      const originalMatchMedia = window.matchMedia;
+      window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+        matches: query === '(prefers-reduced-motion: reduce)',
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
+
+      try {
+        render(
+          <MemoryRouter initialEntries={['/']}>
+            <App />
+          </MemoryRouter>
+        );
+
+        expect(
+          screen.queryByRole('button', { name: /(Pausar|Reanudar) fondo/i })
+        ).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Cambiar a modo claro/i })).toBeInTheDocument();
+      } finally {
+        window.matchMedia = originalMatchMedia;
+      }
     });
   });
 

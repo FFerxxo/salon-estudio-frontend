@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MAREA_MEDIA, useTheme } from '../context/ThemeContext';
 
 const IS_JSDOM =
@@ -16,11 +16,25 @@ function isDataSaverActive(): boolean {
  * - En pantallas de lectura larga / interior de la app (subtle = true): lienzo sólido estático sin movimiento detrás.
  */
 export function AmbientMotionBackdrop({ subtle = false }: { subtle?: boolean }) {
-  const { theme, motionPaused } = useTheme();
+  const { theme, motionPaused, prefersReducedMotion } = useTheme();
   const [videoFailed, setVideoFailed] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const isDark = theme === 'dark';
   const saveData = isDataSaverActive();
-  const showVideo = !subtle && !motionPaused && !videoFailed && !IS_JSDOM;
+  const useStaticFallback = subtle || prefersReducedMotion || videoFailed || IS_JSDOM;
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || useStaticFallback) return;
+    if (motionPaused) {
+      video.pause();
+    } else {
+      const playPromise = video.play?.();
+      if (playPromise && typeof playPromise.catch === 'function') {
+        playPromise.catch(() => {});
+      }
+    }
+  }, [motionPaused, useStaticFallback]);
 
   if (subtle) {
     return (
@@ -39,9 +53,10 @@ export function AmbientMotionBackdrop({ subtle = false }: { subtle?: boolean }) 
       className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none bg-[#0b1220]"
     >
       <div className="absolute inset-0">
-        {showVideo ? (
+        {!useStaticFallback ? (
           <video
-            autoPlay
+            ref={videoRef}
+            autoPlay={!motionPaused}
             loop
             muted
             playsInline

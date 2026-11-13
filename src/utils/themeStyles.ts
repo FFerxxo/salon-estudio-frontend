@@ -4,7 +4,7 @@ import type { ThemeMode } from '../context/ThemeContext';
 export function getGlassCardClasses(theme: ThemeMode): string {
   return theme === 'dark'
     ? 'marea-glass-card bg-[#0f172a]/85 text-[#f8fafc] border border-slate-400/35 shadow-[0_24px_60px_rgba(2,6,23,0.45)]'
-    : 'marea-glass-card bg-white/90 text-[#0f172a] border border-slate-400/35 shadow-[0_20px_50px_rgba(15,23,42,0.12)]';
+    : 'bg-[#ffffff] text-[#0f172a] shadow-[0_8px_24px_rgba(15,23,42,0.18)]';
 }
 
 /** Superficie sólida sin blur para contenedores internos y pantallas de lectura larga. */

@@ -14,7 +14,7 @@ const navItems = [
 const ACCESS_ROUTES = new Set(['/', '/ingresar', '/registro', '/registro/google-username']);
 
 export function Layout() {
-  const { theme, toggleTheme, motionPaused, toggleMotionPaused } = useTheme();
+  const { theme, toggleTheme, motionPaused, prefersReducedMotion, toggleMotionPaused } = useTheme();
   const { status, user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -53,13 +53,18 @@ export function Layout() {
       {isAccessRoute ? (
         <header
           className={`relative z-20 transition-colors ${
-            isDark
-              ? 'bg-gradient-to-b from-[#0b1220]/85 via-[#0b1220]/50 to-transparent text-[#f8fafc]'
-              : 'bg-gradient-to-b from-white/90 via-white/70 to-transparent text-[#0f172a]'
+            isDark ? 'text-[#f8fafc]' : 'text-[#0f172a]'
           }`}
         >
-          <div className="max-w-6xl mx-auto px-4 pt-3.5 pb-2 pr-44 sm:pr-48 flex flex-wrap items-center justify-between gap-2">
-            <Link to="/" className="inline-flex items-center gap-2.5 min-h-[44px]">
+          <div className="max-w-6xl mx-auto px-4 pt-3.5 pb-2 pr-32 sm:pr-36 flex flex-wrap items-center justify-between gap-2">
+            <Link
+              to="/"
+              className={`inline-flex items-center gap-2.5 min-h-[44px] rounded-2xl px-3 py-1 transition-colors ${
+                isDark
+                  ? 'bg-[#0f172a]/[0.80] shadow-[0_4px_16px_rgba(2,6,23,0.28)]'
+                  : 'bg-white/[0.92] shadow-[0_4px_16px_rgba(15,23,42,0.12)]'
+              }`}
+            >
               {/* Rojo Univalle #990000 reservado exclusivamente al escudo institucional (Guía visual v3) */}
               <span
                 aria-hidden="true"
@@ -77,7 +82,14 @@ export function Layout() {
               </span>
             </Link>
 
-            <nav aria-label="Navegación principal">
+            <nav
+              aria-label="Navegación principal"
+              className={`rounded-2xl px-2 py-0.5 transition-colors ${
+                isDark
+                  ? 'bg-[#0f172a]/[0.80] shadow-[0_4px_16px_rgba(2,6,23,0.28)]'
+                  : 'bg-white/[0.92] shadow-[0_4px_16px_rgba(15,23,42,0.12)]'
+              }`}
+            >
               <ul className="flex items-center gap-1">
                 <li>
                   <NavLink
@@ -199,22 +211,20 @@ export function Layout() {
         aria-label="Controles de tema y movimiento"
         className="fixed top-3.5 right-4 z-30 flex items-center gap-2"
       >
-        {isAccessRoute && (
+        {isAccessRoute && !prefersReducedMotion && (
           <button
             type="button"
             onClick={toggleMotionPaused}
             aria-pressed={motionPaused}
-            aria-label={
-              motionPaused ? 'Reanudar animación de fondo' : 'Pausar animación de fondo'
-            }
-            className={floatingButtonClass}
+            aria-label={motionPaused ? 'Reanudar fondo' : 'Pausar fondo'}
+            title={motionPaused ? 'Reanudar fondo' : 'Pausar fondo'}
+            className={`${floatingButtonClass} min-w-[44px] w-11 !px-0 justify-center`}
           >
             {motionPaused ? (
-              <Play className="w-3.5 h-3.5" aria-hidden="true" />
+              <Play className="w-4 h-4" aria-hidden="true" />
             ) : (
-              <Pause className="w-3.5 h-3.5" aria-hidden="true" />
+              <Pause className="w-4 h-4" aria-hidden="true" />
             )}
-            <span>{motionPaused ? 'Mar' : 'Pausar'}</span>
           </button>
         )}
 
@@ -236,12 +246,20 @@ export function Layout() {
       {isAccessRoute ? (
         <footer
           className={`relative z-10 py-3 text-center text-xs ${
-            isDark
-              ? 'bg-gradient-to-t from-[#0b1220]/85 via-[#0b1220]/50 to-transparent text-[#cbd5e1]'
-              : 'bg-gradient-to-t from-white/90 via-white/70 to-transparent text-[#334155]'
+            isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'
           }`}
         >
-          <div className="max-w-6xl mx-auto px-4">Universidad del Valle · Proyecto Integrador I</div>
+          <div className="max-w-6xl mx-auto px-4">
+            <span
+              className={`inline-block rounded-full px-3.5 py-1 transition-colors ${
+                isDark
+                  ? 'bg-[#0f172a]/[0.80] shadow-[0_2px_10px_rgba(2,6,23,0.28)]'
+                  : 'bg-white/[0.92] shadow-[0_2px_10px_rgba(15,23,42,0.12)]'
+              }`}
+            >
+              Universidad del Valle · Proyecto Integrador I
+            </span>
+          </div>
         </footer>
       ) : (
         <footer

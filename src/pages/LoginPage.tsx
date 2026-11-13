@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { AlertCircle, Mail, X } from 'lucide-react';
+import { AlertCircle, Mail } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { GoogleAuthButton } from '../components/GoogleAuthButton';
 import { PasswordField } from '../components/PasswordField';
@@ -114,25 +114,12 @@ export function LoginPage() {
         Ingresar
       </h1>
 
-      <div className="flex items-center justify-between gap-3">
-        <p
-          lang={greeting.lang === 'en' ? 'en' : undefined}
-          className="text-xl sm:text-2xl font-bold tracking-tight leading-snug min-h-[36px] flex items-center"
-        >
-          {greeting.text}
-        </p>
-        <Link
-          to="/"
-          aria-label="Volver al inicio"
-          className={`min-w-[44px] min-h-[44px] shrink-0 rounded-full inline-flex items-center justify-center border transition-colors ${
-            isDark
-              ? 'bg-[#1e293b]/80 text-[#cbd5e1] border-slate-500/40 hover:bg-[#334155]'
-              : 'bg-slate-100 text-[#334155] border-slate-400/40 hover:bg-slate-200'
-          }`}
-        >
-          <X className="w-4 h-4" aria-hidden="true" />
-        </Link>
-      </div>
+      <p
+        lang={greeting.lang === 'en' ? 'en' : undefined}
+        className="text-xl sm:text-2xl font-bold tracking-tight leading-snug min-h-[36px] flex items-center justify-center text-center"
+      >
+        {greeting.text}
+      </p>
 
       {authError && (
         <div
@@ -206,28 +193,30 @@ export function LoginPage() {
           )}
         </div>
 
-        <PasswordField
-          id="login-password"
-          label="Contraseña"
-          value={password}
-          onChange={(val) => {
-            setPassword(val);
-            if (authError) setAuthError(null);
-          }}
-          placeholder="Tu contraseña"
-          showLockIcon
-        />
+        <div>
+          <PasswordField
+            id="login-password"
+            label="Contraseña"
+            value={password}
+            onChange={(val) => {
+              setPassword(val);
+              if (authError) setAuthError(null);
+            }}
+            placeholder="Tu contraseña"
+            showLockIcon
+          />
 
-        <div className="flex justify-start">
-          <button
-            type="button"
-            onClick={() => setShowRecoveryNote((prev) => !prev)}
-            className={`text-xs font-medium min-h-[44px] inline-flex items-center ${getLinkClasses(
-              theme
-            )}`}
-          >
-            ¿Olvidaste tu contraseña o usuario?
-          </button>
+          <div className="flex justify-start">
+            <button
+              type="button"
+              onClick={() => setShowRecoveryNote((prev) => !prev)}
+              className={`text-xs font-medium min-h-[44px] inline-flex items-start pt-1.5 ${getLinkClasses(
+                theme
+              )}`}
+            >
+              ¿Olvidaste tu contraseña o usuario?
+            </button>
+          </div>
         </div>
 
         {showRecoveryNote && (

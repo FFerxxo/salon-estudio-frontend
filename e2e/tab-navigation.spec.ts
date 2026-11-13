@@ -1,22 +1,83 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
-const publicRoutes = [
-  { path: '/', name: 'Inicio', contentLinks: ['Ingresar', 'Crear cuenta'] },
-  { path: '/ingresar', name: 'Ingresar', contentLinks: [] },
-  { path: '/registro', name: 'Registro', contentLinks: [] },
-  { path: '/ayuda', name: 'Ayuda', contentLinks: [] },
-  { path: '/base-tecnica', name: 'Base técnica', contentLinks: ['Reintentar'] },
+interface PublicRouteSpec {
+  path: string;
+  name: string;
+  isAccessRoute: boolean;
+  expectedNav: string[];
+  contentLinks: string[];
+  checkUtilityAfterContent: boolean;
+}
+
+const publicRoutes: PublicRouteSpec[] = [
+  {
+    path: '/',
+    name: 'Inicio',
+    isAccessRoute: true,
+    expectedNav: ['Inicio', 'Ayuda'],
+    contentLinks: ['Ingresar', 'Crear cuenta'],
+    checkUtilityAfterContent: true,
+  },
+  {
+    path: '/ingresar',
+    name: 'Ingresar',
+    isAccessRoute: true,
+    expectedNav: ['Inicio', 'Ayuda'],
+    contentLinks: [],
+    checkUtilityAfterContent: false,
+  },
+  {
+    path: '/registro',
+    name: 'Registro',
+    isAccessRoute: true,
+    expectedNav: ['Inicio', 'Ayuda'],
+    contentLinks: [],
+    checkUtilityAfterContent: false,
+  },
+  {
+    path: '/ayuda',
+    name: 'Ayuda',
+    isAccessRoute: false,
+    expectedNav: ['Panel', 'Perfil', 'Ayuda', 'Base técnica'],
+    contentLinks: [],
+    checkUtilityAfterContent: true,
+  },
+  {
+    path: '/base-tecnica',
+    name: 'Base técnica',
+    isAccessRoute: false,
+    expectedNav: ['Panel', 'Perfil', 'Ayuda', 'Base técnica'],
+    contentLinks: ['Reintentar'],
+    checkUtilityAfterContent: true,
+  },
   {
     path: '/ruta-desconocida-404',
     name: '404 · Página no encontrada',
+    isAccessRoute: false,
+    expectedNav: ['Panel', 'Perfil', 'Ayuda', 'Base técnica'],
     contentLinks: ['Volver al Inicio'],
+    checkUtilityAfterContent: true,
   },
 ];
 
-const expectedNav = ['Inicio', 'Ingresar', 'Registro', 'Panel', 'Perfil', 'Ayuda', 'Base técnica'];
+async function activeHasVisibleOutline(page: Page): Promise<boolean> {
+  return page.evaluate(() => {
+    const el = document.activeElement as HTMLElement | null;
+    if (!el) return false;
+    const style = window.getComputedStyle(el);
+    return style.outlineStyle !== 'none' || style.outlineWidth !== '0px';
+  });
+}
 
 test.describe('Navegación por Teclado (TS-04) y Rutas Privadas (US-03) en Chromium', () => {
-  for (const { path, name, contentLinks } of publicRoutes) {
+  for (const {
+    path,
+    name,
+    isAccessRoute,
+    expectedNav,
+    contentLinks,
+    checkUtilityAfterContent,
+  } of publicRoutes) {
     test(`Ruta pública ${path} (${name}) — Enlace de salto y orden Tab`, async ({ page }) => {
       if (path === '/base-tecnica') {
         await page.route('**/api/app-info', async (route) => {
@@ -37,26 +98,24 @@ test.describe('Navegación por Teclado (TS-04) y Rutas Privadas (US-03) en Chrom
       await expect(skipLink).toBeFocused();
       await expect(skipLink).toBeVisible();
 
-      // 2. Siguientes 7 Tabs recorren el menú principal en orden exacto con foco visible
+      // 2. En pantallas de acceso, la marca del encabezado es enlace a Inicio antes del menú
+      if (isAccessRoute) {
+        await page.keyboard.press('Tab');
+        const brandLink = page.getByRole('link', { name: /Salón de Estudio/i });
+        await expect(brandLink).toBeFocused();
+        await expect(brandLink).toHaveAttribute('href', '/');
+        expect(await activeHasVisibleOutline(page)).toBe(true);
+      }
+
+      // 3. Siguientes Tabs recorren el menú principal visible en orden exacto con foco visible
       for (const navLabel of expectedNav) {
         await page.keyboard.press('Tab');
         const activeText = await page.evaluate(() => document.activeElement?.textContent?.trim());
-        const hasVisibleOutline = await page.evaluate(() => {
-          const el = document.activeElement as HTMLElement | null;
-          if (!el) return false;
-          const style = window.getComputedStyle(el);
-          return style.outlineStyle !== 'none' || style.outlineWidth !== '0px';
-        });
-
         expect(activeText).toBe(navLabel);
-        expect(hasVisibleOutline).toBe(true);
+        expect(await activeHasVisibleOutline(page)).toBe(true);
       }
 
-      // 3. Verifica controles de utilidad después de la navegación
-      await page.keyboard.press('Tab'); // Botón Día Marea / Noche Marea
-      await page.keyboard.press('Tab'); // Botón Pausar mar / Reanudar mar
-
-      // 4. Verifica enlaces principales esperados en Inicio, Base técnica y 404
+      // 4. Verifica enlaces/botones principales dentro de <main>
       for (const linkText of contentLinks) {
         if (path === '/base-tecnica') {
           await expect(page.getByRole('button', { name: 'Reintentar' })).toBeVisible();
@@ -65,6 +124,16 @@ test.describe('Navegación por Teclado (TS-04) y Rutas Privadas (US-03) en Chrom
         const activeText = await page.evaluate(() => document.activeElement?.textContent?.trim());
         expect(activeText).toBe(linkText);
       }
+
+      // 5. En rutas sin campos extra en <main>, los controles flotantes van después del contenido
+      if (checkUtilityAfterContent) {
+        if (isAccessRoute) {
+          await page.keyboard.press('Tab');
+          await expect(page.getByRole('button', { name: /Pausar fondo/i })).toBeFocused();
+        }
+        await page.keyboard.press('Tab');
+        await expect(page.getByRole('button', { name: /Cambiar a modo claro/i })).toBeFocused();
+      }
     });
   }
 
@@ -72,8 +141,10 @@ test.describe('Navegación por Teclado (TS-04) y Rutas Privadas (US-03) en Chrom
     test(`Ruta privada ${privatePath} sin sesión redirige a /ingresar (US-03)`, async ({ page }) => {
       await page.goto(privatePath);
       await page.waitForURL('**/ingresar');
+      await expect(page).toHaveURL(/\/ingresar$/);
+      await expect(page).toHaveTitle('Ingresar · Salón de Estudio');
       await expect(page.getByRole('heading', { name: /^Ingresar$/i })).toBeVisible();
-      await expect(page.getByText(privatePath)).toBeVisible();
+      await expect(page.getByRole('button', { name: /Ingresar con correo/i })).toBeVisible();
     });
   }
 
@@ -92,9 +163,9 @@ test.describe('Navegación por Teclado (TS-04) y Rutas Privadas (US-03) en Chrom
     await page.keyboard.press('Tab');
     await expect(page.getByRole('button', { name: 'Continuar con Google' })).toBeFocused();
 
-    // Tab 2: Correo institucional
+    // Tab 2: Correo o usuario
     await page.keyboard.press('Tab');
-    const emailInput = page.getByLabel(/Correo institucional/i);
+    const emailInput = page.getByLabel(/Correo o usuario/i);
     await expect(emailInput).toBeFocused();
     await page.keyboard.type('andres.barbosa@correounivalle.edu.co');
 
@@ -107,9 +178,15 @@ test.describe('Navegación por Teclado (TS-04) y Rutas Privadas (US-03) en Chrom
     await page.keyboard.press('Tab');
     await expect(page.getByRole('button', { name: /Mostrar contraseña/i })).toBeFocused();
 
-    // Tab 5: Botón enviar «Ingresar al Panel» y disparo con Enter
+    // Tab 5: Recuperación de contraseña o usuario
     await page.keyboard.press('Tab');
-    const submitBtn = page.getByRole('button', { name: /Ingresar al Panel/i });
+    await expect(
+      page.getByRole('button', { name: /¿Olvidaste tu contraseña o usuario\?/i })
+    ).toBeFocused();
+
+    // Tab 6: Botón enviar «Ingresar con correo» y disparo con Enter
+    await page.keyboard.press('Tab');
+    const submitBtn = page.getByRole('button', { name: /Ingresar con correo/i });
     await expect(submitBtn).toBeFocused();
     await page.keyboard.press('Enter');
 
@@ -127,9 +204,8 @@ test.describe('Navegación por Teclado (TS-04) y Rutas Privadas (US-03) en Chrom
     await expect(page.getByRole('progressbar', { name: /Progreso del registro/i })).toBeVisible();
     await expect(page.getByText(/Paso 1 de 2/i)).toBeVisible();
 
-    // Verifica que el botón de pausa refleja el estado de movimiento reducido
-    const pauseButton = page.getByRole('button', { name: /animación de fondo/i });
-    await expect(pauseButton).toHaveAttribute('aria-pressed', 'true');
+    // Con movimiento reducido el fondo queda estático y el botón de pausa no se muestra (SC 2.2.2)
+    await expect(page.getByRole('button', { name: /(Pausar|Reanudar) fondo/i })).toHaveCount(0);
 
     // Alterna entre modo Oscuro y Claro
     const themeBtn = page.getByRole('button', { name: /Cambiar a modo claro/i });

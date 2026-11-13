@@ -28,7 +28,7 @@
 
   [data-theme='light'] {
     --marea-canvas: #f8fafc;
-    --marea-glass: rgba(255, 255, 255, 0.9);
+    --marea-glass: #ffffff;
     --marea-solid: #ffffff;
     --marea-text: #0f172a;
     --marea-sec: #334155;
