@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react';
-import { ArrowRight, Link2, Music, Plus, Sparkles, Waves } from 'lucide-react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { ArrowRight, Music, Sparkles, Waves } from 'lucide-react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { TugaStage } from '../components/TugaStage';
 import { selectTugaGreeting } from '../content/vozTuga';
 import { useAuth } from '../context/AuthContext';
@@ -16,33 +16,7 @@ const IS_JSDOM =
   typeof navigator !== 'undefined' && /jsdom/i.test(navigator.userAgent || '');
 const SHH_DELAY_MS = 500;
 
-interface ExampleRoom {
-  id: string;
-  title: string;
-  codeLabel: string;
-  hostHandle: string;
-}
 
-const EXAMPLE_ROOMS: ExampleRoom[] = [
-  {
-    id: 'demo-1',
-    title: 'Cálculo I',
-    codeLabel: 'Sala 01',
-    hostHandle: '@equipo6.uv',
-  },
-  {
-    id: 'fisica-parcial-2',
-    title: 'Física · parcial 2',
-    codeLabel: 'Sala 02',
-    hostHandle: '@equipo6.uv',
-  },
-  {
-    id: 'ingles-b1',
-    title: 'Inglés B1',
-    codeLabel: 'Sala 03',
-    hostHandle: '@equipo6.uv',
-  },
-];
 
 export function HomePage() {
   useDocumentTitle('Inicio');
@@ -167,133 +141,52 @@ export function HomePage() {
   );
 }
 
+const PANEL_ROOMS = [
+  { id: 'studio-ghibli', name: 'Studio Ghibli' },
+  { id: 'ruido-azul', name: 'Ruido azul' },
+];
+
 export function DashboardPage() {
-  const [searchParams] = useSearchParams();
-  const isMisSalasView = searchParams.get('vista') === 'mis-salas';
-  useDocumentTitle(isMisSalasView ? 'Mis salas' : 'Panel');
+  useDocumentTitle('Panel');
   const { user } = useAuth();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
-  const [actionNotice, setActionNotice] = useState<string | null>(null);
 
   return (
-    <section aria-labelledby="panel-heading" className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="space-y-1">
-          <p
-            className={`text-xs font-bold uppercase tracking-wider ${
-              isDark ? 'text-[#7dd3fc]' : 'text-[#075985]'
-            }`}
-          >
-            Sesión activa · @{user?.username || 'estudiante'}
-          </p>
-          <h1 id="panel-heading" className="text-2xl sm:text-3xl font-bold tracking-tight">
-            {isMisSalasView ? 'Mis salas' : 'Panel'}
-          </h1>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() =>
-              setActionNotice(
-                'La unión por código de sala se conecta con Firestore y WebSockets en el Sprint 2.'
-              )
-            }
-            className={`min-h-[44px] px-4 py-2 rounded-[12px] border-[1.5px] border-[#64748b] text-sm font-semibold inline-flex items-center gap-2 transition-colors ${
-              isDark
-                ? 'bg-[#1f2e4a] text-[#f8fafc] hover:bg-[#27395c]'
-                : 'bg-white text-[#0f172a] hover:bg-slate-100'
-            }`}
-          >
-            <Link2 className="w-4 h-4 shrink-0" aria-hidden="true" />
-            <span>Unirme con un ID</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() =>
-              setActionNotice(
-                'La creación de salas reales y persistentes se habilita en el Sprint 2.'
-              )
-            }
-            className={`min-h-[44px] px-4 py-2 rounded-[12px] text-sm font-bold inline-flex items-center gap-2 transition-colors ${
-              isDark
-                ? 'bg-[#38bdf8] text-[#0b1220] hover:bg-[#7dd3fc]'
-                : 'bg-[#075985] text-white hover:bg-[#0369a1]'
-            }`}
-          >
-            <Plus className="w-4 h-4 shrink-0" aria-hidden="true" />
-            <span>Crear sala</span>
-          </button>
-        </div>
-      </div>
-
-      <p className={`text-sm text-pretty ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}>
-        {isMisSalasView
-          ? `Hola, ${user?.nombres || 'Estudiante'}. Esta vista previa muestra tarjetas de ejemplo; tus salas creadas aparecerán aquí en el Sprint 2.`
-          : `Hola, ${user?.nombres || 'Estudiante'}. Tu sesión @${user?.username || 'estudiante'} está activa. Salas de ejemplo sin contadores en vivo hasta conectar la API en el Sprint 2.`}
-      </p>
-
-      {actionNotice && (
-        <div
-          role="status"
-          aria-live="polite"
-          className={`rounded-[14px] px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-sm border ${
-            isDark
-              ? 'bg-[#1f2e4a] border-[#38bdf8]/40 text-[#f8fafc]'
-              : 'bg-[#ffffff] border-slate-300 text-[#0f172a] shadow-sm'
-          }`}
-        >
-          <span>{actionNotice}</span>
-          <button
-            type="button"
-            onClick={() => setActionNotice(null)}
-            className={`min-h-[44px] px-3 rounded-[10px] text-xs font-semibold border border-[#64748b] ${
-              isDark ? 'bg-[#121c30] text-[#f8fafc]' : 'bg-[#eef3f8] text-[#0f172a]'
-            }`}
-          >
-            Cerrar
-          </button>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {EXAMPLE_ROOMS.map((room) => (
-          <article
+    <section aria-labelledby="panel-heading" className="py-6 sm:py-10">
+      <h1 id="panel-heading" className="sr-only">
+        Panel
+      </h1>
+      <ul className="flex flex-wrap justify-center gap-5" aria-label="Salas disponibles">
+        {PANEL_ROOMS.map((room) => (
+          <li
             key={room.id}
-            className={`rounded-[22px] p-2.5 flex flex-col gap-2.5 transition-colors ${
-              isDark
-                ? 'bg-[#1f2e4a] text-[#f8fafc] shadow-[0_8px_24px_rgba(2,6,23,0.28)]'
-                : 'bg-[#ffffff] text-[#0f172a] shadow-[0_6px_20px_rgba(15,23,42,0.08)]'
+            className={`w-[260px] rounded-[20px] p-2.5 flex flex-col gap-2.5 border ${
+              isDark ? 'bg-[#1f2e4a]/80 border-slate-400/20' : 'bg-[#eef6fb] border-[#075985]/15'
             }`}
           >
-            <div
-              className={`rounded-[12px] px-4 py-5 min-h-[126px] flex flex-col items-center justify-center text-center gap-2 ${
-                isDark ? 'bg-[#121c30]' : 'bg-[#eef3f8]'
-              }`}
-            >
-              <span
-                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                  isDark
-                    ? 'bg-[#38bdf8]/15 text-[#7dd3fc]'
-                    : 'bg-[#075985]/10 text-[#075985]'
+            <div className={`rounded-[14px] px-3 pt-6 pb-7 text-center ${isDark ? 'bg-[#0f172a]' : 'bg-white'}`}>
+              <h2 className="text-base font-bold">{room.name}</h2>
+              <p
+                className={`mt-2 inline-flex items-center gap-2 text-sm font-semibold ${
+                  isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'
                 }`}
               >
-                Ejemplo
-              </span>
-              <h2 className="text-lg font-bold tracking-tight text-balance">{room.title}</h2>
-              <p className={`text-xs ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}>
-                {room.codeLabel} · {room.hostHandle}
+                <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-[#22c55e]" />0 en línea
               </p>
             </div>
-
-            <Link to={`/salas/${room.id}`} className={getPrimaryCtaClasses(theme)}>
+            <Link
+              to={user ? `/salas/${room.id}` : '/ingresar'}
+              aria-label={`Entrar a ${room.name}`}
+              className={`min-h-[44px] rounded-xl inline-flex items-center justify-center text-[15px] font-bold transition-colors ${
+                isDark ? 'bg-[#38bdf8] text-[#0b1220] hover:bg-[#7dd3fc]' : 'bg-[#075985] text-white hover:bg-[#0369a1]'
+              }`}
+            >
               Entrar
             </Link>
-          </article>
+          </li>
         ))}
-      </div>
+      </ul>
     </section>
   );
 }
