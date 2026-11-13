@@ -1,8 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
+import { INITIAL_GREETINGS_ES, RETURNING_GREETINGS_EN } from '../content/saludos';
 import type { AuthSessionAdapter } from '../context/AuthContext';
 import { AuthApiError, type StudentProfile } from '../services/authApi';
 
@@ -48,9 +49,43 @@ function createMockAdapter(overrides: Partial<AuthSessionAdapter> = {}): AuthSes
   };
 }
 
+function installMemoryStorage(): void {
+  const store = new Map<string, string>();
+  const mockStorage: Storage = {
+    get length() {
+      return store.size;
+    },
+    clear() {
+      store.clear();
+    },
+    getItem(key: string) {
+      return store.has(key) ? store.get(key)! : null;
+    },
+    key(index: number) {
+      return Array.from(store.keys())[index] ?? null;
+    },
+    removeItem(key: string) {
+      store.delete(key);
+    },
+    setItem(key: string, value: string) {
+      store.set(key, String(value));
+    },
+  };
+  Object.defineProperty(window, 'localStorage', {
+    value: mockStorage,
+    configurable: true,
+    writable: true,
+  });
+}
+
 describe('Sprint 1 Autenticación y Rutas Privadas (US-01, US-02, US-03)', () => {
+  beforeEach(() => {
+    installMemoryStorage();
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
+    window.localStorage?.clear?.();
   });
 
   describe('US-01 · Registro manual de Estudiante', () => {
@@ -296,6 +331,59 @@ describe('Sprint 1 Autenticación y Rutas Privadas (US-01, US-02, US-03)', () =>
           screen.getByRole('heading', { name: /Salón de Estudio Colaborativo en Tiempo Real/i })
         ).toBeInTheDocument();
       });
+
+      expect(window.localStorage.getItem('salon_returning_user')).toBe('1');
+    });
+
+    it('muestra saludo inicial en español sin repetir en visitas limpias y cambia a saludos en inglés con lang="en" tras cerrar sesión', () => {
+      const { unmount } = render(
+        <MemoryRouter initialEntries={['/ingresar']}>
+          <App authOverrides={{ adapter: createMockAdapter() }} />
+        </MemoryRouter>
+      );
+
+      const firstInitialText = screen.getByText((content) =>
+        INITIAL_GREETINGS_ES.includes(content)
+      ).textContent;
+      expect(
+        screen.getByText((content) => INITIAL_GREETINGS_ES.includes(content))
+      ).not.toHaveAttribute('lang', 'en');
+      unmount();
+
+      const secondMount = render(
+        <MemoryRouter initialEntries={['/ingresar']}>
+          <App authOverrides={{ adapter: createMockAdapter() }} />
+        </MemoryRouter>
+      );
+      const secondInitialText = screen.getByText((content) =>
+        INITIAL_GREETINGS_ES.includes(content)
+      ).textContent;
+      expect(secondInitialText).not.toBe(firstInitialText);
+      secondMount.unmount();
+
+      window.localStorage.setItem('salon_returning_user', '1');
+      const thirdMount = render(
+        <MemoryRouter initialEntries={['/ingresar']}>
+          <App authOverrides={{ adapter: createMockAdapter() }} />
+        </MemoryRouter>
+      );
+      const firstReturningEl = screen.getByText((content) =>
+        RETURNING_GREETINGS_EN.includes(content)
+      );
+      const firstReturningText = firstReturningEl.textContent;
+      expect(firstReturningEl).toHaveAttribute('lang', 'en');
+      thirdMount.unmount();
+
+      render(
+        <MemoryRouter initialEntries={['/ingresar']}>
+          <App authOverrides={{ adapter: createMockAdapter() }} />
+        </MemoryRouter>
+      );
+      const secondReturningEl = screen.getByText((content) =>
+        RETURNING_GREETINGS_EN.includes(content)
+      );
+      expect(secondReturningEl).toHaveAttribute('lang', 'en');
+      expect(secondReturningEl.textContent).not.toBe(firstReturningText);
     });
   });
 });

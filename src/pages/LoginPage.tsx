@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from 'react';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Mail, X } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { GoogleAuthButton } from '../components/GoogleAuthButton';
 import { PasswordField } from '../components/PasswordField';
+import { selectLoginGreeting } from '../content/saludos';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
@@ -13,6 +14,7 @@ import {
   getInlineErrorClasses,
   getInputClasses,
   getLinkClasses,
+  getPrimaryCtaClasses,
 } from '../utils/themeStyles';
 
 interface LocationState {
@@ -30,6 +32,7 @@ export function LoginPage() {
   const state = (location.state as LocationState | null) ?? null;
   const redirectTarget = state?.from && state.from !== '/ingresar' ? state.from : '/panel';
 
+  const [greeting] = useState(() => selectLoginGreeting());
   const [correo, setCorreo] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -100,12 +103,6 @@ export function LoginPage() {
     }
   };
 
-  const secondaryButtonClasses = `w-full min-h-[48px] px-5 py-3 rounded-xl font-semibold text-base border-[1.5px] border-[#64748b] inline-flex items-center justify-center transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
-    isDark
-      ? 'bg-[#0b1220] text-[#f8fafc] hover:bg-white/10'
-      : 'bg-white text-[#0f172a] hover:bg-slate-100'
-  }`;
-
   return (
     <section
       aria-labelledby="ingresar-heading"
@@ -116,6 +113,26 @@ export function LoginPage() {
       <h1 id="ingresar-heading" className="sr-only">
         Ingresar
       </h1>
+
+      <div className="flex items-center justify-between gap-3">
+        <p
+          lang={greeting.lang === 'en' ? 'en' : undefined}
+          className="text-xl sm:text-2xl font-bold tracking-tight leading-snug min-h-[36px] flex items-center"
+        >
+          {greeting.text}
+        </p>
+        <Link
+          to="/"
+          aria-label="Volver al inicio"
+          className={`min-w-[44px] min-h-[44px] shrink-0 rounded-full inline-flex items-center justify-center border transition-colors ${
+            isDark
+              ? 'bg-[#1e293b]/80 text-[#cbd5e1] border-slate-500/40 hover:bg-[#334155]'
+              : 'bg-slate-100 text-[#334155] border-slate-400/40 hover:bg-slate-200'
+          }`}
+        >
+          <X className="w-4 h-4" aria-hidden="true" />
+        </Link>
+      </div>
 
       {authError && (
         <div
@@ -129,12 +146,16 @@ export function LoginPage() {
         </div>
       )}
 
-      <GoogleAuthButton
-        variant="primaryPill"
-        onClick={() => void handleGoogleLogin()}
-        disabled={submitting}
-        label="Continuar con Google"
-      />
+      <div className="flex justify-center">
+        <div className="w-full max-w-[300px]">
+          <GoogleAuthButton
+            variant="primaryPill"
+            onClick={() => void handleGoogleLogin()}
+            disabled={submitting}
+            label="Continuar con Google"
+          />
+        </div>
+      </div>
 
       <div className="relative flex py-0.5 items-center" aria-hidden="true">
         <div className="flex-grow border-t border-[#64748b]/50" />
@@ -153,20 +174,30 @@ export function LoginPage() {
           <label htmlFor="login-correo" className="block text-sm font-semibold">
             Correo o usuario
           </label>
-          <input
-            id="login-correo"
-            type="text"
-            value={correo}
-            onChange={(e) => {
-              setCorreo(e.target.value);
-              if (emailError) setEmailError(null);
-            }}
-            autoComplete="username"
-            placeholder="Correo o usuario"
-            aria-invalid={Boolean(emailError)}
-            aria-describedby={emailError ? 'login-correo-error' : undefined}
-            className={getInputClasses(theme, Boolean(emailError))}
-          />
+          <div className="relative">
+            <span
+              aria-hidden="true"
+              className={`pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 ${
+                isDark ? 'text-[#94a3b8]' : 'text-[#475569]'
+              }`}
+            >
+              <Mail className="w-4 h-4" />
+            </span>
+            <input
+              id="login-correo"
+              type="text"
+              value={correo}
+              onChange={(e) => {
+                setCorreo(e.target.value);
+                if (emailError) setEmailError(null);
+              }}
+              autoComplete="username"
+              placeholder="nombre@correo.com o usuario"
+              aria-invalid={Boolean(emailError)}
+              aria-describedby={emailError ? 'login-correo-error' : undefined}
+              className={`${getInputClasses(theme, Boolean(emailError))} pl-10`}
+            />
+          </div>
           {emailError && (
             <p id="login-correo-error" role="alert" className={getInlineErrorClasses(theme)}>
               <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
@@ -183,10 +214,11 @@ export function LoginPage() {
             setPassword(val);
             if (authError) setAuthError(null);
           }}
-          placeholder="Contraseña"
+          placeholder="Tu contraseña"
+          showLockIcon
         />
 
-        <div className="flex justify-end">
+        <div className="flex justify-start">
           <button
             type="button"
             onClick={() => setShowRecoveryNote((prev) => !prev)}
@@ -210,16 +242,17 @@ export function LoginPage() {
           </p>
         )}
 
-        <button type="submit" disabled={submitting} className={secondaryButtonClasses}>
+        <button type="submit" disabled={submitting} className={getPrimaryCtaClasses(theme)}>
           {submitting ? 'Ingresando...' : 'Ingresar con correo'}
         </button>
       </form>
 
-      <div className="pt-1 text-center">
-        <Link to="/registro" className={`text-xs font-medium ${getLinkClasses(theme)}`}>
+      <p className={`pt-1 text-center text-xs ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}>
+        ¿No tienes cuenta?{' '}
+        <Link to="/registro" className={`font-semibold ${getLinkClasses(theme)}`}>
           Crear cuenta
         </Link>
-      </div>
+      </p>
     </section>
   );
 }

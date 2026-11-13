@@ -22,6 +22,7 @@ import {
   type StudentProfile,
 } from '../services/authApi';
 import { firebaseAuth, googleProvider, hasFirebaseConfig } from '../services/firebase';
+import { markReturningUser } from '../content/saludos';
 
 export type AuthStatus = 'loading' | 'unauthenticated' | 'needs_username' | 'authenticated';
 
@@ -397,6 +398,7 @@ export function AuthProvider({
     } else if (firebaseAuth) {
       await signOut(firebaseAuth);
     }
+    markReturningUser();
     setUser(null);
     setPendingGoogleUser(null);
     setIdToken(null);

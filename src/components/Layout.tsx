@@ -1,5 +1,5 @@
 import { LogOut, Moon, Pause, Play, Sun } from 'lucide-react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { AmbientMotionBackdrop } from './AmbientMotionBackdrop';
@@ -50,7 +50,72 @@ export function Layout() {
         Saltar al contenido
       </a>
 
-      {!isAccessRoute && (
+      {isAccessRoute ? (
+        <header
+          className={`relative z-20 transition-colors ${
+            isDark
+              ? 'bg-gradient-to-b from-[#0b1220]/85 via-[#0b1220]/50 to-transparent text-[#f8fafc]'
+              : 'bg-gradient-to-b from-white/90 via-white/70 to-transparent text-[#0f172a]'
+          }`}
+        >
+          <div className="max-w-6xl mx-auto px-4 pt-3.5 pb-2 pr-44 sm:pr-48 flex flex-wrap items-center justify-between gap-2">
+            <Link to="/" className="inline-flex items-center gap-2.5 min-h-[44px]">
+              {/* Rojo Univalle #990000 reservado exclusivamente al escudo institucional (Guía visual v3) */}
+              <span
+                aria-hidden="true"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[#990000] font-extrabold text-white text-xs shrink-0"
+              >
+                UV
+              </span>
+              <span className="leading-tight">
+                <span className="block font-bold text-sm sm:text-base tracking-tight">
+                  Salón de Estudio
+                </span>
+                <span className={`block text-xs ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}>
+                  Estudia en grupo, en tiempo real
+                </span>
+              </span>
+            </Link>
+
+            <nav aria-label="Navegación principal">
+              <ul className="flex items-center gap-1">
+                <li>
+                  <NavLink
+                    to="/"
+                    className={({ isActive }) =>
+                      `inline-flex items-center min-h-[44px] px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                        isActive
+                          ? 'underline underline-offset-4'
+                          : isDark
+                            ? 'text-[#f8fafc] hover:text-[#7dd3fc]'
+                            : 'text-[#0f172a] hover:text-[#075985]'
+                      }`
+                    }
+                  >
+                    Inicio
+                  </NavLink>
+                </li>
+                <li>
+                  <NavLink
+                    to="/ayuda"
+                    className={({ isActive }) =>
+                      `inline-flex items-center min-h-[44px] px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                        isActive
+                          ? 'underline underline-offset-4'
+                          : isDark
+                            ? 'text-[#f8fafc] hover:text-[#7dd3fc]'
+                            : 'text-[#0f172a] hover:text-[#075985]'
+                      }`
+                    }
+                  >
+                    Ayuda
+                  </NavLink>
+                </li>
+              </ul>
+            </nav>
+          </div>
+        </header>
+      ) : (
         <header
           className={`relative z-20 border-b transition-colors ${
             isDark
@@ -121,7 +186,7 @@ export function Layout() {
         tabIndex={-1}
         className={
           isAccessRoute
-            ? 'relative z-10 min-h-screen w-full grid place-items-center px-4 py-16 focus:outline-none'
+            ? 'relative z-10 flex-1 w-full grid place-items-center px-4 py-6 focus:outline-none'
             : 'relative z-10 flex-1 max-w-6xl w-full mx-auto px-4 py-8 focus:outline-none'
         }
       >
@@ -168,7 +233,17 @@ export function Layout() {
         </button>
       </div>
 
-      {!isAccessRoute && (
+      {isAccessRoute ? (
+        <footer
+          className={`relative z-10 py-3 text-center text-xs ${
+            isDark
+              ? 'bg-gradient-to-t from-[#0b1220]/85 via-[#0b1220]/50 to-transparent text-[#cbd5e1]'
+              : 'bg-gradient-to-t from-white/90 via-white/70 to-transparent text-[#334155]'
+          }`}
+        >
+          <div className="max-w-6xl mx-auto px-4">Universidad del Valle · Proyecto Integrador I</div>
+        </footer>
+      ) : (
         <footer
           className={`relative z-10 border-t py-5 text-center text-sm ${
             isDark

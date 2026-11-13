@@ -1,5 +1,5 @@
 import { useId, useState, type ClipboardEvent } from 'react';
-import { AlertCircle, Check, Eye, EyeOff, X } from 'lucide-react';
+import { AlertCircle, Check, Eye, EyeOff, Lock, X } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { evaluatePasswordPolicy } from '../utils/authValidation';
 import { getInlineErrorClasses } from '../utils/themeStyles';
@@ -13,6 +13,7 @@ interface PasswordFieldProps {
   autoComplete?: string;
   placeholder?: string;
   showStrengthMeter?: boolean;
+  showLockIcon?: boolean;
 }
 
 /** Campo de contraseña accesible con visibilidad conmutable, pegado habilitado y medidor de 5 criterios. */
@@ -25,6 +26,7 @@ export function PasswordField({
   autoComplete = 'current-password',
   placeholder = 'Mínimo 8 caracteres, mayúscula, minúscula y número',
   showStrengthMeter = false,
+  showLockIcon = false,
 }: PasswordFieldProps) {
   const autoId = useId();
   const fieldId = id ?? autoId;
@@ -67,6 +69,16 @@ export function PasswordField({
       </div>
 
       <div className="relative">
+        {showLockIcon && (
+          <span
+            aria-hidden="true"
+            className={`pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 ${
+              isDark ? 'text-[#94a3b8]' : 'text-[#475569]'
+            }`}
+          >
+            <Lock className="w-4 h-4" />
+          </span>
+        )}
         <input
           id={fieldId}
           type={visible ? 'text' : 'password'}
@@ -81,7 +93,9 @@ export function PasswordField({
               .filter(Boolean)
               .join(' ') || undefined
           }
-          className={`w-full min-h-[44px] rounded-[10px] border-[1.5px] px-3.5 py-2.5 pr-28 text-base transition-colors ${
+          className={`w-full min-h-[44px] rounded-[10px] border-[1.5px] ${
+            showLockIcon ? 'pl-10 pr-28' : 'px-3.5 pr-28'
+          } py-2.5 text-base transition-colors ${
             isDark
               ? 'bg-[#0b1220] text-[#f8fafc] placeholder:text-[#94a3b8]'
               : 'bg-white text-[#0f172a] placeholder:text-[#475569]'

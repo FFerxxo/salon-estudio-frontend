@@ -22,7 +22,7 @@ describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () =
   });
 
   describe('Auditoría automática con vitest-axe (0 violaciones por página)', () => {
-    it('el Layout principal y Home (con CTAs Ingresar y Crear cuenta) muestran solo la tarjeta centrada y botones flotantes sin violaciones axe', async () => {
+    it('el Layout principal y Home muestran tarjeta centrada, cabecera/pie mínimos TS-04 y botones flotantes sin violaciones axe', async () => {
       const { container } = render(
         <MemoryRouter initialEntries={['/']}>
           <App />
@@ -31,9 +31,10 @@ describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () =
 
       expect(screen.getByRole('link', { name: /^Ingresar$/i })).toBeInTheDocument();
       expect(screen.getByRole('link', { name: /^Crear cuenta$/i })).toBeInTheDocument();
-      expect(screen.queryByRole('banner')).not.toBeInTheDocument();
-      expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
-      expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
+      expect(screen.getByRole('banner')).toBeInTheDocument();
+      expect(screen.getByRole('navigation', { name: /Navegación principal/i })).toBeInTheDocument();
+      expect(screen.getByRole('contentinfo')).toBeInTheDocument();
+      expect(screen.getByText(/Estudia en grupo, en tiempo real/i)).toBeInTheDocument();
       expect(screen.queryByText(/Vista previa/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/5 \/ 7 días/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/En vivo/i)).not.toBeInTheDocument();
@@ -98,6 +99,7 @@ describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () =
       );
 
       expect(screen.getByRole('heading', { name: /^Ingresar$/i })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /Volver al inicio/i })).toHaveAttribute('href', '/');
       expect(screen.getByLabelText(/Correo o usuario/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/^Contraseña$/i)).toBeInTheDocument();
       expect(
@@ -209,18 +211,20 @@ describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () =
       ).toBeInTheDocument();
     });
 
-    it('oculta header, nav y footer en pantallas de acceso (/ingresar, /registro) y muestra las 4 regiones semánticas dentro de la app (/panel)', () => {
+    it('muestra cabecera/pie mínimos en pantallas de acceso (/registro) y la barra completa dentro de la app (/panel)', () => {
       const { unmount } = render(
         <MemoryRouter initialEntries={['/registro']}>
           <App />
         </MemoryRouter>
       );
 
-      expect(screen.queryByRole('banner')).not.toBeInTheDocument();
-      expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
-      expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
-      expect(screen.queryByText(/Vista previa/i)).not.toBeInTheDocument();
+      expect(screen.getByRole('banner')).toBeInTheDocument();
+      expect(screen.getByRole('navigation', { name: /Navegación principal/i })).toBeInTheDocument();
       expect(screen.getByRole('main')).toBeInTheDocument();
+      expect(screen.getByRole('contentinfo')).toBeInTheDocument();
+      expect(screen.getByText(/Estudia en grupo, en tiempo real/i)).toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: /^Base técnica$/i })).not.toBeInTheDocument();
+      expect(screen.queryByText(/Vista previa/i)).not.toBeInTheDocument();
       unmount();
 
       render(
