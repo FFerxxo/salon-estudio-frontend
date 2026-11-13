@@ -35,8 +35,9 @@ describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () =
       );
       expect(screen.queryByRole('link', { name: /^Crear cuenta$/i })).not.toBeInTheDocument();
       expect(screen.getByRole('banner')).toBeInTheDocument();
-      expect(screen.getByRole('navigation', { name: /Enlaces secundarios/i })).toBeInTheDocument();
-      expect(screen.getByRole('contentinfo')).toBeInTheDocument();
+      // Inicio sin pie (decisión de Andres 13/11): solo Tuga, la tarjeta y los controles flotantes.
+      expect(screen.queryByRole('navigation', { name: /Enlaces secundarios/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
       expect(screen.queryByText(/Estudia en grupo, en tiempo real/i)).not.toBeInTheDocument();
       expect(screen.getByText(/Un espacio donde estudiar te sumerge en un mundo de ideas/i)).toBeInTheDocument();
       expect(screen.queryByText(/Vista previa/i)).not.toBeInTheDocument();
@@ -397,6 +398,29 @@ describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () =
           expect(document.title).toBe(expectedTitle);
         });
       });
+    });
+
+    it('Perfil muestra «Mi cuenta» con correo, dominio, acceso y fecha de alta sin violaciones axe', async () => {
+      const { container } = render(
+        <MemoryRouter initialEntries={['/perfil']}>
+          <App
+            authOverrides={{
+              initialStatus: 'authenticated',
+              initialUser: { ...mockStudent, provider: 'google', creadoEn: '2026-11-13T15:00:00.000Z' },
+            }}
+          />
+        </MemoryRouter>
+      );
+
+      const cuenta = await screen.findByRole('heading', { name: 'Mi cuenta' });
+      expect(cuenta).toBeInTheDocument();
+      expect(screen.getByText('andres.barbosa@correounivalle.edu.co')).toBeInTheDocument();
+      expect(screen.getByText('correounivalle.edu.co · Universidad del Valle')).toBeInTheDocument();
+      expect(screen.getByText('Cuenta de Google')).toBeInTheDocument();
+      expect(screen.getByText('Conectado con Google')).toBeInTheDocument();
+      expect(screen.getByText(/13 de noviembre de 2026/)).toBeInTheDocument();
+      expect(screen.queryByText(/sprint/i)).not.toBeInTheDocument();
+      expect(await axe(container)).toHaveNoViolations();
     });
   });
 });

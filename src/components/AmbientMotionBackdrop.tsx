@@ -41,7 +41,7 @@ export function AmbientMotionBackdrop({ subtle = false }: { subtle?: boolean }) 
       <div
         aria-hidden="true"
         className={`pointer-events-none fixed inset-0 z-0 select-none transition-colors duration-300 ${
-          isDark ? 'bg-[#0b1220]' : 'bg-[#f8fafc]'
+          isDark ? 'bg-[#0b1220]' : 'bg-[linear-gradient(165deg,#e0f2fe_0%,#cfe8fb_50%,#b3d9f7_100%)]'
         }`}
       />
     );

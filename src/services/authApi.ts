@@ -76,7 +76,7 @@ function toValidHttpsAvatarUrl(raw?: string | null): string | null {
 }
 
 function parseProvider(raw?: string): 'password' | 'google' | undefined {
-  if (raw === 'google') return 'google';
+  if (raw === 'google' || raw === 'google.com') return 'google';
   if (raw === 'password') return 'password';
   return undefined;
 }
