@@ -51,15 +51,12 @@ test.describe('Pruebas de Navegación por Teclado (Tab) — 9 Rutas en Chromium'
       const active1 = await page.evaluate(() => document.activeElement?.textContent?.trim());
       expect(active1).toBe('Saltar al contenido');
 
-      // 2. Siguientes 7 Tabs: Enlaces de la barra de navegación principal
+      // 2. Siguientes 4 Tabs: Enlaces de la barra de navegación principal
       const expectedNav = [
         'Inicio',
         'Ingresar',
-        'Registro',
-        'Panel',
-        'Perfil',
+        'Registrarse',
         'Ayuda',
-        'Base técnica',
       ];
 
       for (const navLabel of expectedNav) {

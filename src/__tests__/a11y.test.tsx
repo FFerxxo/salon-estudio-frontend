@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import { Layout } from '../components/Layout';
+import { AuthProvider } from '../context/AuthContext';
 import { BaseTecnicaPage } from '../pages/BaseTecnicaPage';
 
 describe('Accesibilidad Base TS-04 (Paso 6)', () => {
@@ -15,7 +16,9 @@ describe('Accesibilidad Base TS-04 (Paso 6)', () => {
     it('el Layout principal no tiene violaciones de accesibilidad', async () => {
       const { container } = render(
         <MemoryRouter initialEntries={['/']}>
-          <Layout />
+          <AuthProvider>
+            <Layout />
+          </AuthProvider>
         </MemoryRouter>
       );
 
