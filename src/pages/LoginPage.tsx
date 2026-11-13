@@ -219,7 +219,7 @@ export function LoginPage() {
               isDark ? 'bg-[#0b1220] text-[#cbd5e1]' : 'bg-white text-[#334155]'
             }`}
           >
-            La recuperación de contraseña depende de la conexión del servicio de cuentas (TS-01).
+            Pronto podrás recuperar tu contraseña desde aquí.
           </p>
         )}
 

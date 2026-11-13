@@ -196,58 +196,33 @@ export function ProfilePage() {
   const { user } = useAuth();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const initial = (user?.nombres || user?.username || 'E').trim().charAt(0).toUpperCase();
 
   return (
     <section
       aria-labelledby="perfil-heading"
-      className={`rounded-[20px] p-6 sm:p-8 space-y-4 ${getSolidSurfaceClasses(theme)}`}
+      className={`max-w-md mx-auto rounded-[20px] p-6 sm:p-8 text-center ${getSolidSurfaceClasses(theme)}`}
     >
-      <h1 id="perfil-heading" className="text-3xl font-bold">
+      <h1 id="perfil-heading" className="sr-only">
         Perfil
       </h1>
-      <p className={isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}>
-        Identidad registrada del Estudiante en el Salón de Estudio (la edición completa de Perfil y
-        eliminación de cuenta corresponden al Sprint 2).
-      </p>
       {user && (
-        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-          <div>
-            <dt className={`text-xs font-bold uppercase ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}>
-              Nombre completo
-            </dt>
-            <dd className="text-base font-bold">
-              {user.nombres} {user.apellidos}
-            </dd>
-          </div>
-          <div>
-            <dt className={`text-xs font-bold uppercase ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}>
-              Usuario único
-            </dt>
-            <dd className="text-base font-mono font-bold">@{user.username}</dd>
-          </div>
-          <div>
-            <dt className={`text-xs font-bold uppercase ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}>
-              Correo institucional
-            </dt>
-            <dd className="text-sm font-mono">{user.correo}</dd>
-          </div>
-          <div>
-            <dt className={`text-xs font-bold uppercase ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}>
-              Avatar
-            </dt>
-            <dd className="text-xl">
-              {user.avatarUrl?.startsWith('https://') ? (
-                <img
-                  src={user.avatarUrl}
-                  alt="Avatar del estudiante"
-                  className="h-10 w-10 rounded-xl object-cover"
-                />
-              ) : (
-                user.avatar
-              )}
-            </dd>
-          </div>
-        </dl>
+        <div className="flex flex-col items-center gap-3">
+          {user.avatarUrl?.startsWith('https://') ? (
+            <img src={user.avatarUrl} alt="" className="h-20 w-20 rounded-full object-cover" />
+          ) : (
+            <span
+              aria-hidden="true"
+              className="h-20 w-20 rounded-full bg-[#0f766e] text-white text-3xl font-bold inline-flex items-center justify-center"
+            >
+              {initial}
+            </span>
+          )}
+          <p className="text-2xl font-bold tracking-tight">
+            {user.nombres} {user.apellidos}
+          </p>
+          <p className={`font-mono text-base ${isDark ? 'text-[#7dd3fc]' : 'text-[#075985]'}`}>@{user.username}</p>
+        </div>
       )}
     </section>
   );
@@ -268,8 +243,7 @@ export function RoomPage() {
         Sala: {id}
       </h1>
       <p className={isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}>
-        Espacio protegido de Sala colaborativa (identificador: <span className="font-mono">{id}</span>
-        ). La transmisión en tiempo real se habilitará en los próximos sprints.
+        Esta sala se está preparando. Muy pronto podrás estudiar aquí con otras personas en tiempo real.
       </p>
       <Link to="/panel" className={`${getPrimaryCtaClasses(theme)} !w-auto`}>
         Volver al Panel
