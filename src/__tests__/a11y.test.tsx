@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'vitest-axe';
 import { MemoryRouter } from 'react-router-dom';
@@ -283,7 +283,11 @@ describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () =
       expect(screen.getByRole('navigation', { name: /Navegación principal/i })).toBeInTheDocument();
       expect(screen.getByRole('main')).toBeInTheDocument();
       expect(screen.getByRole('contentinfo')).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: /^Mis salas$/i })).toBeInTheDocument();
+      const menu = screen.getByRole('navigation', { name: /Navegación principal/i });
+      expect(within(menu).getByRole('link', { name: /^Panel$/i })).toBeInTheDocument();
+      expect(within(menu).getByRole('link', { name: /^Perfil$/i })).toBeInTheDocument();
+      expect(within(menu).getByRole('link', { name: /^Base técnica$/i })).toBeInTheDocument();
+      expect(within(menu).queryByRole('link', { name: /^(Mis salas|Ayuda)$/i })).not.toBeInTheDocument();
       const collapseBtn = screen.getByRole('button', { name: /Contraer menú/i });
       expect(collapseBtn).toHaveAttribute('aria-expanded', 'true');
       await userEvent.click(collapseBtn);
@@ -291,11 +295,11 @@ describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () =
         'aria-expanded',
         'false'
       );
-      expect(screen.getByText('Cálculo I')).toBeInTheDocument();
-      expect(screen.getByText('Física · parcial 2')).toBeInTheDocument();
-      expect(screen.getByText('Inglés B1')).toBeInTheDocument();
-      expect(screen.getAllByText('Ejemplo')).toHaveLength(3);
-      expect(screen.queryByText(/en línea/i)).not.toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Studio Ghibli' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Ruido azul' })).toBeInTheDocument();
+      expect(screen.getAllByText(/0 en línea/)).toHaveLength(2);
+      expect(screen.getAllByRole('link', { name: /^Entrar a / })).toHaveLength(2);
+      // «0 en línea» es un dato verdadero hoy (nadie conectado aún): decisión de Andres 13/11.
 
       const panelResults = await axe(panelContainer);
       expect(panelResults).toHaveNoViolations();

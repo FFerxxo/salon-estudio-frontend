@@ -3,9 +3,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Database,
-  HelpCircle,
   Home,
-  LayoutGrid,
   LogOut,
   Menu,
   Moon,
@@ -50,7 +48,9 @@ export function Layout() {
   const isDark = theme === 'dark';
   const isAccessRoute = ACCESS_ROUTES.has(location.pathname);
   const isAuthenticated = status === 'authenticated' && Boolean(user);
-  const isAppWorkspace = !isAccessRoute && isAuthenticated;
+  // Experimento local (13/11): un visitante también ve el panel, con Ingresar y Crear cuenta arriba.
+  const isPanelVisitor = !isAuthenticated && location.pathname === '/panel';
+  const isAppWorkspace = !isAccessRoute && (isAuthenticated || isPanelVisitor);
 
   const searchParams = new URLSearchParams(location.search);
   const isMisSalasView =
@@ -65,7 +65,7 @@ export function Layout() {
   const handleLogout = async () => {
     setMobileMenuOpen(false);
     navigate('/', { replace: true });
-    await logout();
+    if (user) await logout();
   };
 
   const floatingButtonClass = `min-h-[44px] px-3 py-1.5 rounded-full text-xs font-semibold border-[1.5px] border-[#64748b] inline-flex items-center gap-1.5 shadow-lg backdrop-blur-[14px] transition-colors ${
@@ -74,7 +74,7 @@ export function Layout() {
       : 'bg-[#eef6fb]/90 text-[#0f172a] ring-1 ring-[#075985]/15 hover:bg-[#eef6fb]'
   }`;
 
-  if (isAppWorkspace && user) {
+  if (isAppWorkspace) {
     const sidebarItems = [
       {
         to: '/panel',
@@ -83,22 +83,10 @@ export function Layout() {
         active: location.pathname === '/panel' && !isMisSalasView,
       },
       {
-        to: '/panel?vista=mis-salas',
-        label: 'Mis salas',
-        icon: LayoutGrid,
-        active: isMisSalasView,
-      },
-      {
         to: '/perfil',
         label: 'Perfil',
         icon: User,
         active: location.pathname === '/perfil',
-      },
-      {
-        to: '/ayuda',
-        label: 'Ayuda',
-        icon: HelpCircle,
-        active: location.pathname === '/ayuda',
       },
       {
         to: '/base-tecnica',
@@ -108,7 +96,7 @@ export function Layout() {
       },
     ];
 
-    const userInitial = (user.nombres || user.username || 'E').trim().charAt(0).toUpperCase();
+    const userInitial = (user?.nombres || user?.username || 'E').trim().charAt(0).toUpperCase();
 
     return (
       <div
@@ -149,21 +137,15 @@ export function Layout() {
               to="/panel"
               onClick={() => setMobileMenuOpen(false)}
               className="inline-flex items-center gap-3 min-h-[44px] rounded-xl focus-visible:outline-none"
-              title="Salón de Estudio"
+              title="Tuga - Salón de Estudio"
             >
-              {/* Rojo Univalle #990000 reservado exclusivamente al escudo institucional (Guía visual v3) */}
-              <span
-                aria-hidden="true"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[#990000] font-extrabold text-white text-xs shrink-0"
-              >
-                UV
-              </span>
+              <img src="/favicon.svg" alt="" aria-hidden="true" className="h-8 w-8 rounded-lg shrink-0" />
               <span
                 className={`font-bold text-base tracking-tight whitespace-nowrap ${
                   sidebarCollapsed ? 'md:hidden' : ''
                 }`}
               >
-                Salón de Estudio
+                Tuga
               </span>
             </Link>
           </div>
@@ -308,9 +290,10 @@ export function Layout() {
               </p>
             </div>
 
+            {user ? (
             <Link
               to="/perfil"
-              aria-label={`Cuenta de ${user.nombres || 'Estudiante'} (@${user.username || 'estudiante'})`}
+              aria-label={`Cuenta de ${user!.nombres || 'Estudiante'} (@${user!.username || 'estudiante'})`}
               className={`min-h-[44px] pl-1.5 pr-3 py-1 rounded-full border inline-flex items-center gap-2 text-xs font-semibold transition-colors ${
                 isDark
                   ? 'bg-[#1f2e4a] border-slate-400/30 text-[#f8fafc] hover:bg-[#26385a]'
@@ -321,14 +304,34 @@ export function Layout() {
                 aria-hidden="true"
                 className="h-8 w-8 rounded-full bg-[#0f766e] text-white font-bold text-xs inline-flex items-center justify-center overflow-hidden"
               >
-                {user.avatarUrl?.startsWith('https://') ? (
-                  <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
+                {user!.avatarUrl?.startsWith('https://') ? (
+                  <img src={user!.avatarUrl} alt="" className="h-full w-full object-cover" />
                 ) : (
                   userInitial
                 )}
               </span>
-              <span className="hidden sm:inline font-mono">@{user.username || 'estudiante'}</span>
+              <span className="hidden sm:inline font-mono">@{user!.username || 'estudiante'}</span>
             </Link>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/ingresar"
+                  className={`min-h-[44px] px-4 rounded-xl border inline-flex items-center text-sm font-semibold transition-colors ${
+                    isDark ? 'border-slate-400/30 text-[#f8fafc] hover:bg-white/10' : 'border-slate-300 text-[#0f172a] hover:bg-slate-100'
+                  }`}
+                >
+                  Ingresar
+                </Link>
+                <Link
+                  to="/registro"
+                  className={`min-h-[44px] px-4 rounded-xl inline-flex items-center text-sm font-bold transition-colors ${
+                    isDark ? 'bg-[#38bdf8] text-[#0b1220] hover:bg-[#7dd3fc]' : 'bg-[#075985] text-white hover:bg-[#0369a1]'
+                  }`}
+                >
+                  Crear cuenta
+                </Link>
+              </div>
+            )}
           </header>
 
           <main
