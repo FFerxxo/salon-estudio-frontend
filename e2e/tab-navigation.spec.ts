@@ -4,9 +4,10 @@ const routes = [
   { path: '/', name: 'Inicio', contentLinks: ['Ver Base técnica', 'Ingresar'] },
   { path: '/ingresar', name: 'Ingresar', contentLinks: [] },
   { path: '/registro', name: 'Registro', contentLinks: [] },
-  { path: '/panel', name: 'Panel', contentLinks: ['Explorar Sala de demostración'] },
-  { path: '/perfil', name: 'Perfil', contentLinks: [] },
-  { path: '/salas/demo-1', name: 'Sala demo-1', contentLinks: [] },
+  // Rutas privadas: sin sesión llevan a Ingresar (US-03).
+  { path: '/panel', name: 'Panel → Ingresar', contentLinks: [] },
+  { path: '/perfil', name: 'Perfil → Ingresar', contentLinks: [] },
+  { path: '/salas/demo-1', name: 'Sala demo-1 → Ingresar', contentLinks: [] },
   { path: '/ayuda', name: 'Ayuda', contentLinks: [] },
   { path: '/base-tecnica', name: 'Base técnica', contentLinks: ['Reintentar'] },
   { path: '/ruta-desconocida-404', name: '404 · Página no encontrada', contentLinks: ['Volver al Inicio'] },

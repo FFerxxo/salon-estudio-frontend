@@ -131,10 +131,11 @@ describe('Accesibilidad Base TS-04 (Paso 6)', () => {
     const routesToTest = [
       { path: '/', expectedTitle: 'Inicio · Salón de Estudio' },
       { path: '/ingresar', expectedTitle: 'Ingresar · Salón de Estudio' },
-      { path: '/registro', expectedTitle: 'Registro · Salón de Estudio' },
-      { path: '/panel', expectedTitle: 'Panel · Salón de Estudio' },
-      { path: '/perfil', expectedTitle: 'Perfil · Salón de Estudio' },
-      { path: '/salas/demo-1', expectedTitle: 'Sala demo-1 · Salón de Estudio' },
+      { path: '/registro', expectedTitle: 'Crea tu cuenta · Salón de Estudio' },
+      // Rutas privadas: sin sesión llevan a Ingresar.
+      { path: '/panel', expectedTitle: 'Ingresar · Salón de Estudio' },
+      { path: '/perfil', expectedTitle: 'Ingresar · Salón de Estudio' },
+      { path: '/salas/demo-1', expectedTitle: 'Ingresar · Salón de Estudio' },
       { path: '/ayuda', expectedTitle: 'Ayuda · Salón de Estudio' },
       { path: '/base-tecnica', expectedTitle: 'Base técnica · Salón de Estudio' },
       { path: '/ruta-desconocida-404', expectedTitle: '404 · Página no encontrada · Salón de Estudio' },
