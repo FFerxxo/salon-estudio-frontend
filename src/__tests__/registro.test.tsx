@@ -61,3 +61,19 @@ describe('US-01 · Registro manual', () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 });
+
+describe('US-02 · Registro con Google', () => {
+  it('ofrece «Continuar con Google» en el registro', () => {
+    renderRegistro();
+    expect(screen.getByRole('button', { name: /Continuar con Google/i })).toBeInTheDocument();
+  });
+
+  it('sin sesión, la pantalla para elegir nombre de usuario lleva a Ingresar', () => {
+    render(
+      <MemoryRouter initialEntries={['/registro/usuario']}>
+        <App />
+      </MemoryRouter>
+    );
+    expect(screen.queryByRole('heading', { name: 'Elige tu nombre de usuario' })).not.toBeInTheDocument();
+  });
+});
