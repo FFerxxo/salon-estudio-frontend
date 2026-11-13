@@ -5,12 +5,14 @@ import { EstadoUsername } from '../components/EstadoUsername';
 import { ResumenErrores } from '../components/ResumenErrores';
 import { Alerta } from '../components/ui/Alerta';
 import { Boton } from '../components/ui/Boton';
+import { BotonGoogle, SeparadorCorreo } from '../components/ui/BotonGoogle';
 import { CampoContrasena } from '../components/ui/CampoContrasena';
 import { CampoTexto } from '../components/ui/CampoTexto';
 import { AVATARES, SelectorAvatar, urlAbsolutaAvatar } from '../components/ui/SelectorAvatar';
 import { useAuth } from '../context/AuthContext';
 import { useDisponibilidadUsuario } from '../hooks/useDisponibilidadUsuario';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { useIngresoGoogle } from '../hooks/useIngresoGoogle';
 import { obtenerAuth } from '../lib/firebase';
 import {
   MENSAJES,
@@ -58,6 +60,7 @@ export function RegistroPage() {
   const [intento, setIntento] = useState(0);
 
   const disponibilidad = useDisponibilidadUsuario(datos.username);
+  const google = useIngresoGoogle();
 
   const cambiar = (campo: Campo) => (evento: { target: { value: string } }) => {
     setDatos((previo) => ({ ...previo, [campo]: evento.target.value }));
@@ -188,7 +191,15 @@ export function RegistroPage() {
         </p>
       </div>
 
-      {errorGeneral && <Alerta tipo="error">{errorGeneral}</Alerta>}
+      {(errorGeneral || google.error) && <Alerta tipo="error">{errorGeneral ?? google.error}</Alerta>}
+
+      <BotonGoogle
+        onClick={() => void google.continuarConGoogle()}
+        cargando={google.cargando}
+        disabled={enviando}
+      />
+      <SeparadorCorreo />
+
       <ResumenErrores errores={listaErrores} intento={intento} />
 
       <form noValidate onSubmit={enviar} className="space-y-5">
