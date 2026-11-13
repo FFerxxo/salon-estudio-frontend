@@ -7,3 +7,13 @@ declare module 'vitest' {
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
   export interface AsymmetricMatchersContaining extends AxeMatchers {}
 }
+
+declare global {
+  interface ImportMetaEnv {
+    readonly VITE_API_URL?: string;
+    readonly VITE_FIREBASE_API_KEY?: string;
+    readonly VITE_FIREBASE_AUTH_DOMAIN?: string;
+    readonly VITE_FIREBASE_PROJECT_ID?: string;
+    readonly VITE_FIREBASE_APP_ID?: string;
+  }
+}
