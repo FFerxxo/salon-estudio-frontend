@@ -298,7 +298,11 @@ describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () =
       expect(screen.getByRole('heading', { name: 'Studio Ghibli' })).toBeInTheDocument();
       expect(screen.getByRole('heading', { name: 'Ruido azul' })).toBeInTheDocument();
       expect(screen.getAllByText(/0 en línea/)).toHaveLength(2);
-      expect(screen.getAllByRole('link', { name: /^Entrar a / })).toHaveLength(2);
+      const entrarBtns = screen.getAllByRole('button', { name: /^Entrar a / });
+      expect(entrarBtns).toHaveLength(2);
+      expect(screen.queryByText('Sala no disponible aún.')).not.toBeInTheDocument();
+      await userEvent.click(entrarBtns[0]);
+      expect(screen.getByText('Sala no disponible aún.')).toBeInTheDocument();
       // «0 en línea» es un dato verdadero hoy (nadie conectado aún): decisión de Andres 13/11.
 
       const panelResults = await axe(panelContainer);

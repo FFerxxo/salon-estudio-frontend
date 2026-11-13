@@ -350,7 +350,7 @@ export function Layout() {
             }`}
           >
             <div className="max-w-5xl mx-auto px-4">
-              Salón de Estudio Colaborativo en Tiempo Real · Universidad del Valle (Sprint 1)
+              Salón de Estudio Colaborativo en Tiempo Real · Universidad del Valle
             </div>
           </footer>
         </div>
