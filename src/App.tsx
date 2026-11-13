@@ -1,31 +1,39 @@
 import { Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
+import { RutaPrivada, RutaPublica } from './components/RutasProtegidas';
+import { AuthProvider } from './context/AuthContext';
 import { BaseTecnicaPage } from './pages/BaseTecnicaPage';
+import { PanelPage } from './pages/PanelPage';
+import { RegistroPage } from './pages/RegistroPage';
 import {
-  DashboardPage,
   HelpPage,
   HomePage,
   LoginPage,
   NotFoundPage,
   ProfilePage,
-  RegisterPage,
   RoomPage,
 } from './pages/SiteMapPages';
 
 export function App() {
   return (
-    <Routes>
-      <Route element={<Layout />}>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/ingresar" element={<LoginPage />} />
-        <Route path="/registro" element={<RegisterPage />} />
-        <Route path="/panel" element={<DashboardPage />} />
-        <Route path="/perfil" element={<ProfilePage />} />
-        <Route path="/salas/:id" element={<RoomPage />} />
-        <Route path="/ayuda" element={<HelpPage />} />
-        <Route path="/base-tecnica" element={<BaseTecnicaPage />} />
-        <Route path="*" element={<NotFoundPage />} />
-      </Route>
-    </Routes>
+    <AuthProvider>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route path="/" element={<HomePage />} />
+          <Route element={<RutaPublica />}>
+            <Route path="/ingresar" element={<LoginPage />} />
+            <Route path="/registro" element={<RegistroPage />} />
+          </Route>
+          <Route element={<RutaPrivada />}>
+            <Route path="/panel" element={<PanelPage />} />
+            <Route path="/perfil" element={<ProfilePage />} />
+            <Route path="/salas/:id" element={<RoomPage />} />
+          </Route>
+          <Route path="/ayuda" element={<HelpPage />} />
+          <Route path="/base-tecnica" element={<BaseTecnicaPage />} />
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
+      </Routes>
+    </AuthProvider>
   );
 }

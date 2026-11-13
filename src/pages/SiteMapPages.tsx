@@ -45,41 +45,6 @@ export function LoginPage() {
   );
 }
 
-export function RegisterPage() {
-  useDocumentTitle('Registro');
-
-  return (
-    <section className="space-y-4">
-      <h1 className="text-3xl font-bold text-slate-900">Registro</h1>
-      <p className="text-slate-700">
-        Maqueta de creación de cuenta (Sprint 0). El registro estará disponible en los siguientes
-        sprints.
-      </p>
-    </section>
-  );
-}
-
-export function DashboardPage() {
-  useDocumentTitle('Panel');
-
-  return (
-    <section className="space-y-4">
-      <h1 className="text-3xl font-bold text-slate-900">Panel</h1>
-      <p className="text-slate-700">
-        Maqueta del Panel principal de estudio (Sprint 0). Desde aquí podrás acceder a cada Sala.
-      </p>
-      <div>
-        <Link
-          to="/salas/demo-1"
-          className="inline-block px-4 py-2 rounded-md bg-sky-800 text-white font-medium hover:bg-sky-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-800 transition-colors"
-        >
-          Explorar Sala de demostración
-        </Link>
-      </div>
-    </section>
-  );
-}
-
 export function ProfilePage() {
   useDocumentTitle('Perfil');
 
