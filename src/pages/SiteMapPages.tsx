@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react';
-import { ArrowRight, Link2, Plus } from 'lucide-react';
+import { ArrowRight, Link2, Music, Plus, Sparkles, Waves } from 'lucide-react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { TugaStage } from '../components/TugaStage';
 import { selectTugaGreeting } from '../content/vozTuga';
@@ -115,16 +115,16 @@ export function HomePage() {
 
       <section
         aria-labelledby="inicio-heading"
-        className={`marea-morph-card relative z-[1] w-full max-w-[400px] mx-auto rounded-[24px] p-6 sm:p-7 space-y-4 text-center ${getGlassCardClasses(
-          theme
-        )}`}
+        className={`marea-morph-card inicio-card relative z-[1] -mt-14 sm:-mt-10 w-full max-w-[400px] mx-auto rounded-[22px] p-5 space-y-3.5 text-center ring-1 ${
+          isDark ? 'ring-[#38bdf8]/25' : 'ring-[#075985]/15'
+        } ${getGlassCardClasses(theme)}`}
       >
-        <div className="space-y-1.5">
-          <h1 id="inicio-heading" className="text-2xl sm:text-[28px] font-bold tracking-tight text-balance">
-            Salón de Estudio
+        <div className="space-y-1">
+          <h1 id="inicio-heading" className="text-xl sm:text-2xl font-bold tracking-tight text-balance">
+            Bienvenido a <span className={isDark ? 'text-[#38bdf8]' : 'text-[#075985]'}>Tuga</span>
           </h1>
           <p className={`text-sm text-pretty ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}>
-            Salas de estudio en vivo para enfocarte en grupo.
+            Un espacio donde estudiar te sumerge en un mundo de ideas.
           </p>
         </div>
 
@@ -142,6 +142,26 @@ export function HomePage() {
           <span>Vamos a estudiar</span>
           <ArrowRight className="w-4 h-4 shrink-0" aria-hidden="true" />
         </Link>
+
+        <ul className="flex flex-wrap justify-center gap-2" aria-label="Lo que encuentras en Tuga">
+          {[
+            { label: 'Tu espacio', Icon: Waves },
+            { label: 'Tu música', Icon: Music },
+            { label: 'Tu elección', Icon: Sparkles },
+          ].map(({ label, Icon }) => (
+            <li
+              key={label}
+              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${
+                isDark
+                  ? 'bg-[#38bdf8]/15 text-[#7dd3fc] ring-[#38bdf8]/30'
+                  : 'bg-[#075985]/10 text-[#075985] ring-[#075985]/25'
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+              {label}
+            </li>
+          ))}
+        </ul>
       </section>
     </div>
   );

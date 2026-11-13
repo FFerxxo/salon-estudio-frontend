@@ -75,7 +75,7 @@
 }
 
 .tuga-escena {
-  --k: 0.51; /* 75 % de 0.68 para perspectiva en el agua calma */
+  --k: 0.8; /* Tuga grande en la franja calma (pedido de Andres 13/11) */
   position: relative;
   width: min(100%, 720px);
   display: flex;
@@ -253,7 +253,7 @@ img.tuga-parte {
 
 @media (max-width: 699px) {
   .tuga-escena {
-    --k: 0.36; /* 75 % de 0.48 */
+    --k: 0.56; /* Tuga grande en móvil */
     flex-direction: column;
     align-items: flex-end;
   }
@@ -363,4 +363,14 @@ img.tuga-parte {
   ::view-transition-new(*) {
     animation: none !important;
   }
+}
+
+/* Pantallas bajas (p. ej. 1470x721): Tuga un poco menor para que la tarjeta no toque el pie. */
+@media (min-width: 700px) and (max-height: 760px) {
+  .tuga-escena { --k: 0.64; }
+}
+
+/* Pantallas bajas: la tarjeta sube un poco para no tocar el pie. */
+@media (min-width: 700px) and (max-height: 760px) {
+  .inicio-card { margin-top: -4.5rem !important; }
 }

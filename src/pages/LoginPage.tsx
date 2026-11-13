@@ -103,6 +103,14 @@ export function LoginPage() {
         Ingresar
       </h1>
 
+      <Link
+        to="/"
+        viewTransition
+        className={`text-xs font-medium inline-flex items-center gap-1 min-h-[44px] -my-2.5 ${getLinkClasses(theme)}`}
+      >
+        <span aria-hidden="true">←</span> Volver a la página de inicio
+      </Link>
+
       <p
         lang={greeting.lang === 'en' ? 'en' : undefined}
         className="text-[18px] sm:text-[19px] font-bold tracking-tight leading-snug text-center text-balance"

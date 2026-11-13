@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -34,6 +34,15 @@ export function Layout() {
   const { status, user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Al recargar la página en /ingresar o /registro, volver al inicio con Tuga (pedido de Andres 13/11).
+  useEffect(() => {
+    const entry = performance.getEntriesByType?.('navigation')?.[0] as PerformanceNavigationTiming | undefined;
+    if (entry?.type === 'reload' && (location.pathname === '/ingresar' || location.pathname === '/registro')) {
+      navigate('/', { replace: true });
+    }
+    // Solo en la primera carga de la página.
+  }, []);
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

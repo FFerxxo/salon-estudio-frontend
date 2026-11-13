@@ -34,19 +34,19 @@ export const TUGA_SLOTS: TugaTimeSlot[] = [
     maxHour: 8,
     phrases: [
       {
-        fullText: '«¿Vos madrugando a estudiar? Ni el gallo, parce.»',
-        segments: [{ text: '«¿Vos madrugando a estudiar? Ni el gallo, parce.»' }],
+        fullText: '¿Vos madrugando a estudiar? Ni el gallo, parce.',
+        segments: [{ text: '¿Vos madrugando a estudiar? Ni el gallo, parce.' }],
       },
       {
-        fullText: '«Uy, juicioso desde temprano. ¿O es que no dormiste?»',
-        segments: [{ text: '«Uy, juicioso desde temprano. ¿O es que no dormiste?»' }],
+        fullText: 'Uy, juicioso desde temprano. ¿O es que no dormiste?',
+        segments: [{ text: 'Uy, juicioso desde temprano. ¿O es que no dormiste?' }],
       },
       {
-        fullText: '«Tan temprano y ya acá… ¿early bird o desesperado?»',
+        fullText: 'Tan temprano y ya acá… ¿early bird o desesperado?',
         segments: [
-          { text: '«Tan temprano y ya acá… ¿' },
+          { text: 'Tan temprano y ya acá… ¿' },
           { text: 'early bird', lang: 'en' },
-          { text: ' o desesperado?»' },
+          { text: ' o desesperado?' },
         ],
       },
     ],
@@ -58,16 +58,16 @@ export const TUGA_SLOTS: TugaTimeSlot[] = [
     maxHour: 12,
     phrases: [
       {
-        fullText: '«Buenos días. El tinto ya hizo su parte, ahora te toca a vos.»',
-        segments: [{ text: '«Buenos días. El tinto ya hizo su parte, ahora te toca a vos.»' }],
+        fullText: 'Buenos días. El tinto ya hizo su parte, ahora te toca a vos.',
+        segments: [{ text: 'Buenos días. El tinto ya hizo su parte, ahora te toca a vos.' }],
       },
       {
-        fullText: '«Pilas pues, que la mañana no se estudia sola.»',
-        segments: [{ text: '«Pilas pues, que la mañana no se estudia sola.»' }],
+        fullText: 'Pilas pues, que la mañana no se estudia sola.',
+        segments: [{ text: 'Pilas pues, que la mañana no se estudia sola.' }],
       },
       {
-        fullText: '«Arranquemos, que el parcial no se va a presentar solo.»',
-        segments: [{ text: '«Arranquemos, que el parcial no se va a presentar solo.»' }],
+        fullText: 'Arranquemos, que el parcial no se va a presentar solo.',
+        segments: [{ text: 'Arranquemos, que el parcial no se va a presentar solo.' }],
       },
     ],
   },
@@ -78,19 +78,19 @@ export const TUGA_SLOTS: TugaTimeSlot[] = [
     maxHour: 14,
     phrases: [
       {
-        fullText: '«¿Estudiando a la hora del almuerzo? Ambicioso… o atrasado.»',
-        segments: [{ text: '«¿Estudiando a la hora del almuerzo? Ambicioso… o atrasado.»' }],
+        fullText: '¿Estudiando a la hora del almuerzo? Ambicioso… o atrasado.',
+        segments: [{ text: '¿Estudiando a la hora del almuerzo? Ambicioso… o atrasado.' }],
       },
       {
-        fullText: '«Primero el almuercito, ¿no? Bueno, vos sabrás.»',
-        segments: [{ text: '«Primero el almuercito, ¿no? Bueno, vos sabrás.»' }],
+        fullText: 'Primero el almuercito, ¿no? Bueno, vos sabrás.',
+        segments: [{ text: 'Primero el almuercito, ¿no? Bueno, vos sabrás.' }],
       },
       {
-        fullText: '«Lunch break is for the weak, ¿cierto?»',
+        fullText: 'Lunch break is for the weak, ¿cierto?',
         segments: [
-          { text: '«' },
+          { text: '' },
           { text: 'Lunch break is for the weak', lang: 'en' },
-          { text: ', ¿cierto?»' },
+          { text: ', ¿cierto?' },
         ],
       },
     ],
@@ -102,16 +102,16 @@ export const TUGA_SLOTS: TugaTimeSlot[] = [
     maxHour: 19,
     phrases: [
       {
-        fullText: '«La siesta te estaba llamando y elegiste estudiar. Respeto.»',
-        segments: [{ text: '«La siesta te estaba llamando y elegiste estudiar. Respeto.»' }],
+        fullText: 'La siesta te estaba llamando y elegiste estudiar. Respeto.',
+        segments: [{ text: 'La siesta te estaba llamando y elegiste estudiar. Respeto.' }],
       },
       {
-        fullText: '«Buenas tardes. Un bloque más y te lo ganaste.»',
-        segments: [{ text: '«Buenas tardes. Un bloque más y te lo ganaste.»' }],
+        fullText: 'Buenas tardes. Un bloque más y te lo ganaste.',
+        segments: [{ text: 'Buenas tardes. Un bloque más y te lo ganaste.' }],
       },
       {
-        fullText: '«Ya casi es de noche y vos con esa lista de pendientes… dale.»',
-        segments: [{ text: '«Ya casi es de noche y vos con esa lista de pendientes… dale.»' }],
+        fullText: 'Ya casi es de noche y vos con esa lista de pendientes… dale.',
+        segments: [{ text: 'Ya casi es de noche y vos con esa lista de pendientes… dale.' }],
       },
     ],
   },
@@ -122,19 +122,19 @@ export const TUGA_SLOTS: TugaTimeSlot[] = [
     maxHour: 23,
     phrases: [
       {
-        fullText: '«Buenas noches. Nada de series hasta terminar, ¿oíste?»',
-        segments: [{ text: '«Buenas noches. Nada de series hasta terminar, ¿oíste?»' }],
+        fullText: 'Buenas noches. Nada de series hasta terminar, ¿oíste?',
+        segments: [{ text: 'Buenas noches. Nada de series hasta terminar, ¿oíste?' }],
       },
       {
-        fullText: '«La noche es joven y vos con los apuntes. Bien ahí.»',
-        segments: [{ text: '«La noche es joven y vos con los apuntes. Bien ahí.»' }],
+        fullText: 'La noche es joven y vos con los apuntes. Bien ahí.',
+        segments: [{ text: 'La noche es joven y vos con los apuntes. Bien ahí.' }],
       },
       {
-        fullText: '«Last call para estudiar antes de que te gane el sueño.»',
+        fullText: 'Last call para estudiar antes de que te gane el sueño.',
         segments: [
-          { text: '«' },
+          { text: '' },
           { text: 'Last call', lang: 'en' },
-          { text: ' para estudiar antes de que te gane el sueño.»' },
+          { text: ' para estudiar antes de que te gane el sueño.' },
         ],
       },
     ],
@@ -146,21 +146,21 @@ export const TUGA_SLOTS: TugaTimeSlot[] = [
     maxHour: 29,
     phrases: [
       {
-        fullText: '«¿Trasnochando otra vez? Yo no te juzgo… mucho.»',
-        segments: [{ text: '«¿Trasnochando otra vez? Yo no te juzgo… mucho.»' }],
+        fullText: '¿Trasnochando otra vez? Yo no te juzgo… mucho.',
+        segments: [{ text: '¿Trasnochando otra vez? Yo no te juzgo… mucho.' }],
       },
       {
         fullText:
-          '«A esta hora solo estudian los valientes y los que dejaron todo para el final. ¿Cuál sos vos?»',
+          'A esta hora solo estudian los valientes y los que dejaron todo para el final. ¿Cuál sos vos?',
         segments: [
           {
-            text: '«A esta hora solo estudian los valientes y los que dejaron todo para el final. ¿Cuál sos vos?»',
+            text: 'A esta hora solo estudian los valientes y los que dejaron todo para el final. ¿Cuál sos vos?',
           },
         ],
       },
       {
-        fullText: '«Mañana vas a parecer zombi, pero bueno, acá estamos.»',
-        segments: [{ text: '«Mañana vas a parecer zombi, pero bueno, acá estamos.»' }],
+        fullText: 'Mañana vas a parecer zombi, pero bueno, acá estamos.',
+        segments: [{ text: 'Mañana vas a parecer zombi, pero bueno, acá estamos.' }],
       },
     ],
   },

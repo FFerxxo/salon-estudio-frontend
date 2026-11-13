@@ -38,7 +38,7 @@ describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () =
       expect(screen.getByRole('navigation', { name: /Enlaces secundarios/i })).toBeInTheDocument();
       expect(screen.getByRole('contentinfo')).toBeInTheDocument();
       expect(screen.queryByText(/Estudia en grupo, en tiempo real/i)).not.toBeInTheDocument();
-      expect(screen.getByText(/Salas de estudio en vivo para enfocarte en grupo/i)).toBeInTheDocument();
+      expect(screen.getByText(/Un espacio donde estudiar te sumerge en un mundo de ideas/i)).toBeInTheDocument();
       expect(screen.queryByText(/Vista previa/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/5 \/ 7 días/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/^En vivo$/i)).not.toBeInTheDocument();
@@ -329,14 +329,14 @@ describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () =
 
   describe('Título único por ruta y guardia de rutas privadas', () => {
     const publicRoutes = [
-      { path: '/', expectedTitle: 'Inicio · Salón de Estudio' },
-      { path: '/ingresar', expectedTitle: 'Ingresar · Salón de Estudio' },
-      { path: '/registro', expectedTitle: 'Registro · Salón de Estudio' },
-      { path: '/ayuda', expectedTitle: 'Ayuda · Salón de Estudio' },
-      { path: '/base-tecnica', expectedTitle: 'Base técnica · Salón de Estudio' },
+      { path: '/', expectedTitle: 'Inicio · Tuga - Salón de Estudio' },
+      { path: '/ingresar', expectedTitle: 'Ingresar · Tuga - Salón de Estudio' },
+      { path: '/registro', expectedTitle: 'Registro · Tuga - Salón de Estudio' },
+      { path: '/ayuda', expectedTitle: 'Ayuda · Tuga - Salón de Estudio' },
+      { path: '/base-tecnica', expectedTitle: 'Base técnica · Tuga - Salón de Estudio' },
       {
         path: '/ruta-desconocida-404',
-        expectedTitle: '404 · Página no encontrada · Salón de Estudio',
+        expectedTitle: '404 · Página no encontrada · Tuga - Salón de Estudio',
       },
     ];
 
@@ -355,9 +355,9 @@ describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () =
     });
 
     const privateRoutes = [
-      { path: '/panel', expectedTitle: 'Panel · Salón de Estudio' },
-      { path: '/perfil', expectedTitle: 'Perfil · Salón de Estudio' },
-      { path: '/salas/demo-1', expectedTitle: 'Sala demo-1 · Salón de Estudio' },
+      { path: '/panel', expectedTitle: 'Panel · Tuga - Salón de Estudio' },
+      { path: '/perfil', expectedTitle: 'Perfil · Tuga - Salón de Estudio' },
+      { path: '/salas/demo-1', expectedTitle: 'Sala demo-1 · Tuga - Salón de Estudio' },
     ];
 
     privateRoutes.forEach(({ path, expectedTitle }) => {
@@ -369,7 +369,7 @@ describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () =
         );
 
         await waitFor(() => {
-          expect(document.title).toBe('Ingresar · Salón de Estudio');
+          expect(document.title).toBe('Ingresar · Tuga - Salón de Estudio');
         });
       });
 

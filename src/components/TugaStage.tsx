@@ -296,8 +296,8 @@ export function TugaStage({
     emerge.o = 0;
     const hunde = new Spring(0, 170, 26); // zambullida de salida
     const pop = new Spring(0, 210, 17);
-    const flotaX = new Spring(0, 16, 6);
-    const flotaY = new Spring(0, 16, 6);
+    const flotaX = new Spring(0, 140, 20); // sigue a la boca con poco retraso
+    const flotaY = new Spring(0, 140, 20);
 
     let t = 0;
     let fase = 0;
@@ -318,6 +318,9 @@ export function TugaStage({
     let scale = 0.51;
     let anclaPx = 0;
     const bocaClient = { x: 0, y: 0 };
+    // Boca relativa al escenario y su posición de reposo: el globo sigue a la boca en cada cuadro.
+    const bocaRel = { x: 0, y: 0, ok: false };
+    const bocaRest = { x: 0, y: 0, scale: 0, ok: false };
     const inclina = { x: 0, y: 1 };
     const rafagas: { t0: number; fuerza: number }[] = [];
     const gotas: { x: number; y: number; vx: number; vy: number; r: number }[] = [];
@@ -491,8 +494,21 @@ export function TugaStage({
       // oleaje suave en agua calma (±4 px)
       const olaX = 4 * Math.sin(t * 0.885);
       const olaY = 2.8 * Math.sin(t * 1.186 + 0.6) + 1.2 * Math.sin(t * 2.17 + 1);
-      flotaX.o = olaX * scale * 0.6;
-      flotaY.o = olaY * scale * 0.6;
+      if (tEntrada >= ENTRADA_S && bocaRel.ok) {
+        // Reposo: se toma al terminar la entrada y otra vez si Tuga cambia de tamaño.
+        if (!bocaRest.ok || bocaRest.scale !== scale) {
+          bocaRest.x = bocaRel.x;
+          bocaRest.y = bocaRel.y;
+          bocaRest.scale = scale;
+          bocaRest.ok = true;
+        }
+        const lim = 140 * scale;
+        flotaX.o = clamp(bocaRel.x - bocaRest.x, -lim, lim);
+        flotaY.o = clamp(bocaRel.y - bocaRest.y, -lim, lim);
+      } else {
+        flotaX.o = olaX * scale * 0.6;
+        flotaY.o = olaY * scale;
+      }
 
       const profundidad = emerge.x + hunde.x; // px bajo su posición de flotar
       const x = olaX + sube * 46 + inclina.x * a * 14 - baja * 30;
@@ -590,6 +606,9 @@ export function TugaStage({
 
       bocaClient.x = M.left;
       bocaClient.y = M.top;
+      bocaRel.x = M.left - E.left;
+      bocaRel.y = M.top - E.top;
+      bocaRel.ok = true;
 
       const gw = g.offsetWidth || 240;
       const gh = g.offsetHeight || 56;

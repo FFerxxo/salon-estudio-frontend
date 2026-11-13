@@ -136,7 +136,7 @@ test.describe('Navegación por Teclado (TS-04) y Rutas Privadas (US-03) en Chrom
       await page.goto(privatePath);
       await page.waitForURL('**/ingresar');
       await expect(page).toHaveURL(/\/ingresar$/);
-      await expect(page).toHaveTitle('Ingresar · Salón de Estudio');
+      await expect(page).toHaveTitle('Ingresar · Tuga - Salón de Estudio');
       await expect(page.getByRole('heading', { name: /^Ingresar$/i })).toBeVisible();
       await expect(page.getByRole('button', { name: /Ingresar con correo/i })).toBeVisible();
     });
