@@ -15,7 +15,7 @@ const publicRoutes: PublicRouteSpec[] = [
     name: 'Inicio',
     isAccessRoute: true,
     expectedNav: ['Inicio', 'Ayuda'],
-    contentLinks: ['Ingresar', 'Crear cuenta'],
+    contentLinks: ['Vamos a estudiar'],
     checkUtilityAfterContent: true,
   },
   {
@@ -38,7 +38,7 @@ const publicRoutes: PublicRouteSpec[] = [
     path: '/ayuda',
     name: 'Ayuda',
     isAccessRoute: false,
-    expectedNav: ['Panel', 'Perfil', 'Ayuda', 'Base técnica'],
+    expectedNav: ['Inicio', 'Ayuda', 'Base técnica', 'Ingresar'],
     contentLinks: [],
     checkUtilityAfterContent: true,
   },
@@ -46,7 +46,7 @@ const publicRoutes: PublicRouteSpec[] = [
     path: '/base-tecnica',
     name: 'Base técnica',
     isAccessRoute: false,
-    expectedNav: ['Panel', 'Perfil', 'Ayuda', 'Base técnica'],
+    expectedNav: ['Inicio', 'Ayuda', 'Base técnica', 'Ingresar'],
     contentLinks: ['Reintentar'],
     checkUtilityAfterContent: true,
   },
@@ -54,7 +54,7 @@ const publicRoutes: PublicRouteSpec[] = [
     path: '/ruta-desconocida-404',
     name: '404 · Página no encontrada',
     isAccessRoute: false,
-    expectedNav: ['Panel', 'Perfil', 'Ayuda', 'Base técnica'],
+    expectedNav: ['Inicio', 'Ayuda', 'Base técnica', 'Ingresar'],
     contentLinks: ['Volver al Inicio'],
     checkUtilityAfterContent: true,
   },
@@ -98,14 +98,12 @@ test.describe('Navegación por Teclado (TS-04) y Rutas Privadas (US-03) en Chrom
       await expect(skipLink).toBeFocused();
       await expect(skipLink).toBeVisible();
 
-      // 2. En pantallas de acceso, la marca del encabezado es enlace a Inicio antes del menú
-      if (isAccessRoute) {
-        await page.keyboard.press('Tab');
-        const brandLink = page.getByRole('link', { name: /Salón de Estudio/i });
-        await expect(brandLink).toBeFocused();
-        await expect(brandLink).toHaveAttribute('href', '/');
-        expect(await activeHasVisibleOutline(page)).toBe(true);
-      }
+      // 2. En rutas públicas, la marca del encabezado es enlace a Inicio antes del menú
+      await page.keyboard.press('Tab');
+      const brandLink = page.getByRole('link', { name: /Salón de Estudio/i });
+      await expect(brandLink).toBeFocused();
+      await expect(brandLink).toHaveAttribute('href', '/');
+      expect(await activeHasVisibleOutline(page)).toBe(true);
 
       // 3. Siguientes Tabs recorren el menú principal visible en orden exacto con foco visible
       for (const navLabel of expectedNav) {
@@ -163,9 +161,9 @@ test.describe('Navegación por Teclado (TS-04) y Rutas Privadas (US-03) en Chrom
     await page.keyboard.press('Tab');
     await expect(page.getByRole('button', { name: 'Continuar con Google' })).toBeFocused();
 
-    // Tab 2: Correo o usuario
+    // Tab 2: Correo
     await page.keyboard.press('Tab');
-    const emailInput = page.getByLabel(/Correo o usuario/i);
+    const emailInput = page.getByLabel(/^Correo$/i);
     await expect(emailInput).toBeFocused();
     await page.keyboard.type('andres.barbosa@correounivalle.edu.co');
 
@@ -178,10 +176,10 @@ test.describe('Navegación por Teclado (TS-04) y Rutas Privadas (US-03) en Chrom
     await page.keyboard.press('Tab');
     await expect(page.getByRole('button', { name: /Mostrar contraseña/i })).toBeFocused();
 
-    // Tab 5: Recuperación de contraseña o usuario
+    // Tab 5: Recuperación de contraseña
     await page.keyboard.press('Tab');
     await expect(
-      page.getByRole('button', { name: /¿Olvidaste tu contraseña o usuario\?/i })
+      page.getByRole('button', { name: /¿Olvidaste tu contraseña\?/i })
     ).toBeFocused();
 
     // Tab 6: Botón enviar «Ingresar con correo» y disparo con Enter

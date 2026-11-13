@@ -68,3 +68,299 @@
     -webkit-backdrop-filter: none !important;
   }
 }
+
+/* ---------- Tuga v7: Tuga vive en el agua (línea de agua fija, dos copias, ondas al 75 %) ---------- */
+.tuga-anclada {
+  transform: translateY(var(--tuga-ancla, 0px));
+}
+
+.tuga-escena {
+  --k: 0.51; /* 75 % de 0.68 para perspectiva en el agua calma */
+  position: relative;
+  width: min(100%, 720px);
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+
+.tuga-globo {
+  position: absolute;
+  z-index: 3;
+  right: calc(555px * var(--k) + 10px);
+  bottom: calc(190px * var(--k) + 40px);
+  width: max-content;
+  max-width: 290px;
+  opacity: 0;
+  filter: drop-shadow(0 8px 18px rgba(2, 6, 23, 0.32));
+  view-transition-name: marea-globo;
+  pointer-events: auto;
+}
+
+.tuga-globo-cuerpo {
+  background: var(--marea-glass);
+  color: var(--marea-text);
+  border-radius: 20px;
+  padding: 14px 18px;
+}
+
+.tuga-globo-cola {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.tuga-globo-cola path {
+  fill: var(--marea-glass);
+}
+
+/* Por debajo de la tarjeta (z-[1]): lo que queda bajo el agua pasa por detrás del vidrio. */
+.tuga-caja {
+  position: relative;
+  z-index: 0;
+  flex: none;
+  width: calc(620px * var(--k));
+  height: calc(350px * var(--k));
+  view-transition-name: marea-tuga;
+}
+
+.tuga-v6 {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 620px;
+  height: 400px;
+  transform-origin: 0 0;
+  transform: scale(var(--k));
+}
+
+/* Línea de agua: y = 196 px dentro de la caja de 620 x 400 (constante LINEA en TugaStage). */
+.tuga-capa {
+  position: absolute;
+  inset: 0;
+}
+
+.tuga-sobre {
+  clip-path: inset(-400px -400px 204px -400px);
+}
+
+.tuga-bajo {
+  clip-path: inset(196px -400px -400px -400px);
+  transform-origin: 310px 196px;
+  opacity: 0.5;
+  filter: blur(1.3px) saturate(0.75) brightness(0.82);
+  will-change: transform, opacity;
+}
+
+.tuga-sombra {
+  position: absolute;
+  left: 70px;
+  top: 178px;
+  width: 540px;
+  height: 78px;
+  background: radial-gradient(ellipse at 50% 30%, rgba(4, 14, 36, 0.44), rgba(4, 14, 36, 0) 68%);
+}
+
+.tuga-ondas,
+.tuga-gotas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 620px;
+  height: 400px;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.tuga-ondas ellipse {
+  fill: none;
+  stroke: #e6f1ff;
+}
+
+.tuga-gotas circle {
+  fill: #eaf4ff;
+}
+
+.tuga-mov {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+
+.tuga-grupo {
+  position: absolute;
+  left: 160px;
+  top: 40px;
+  width: 371px;
+  height: 192px;
+  transform-origin: 163.239px 95.167px;
+  will-change: transform;
+}
+
+.tuga-parte {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.tuga-parte img,
+img.tuga-parte {
+  display: block;
+}
+
+.tuga-cabeza {
+  width: 161px;
+  height: 135px;
+  transform-origin: 153.234px 103.901px;
+}
+
+.tuga-cabeza svg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+}
+
+.tuga-boca {
+  position: absolute;
+  left: 14px;
+  top: 94px;
+  width: 1px;
+  height: 1px;
+}
+
+.tuga-aleta {
+  transform-origin: 2.567px 31.892px;
+}
+
+.tuga-aleta-2 {
+  transform-origin: 3.21px -0.362px;
+}
+
+.tuga-pata {
+  transform-origin: 4.207px 38.025px;
+}
+
+.tuga-pata-2 {
+  transform-origin: 10.919px 32.645px;
+}
+
+@media (max-width: 699px) {
+  .tuga-escena {
+    --k: 0.36; /* 75 % de 0.48 */
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
+  .tuga-globo {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    align-self: flex-start;
+    margin: 0 0 -6px 4px;
+    width: auto;
+    max-width: min(300px, 88%);
+  }
+
+  .tuga-caja {
+    margin-right: -6px;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .tuga-globo-cuerpo {
+    background: var(--marea-solid);
+  }
+  .tuga-globo-cola path {
+    fill: var(--marea-solid);
+  }
+}
+
+/* ---------- View Transitions (morph de tarjeta + zambullida de Tuga) ---------- */
+.marea-morph-card {
+  view-transition-name: marea-auth-card;
+  transform-origin: var(--marea-origin-x, 50%) var(--marea-origin-y, 55%);
+}
+
+::view-transition-group(marea-auth-card) {
+  animation-duration: 500ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  border-radius: 24px;
+  overflow: clip;
+}
+
+::view-transition-old(marea-auth-card),
+::view-transition-new(marea-auth-card) {
+  height: 100%;
+  object-fit: none;
+  object-position: 50% 0;
+}
+
+::view-transition-old(marea-auth-card) {
+  animation: marea-vt-fuera 140ms ease-out both;
+}
+
+::view-transition-new(marea-auth-card) {
+  animation: marea-vt-dentro 300ms 100ms ease-out both;
+}
+
+@keyframes marea-vt-fuera {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes marea-vt-dentro {
+  from {
+    opacity: 0;
+  }
+}
+
+:root[data-vt='ingresar']::view-transition-group(marea-tuga) {
+  z-index: 1;
+}
+
+:root[data-vt='ingresar']::view-transition-group(marea-auth-card) {
+  z-index: 2;
+}
+
+:root[data-vt='ingresar']::view-transition-old(marea-tuga) {
+  animation: marea-vt-fuera 260ms ease-out both;
+}
+
+:root[data-vt='ingresar']::view-transition-old(marea-globo) {
+  transform-origin: 80% 100%;
+  animation: globo-fuera 200ms ease-in both;
+}
+
+@keyframes globo-fuera {
+  to {
+    transform: scale(0.55);
+    opacity: 0;
+  }
+}
+
+::view-transition-new(marea-tuga),
+::view-transition-new(marea-globo) {
+  animation: none;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 280ms;
+  animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}

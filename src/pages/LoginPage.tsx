@@ -7,7 +7,7 @@ import { selectLoginGreeting } from '../content/saludos';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
-import { validateEmail, validateUsername } from '../utils/authValidation';
+import { validateEmail } from '../utils/authValidation';
 import {
   getErrorAlertClasses,
   getGlassCardClasses,
@@ -40,20 +40,9 @@ export function LoginPage() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [showRecoveryNote, setShowRecoveryNote] = useState(false);
 
-  const validateIdentifier = (raw: string): string | null => {
-    const trimmed = raw.trim();
-    if (!trimmed) {
-      return 'Ingresa tu correo institucional o usuario.';
-    }
-    if (trimmed.includes('@') && !trimmed.startsWith('@')) {
-      return validateEmail(trimmed);
-    }
-    return validateUsername(trimmed);
-  };
-
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const mailErr = validateIdentifier(correo);
+    const mailErr = validateEmail(correo);
     if (mailErr || !password) {
       setEmailError(mailErr);
       setAuthError(!password ? 'Ingresa tu contraseña para continuar.' : null);
@@ -106,7 +95,7 @@ export function LoginPage() {
   return (
     <section
       aria-labelledby="ingresar-heading"
-      className={`w-full max-w-[400px] mx-auto rounded-[16px] p-6 sm:p-8 space-y-5 ${getGlassCardClasses(
+      className={`marea-morph-card w-full max-w-[400px] mx-auto rounded-[20px] p-6 sm:p-8 space-y-5 ${getGlassCardClasses(
         theme
       )}`}
     >
@@ -159,7 +148,7 @@ export function LoginPage() {
       <form noValidate onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
         <div className="space-y-1.5">
           <label htmlFor="login-correo" className="block text-sm font-semibold">
-            Correo o usuario
+            Correo
           </label>
           <div className="relative">
             <span
@@ -172,14 +161,14 @@ export function LoginPage() {
             </span>
             <input
               id="login-correo"
-              type="text"
+              type="email"
               value={correo}
               onChange={(e) => {
                 setCorreo(e.target.value);
                 if (emailError) setEmailError(null);
               }}
-              autoComplete="username"
-              placeholder="nombre@correo.com o usuario"
+              autoComplete="email"
+              placeholder="nombre@correo.com"
               aria-invalid={Boolean(emailError)}
               aria-describedby={emailError ? 'login-correo-error' : undefined}
               className={`${getInputClasses(theme, Boolean(emailError))} pl-10`}
@@ -214,7 +203,7 @@ export function LoginPage() {
                 theme
               )}`}
             >
-              ¿Olvidaste tu contraseña o usuario?
+              ¿Olvidaste tu contraseña?
             </button>
           </div>
         </div>
@@ -226,8 +215,7 @@ export function LoginPage() {
               isDark ? 'bg-[#0b1220] text-[#cbd5e1]' : 'bg-white text-[#334155]'
             }`}
           >
-            La recuperación de contraseña y usuario depende de la conexión del servicio de cuentas
-            (TS-01).
+            La recuperación de contraseña depende de la conexión del servicio de cuentas (TS-01).
           </p>
         )}
 

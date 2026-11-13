@@ -219,12 +219,63 @@ describe('Sprint 1 Autenticación y Rutas Privadas (US-01, US-02, US-03)', () =>
   });
 
   describe('US-02 · Registro con Google y username obligatorio', () => {
-    it('impide omitir el username redirigiendo /panel hacia /registro/google-username y permite completarlo', async () => {
+    it('impide omitir el username redirigiendo /panel hacia /registro/google-username y permite completarlo con nombre Title Case silencioso', async () => {
       const user = userEvent.setup();
       const adapter = createMockAdapter();
 
       render(
         <MemoryRouter initialEntries={['/panel']}>
+          <App
+            authOverrides={{
+              initialStatus: 'needs_username',
+              initialPendingGoogle: {
+                uid: 'g-123',
+                nombres: 'ANDRES FERNANDO',
+                apellidos: 'BARBOSA SALAZAR',
+                correo: 'andres.barbosa@correounivalle.edu.co',
+                avatar: 'https://lh3.googleusercontent.com/photo.jpg',
+              },
+              adapter,
+            }}
+          />
+        </MemoryRouter>
+      );
+
+      expect(
+        await screen.findByRole('heading', { name: /Elige tu @usuario/i })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/andres\.barbosa@correounivalle\.edu\.co/i)
+      ).toBeInTheDocument();
+      expect(screen.queryByLabelText(/Nombres/i)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/Apellidos/i)).not.toBeInTheDocument();
+
+      await user.type(
+        screen.getByRole('textbox', { name: /@usuario/i }),
+        'andres.google'
+      );
+      await user.click(screen.getByRole('button', { name: /Entrar al Salón/i }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('heading', { name: /^Panel$/i })).toBeInTheDocument();
+      });
+
+      expect(adapter.completeGoogleUsername).toHaveBeenCalledWith(
+        expect.objectContaining({
+          nombres: 'Andres Fernando',
+          apellidos: 'Barbosa Salazar',
+          username: 'andres.google',
+          avatar: 'https://lh3.googleusercontent.com/photo.jpg',
+        })
+      );
+    });
+
+    it('permite cambiar de cuenta con «Usar otra cuenta» y regresar a /ingresar', async () => {
+      const user = userEvent.setup();
+      const adapter = createMockAdapter();
+
+      render(
+        <MemoryRouter initialEntries={['/registro/google-username']}>
           <App
             authOverrides={{
               initialStatus: 'needs_username',
@@ -242,17 +293,13 @@ describe('Sprint 1 Autenticación y Rutas Privadas (US-01, US-02, US-03)', () =>
       );
 
       expect(
-        await screen.findByRole('heading', { name: /Elige tu nombre de usuario único/i })
+        await screen.findByRole('heading', { name: /Elige tu @usuario/i })
       ).toBeInTheDocument();
 
-      await user.type(
-        screen.getByRole('textbox', { name: /Nombre de usuario único/i }),
-        'andres.google'
-      );
-      await user.click(screen.getByRole('button', { name: /Confirmar usuario y entrar al Panel/i }));
+      await user.click(screen.getByRole('button', { name: /Usar otra cuenta/i }));
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: /^Panel$/i })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /^Ingresar$/i })).toBeInTheDocument();
       });
     });
 
@@ -280,6 +327,21 @@ describe('Sprint 1 Autenticación y Rutas Privadas (US-01, US-02, US-03)', () =>
   });
 
   describe('US-03 · Ingresar, rutas privadas y cierre de sesión', () => {
+    it('valida formato de correo en el campo «Correo» sin aceptar usuario plano', async () => {
+      const user = userEvent.setup();
+      render(
+        <MemoryRouter initialEntries={['/ingresar']}>
+          <App authOverrides={{ adapter: createMockAdapter() }} />
+        </MemoryRouter>
+      );
+
+      await user.type(screen.getByLabelText(/^Correo$/i), 'usuario_plano');
+      await user.type(screen.getByLabelText(/^Contraseña$/i), 'Clave123!');
+      await user.click(screen.getByRole('button', { name: /^Ingresar con correo$/i }));
+
+      expect(await screen.findByText(/Ingresa un correo válido/i)).toBeInTheDocument();
+    });
+
     it('muestra mensaje genérico ante credenciales incorrectas sin revelar qué campo falló', async () => {
       const user = userEvent.setup();
       const adapter = createMockAdapter({
@@ -295,14 +357,14 @@ describe('Sprint 1 Autenticación y Rutas Privadas (US-01, US-02, US-03)', () =>
       );
 
       await user.type(
-        screen.getByLabelText(/Correo o usuario/i),
+        screen.getByLabelText(/^Correo$/i),
         'andres.barbosa@correounivalle.edu.co'
       );
       await user.type(screen.getByLabelText(/^Contraseña$/i), 'ClaveMala123');
       await user.click(screen.getByRole('button', { name: /^Ingresar con correo$/i }));
 
       expect(await screen.findByText('Correo o contraseña incorrectos.')).toBeInTheDocument();
-      expect(screen.getByLabelText(/Correo o usuario/i)).toHaveValue(
+      expect(screen.getByLabelText(/^Correo$/i)).toHaveValue(
         'andres.barbosa@correounivalle.edu.co'
       );
     });
@@ -320,7 +382,7 @@ describe('Sprint 1 Autenticación y Rutas Privadas (US-01, US-02, US-03)', () =>
       expect(await screen.findByRole('heading', { name: /^Ingresar$/i })).toBeInTheDocument();
 
       await user.type(
-        screen.getByLabelText(/Correo o usuario/i),
+        screen.getByLabelText(/^Correo$/i),
         'andres.barbosa@correounivalle.edu.co'
       );
       await user.type(screen.getByLabelText(/^Contraseña$/i), 'Univalle2026!');
@@ -330,12 +392,10 @@ describe('Sprint 1 Autenticación y Rutas Privadas (US-01, US-02, US-03)', () =>
         expect(screen.getByRole('heading', { name: /^Panel$/i })).toBeInTheDocument();
       });
 
-      await user.click(screen.getByRole('button', { name: /^Cerrar sesión$/i }));
+      await user.click(screen.getByRole('button', { name: /Salir de la sesión/i }));
 
       await waitFor(() => {
-        expect(
-          screen.getByRole('heading', { name: /Salón de Estudio Colaborativo en Tiempo Real/i })
-        ).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /Vamos a estudiar/i })).toBeInTheDocument();
       });
 
       expect(window.localStorage.getItem('salon_returning_user')).toBe('1');

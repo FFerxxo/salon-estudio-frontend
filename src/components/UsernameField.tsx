@@ -122,32 +122,38 @@ export function UsernameField({
         />
       </div>
 
-      <div id={statusId} aria-live="polite" className="min-h-[18px] text-xs font-semibold">
-        {availability === 'checking' && !effectiveError && (
-          <span className={isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}>
-            Comprobando disponibilidad en el servidor...
-          </span>
-        )}
-        {availability === 'available' && !effectiveError && (
-          <span
-            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border ${
-              isDark
-                ? 'bg-[#022c22] text-[#6ee7b7] border-[#6ee7b7]'
-                : 'bg-[#ecfdf5] text-[#047857] border-[#047857]'
-            }`}
-          >
-            <Check className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>Disponible en el Salón de Estudio</span>
-          </span>
+      <div className="min-h-[48px] flex items-start pt-0.5">
+        <div
+          id={statusId}
+          aria-live="polite"
+          className={effectiveError ? 'sr-only' : 'text-xs font-semibold leading-5'}
+        >
+          {availability === 'checking' && !effectiveError && (
+            <span className={isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}>
+              Comprobando disponibilidad en el servidor...
+            </span>
+          )}
+          {availability === 'available' && !effectiveError && (
+            <span
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border ${
+                isDark
+                  ? 'bg-[#022c22] text-[#6ee7b7] border-[#6ee7b7]'
+                  : 'bg-[#ecfdf5] text-[#047857] border-[#047857]'
+              }`}
+            >
+              <Check className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>Disponible en el Salón de Estudio</span>
+            </span>
+          )}
+        </div>
+
+        {effectiveError && (
+          <p id={errorId} role="alert" className={getInlineErrorClasses(theme)}>
+            <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+            <span>{effectiveError}</span>
+          </p>
         )}
       </div>
-
-      {effectiveError && (
-        <p id={errorId} role="alert" className={getInlineErrorClasses(theme)}>
-          <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-          <span>{effectiveError}</span>
-        </p>
-      )}
     </div>
   );
 }
