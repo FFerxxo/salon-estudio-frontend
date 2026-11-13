@@ -3,6 +3,7 @@ import { Layout } from './components/Layout';
 import { RutaPrivada, RutaPublica } from './components/RutasProtegidas';
 import { AuthProvider } from './context/AuthContext';
 import { BaseTecnicaPage } from './pages/BaseTecnicaPage';
+import { ElegirUsuarioPage, RutaElegirUsuario } from './pages/ElegirUsuarioPage';
 import { PanelPage } from './pages/PanelPage';
 import { RegistroPage } from './pages/RegistroPage';
 import {
@@ -23,6 +24,9 @@ export function App() {
           <Route element={<RutaPublica />}>
             <Route path="/ingresar" element={<LoginPage />} />
             <Route path="/registro" element={<RegistroPage />} />
+          </Route>
+          <Route element={<RutaElegirUsuario />}>
+            <Route path="/registro/usuario" element={<ElegirUsuarioPage />} />
           </Route>
           <Route element={<RutaPrivada />}>
             <Route path="/panel" element={<PanelPage />} />
