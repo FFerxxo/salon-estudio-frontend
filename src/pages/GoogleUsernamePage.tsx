@@ -67,8 +67,19 @@ export function GoogleUsernamePage() {
       });
       navigate('/panel', { replace: true });
     } catch (err) {
-      if (err instanceof AuthApiError && err.field === 'username') {
-        setUsernameError(err.message);
+      if (err instanceof AuthApiError) {
+        const combinedNameErr = [err.fieldErrors?.nombres, err.fieldErrors?.apellidos]
+          .filter(Boolean)
+          .join(' ');
+        if (combinedNameErr) setNameError(combinedNameErr);
+        if (err.fieldErrors?.username || err.field === 'username') {
+          setUsernameError(err.fieldErrors?.username || err.message);
+        }
+        if (err.fieldErrors?.avatarUrl) {
+          setGeneralError(err.fieldErrors.avatarUrl);
+        } else if (!combinedNameErr && !err.fieldErrors?.username && err.field !== 'username') {
+          setGeneralError(err.message);
+        }
       } else if (err instanceof Error) {
         setGeneralError(err.message);
       } else {

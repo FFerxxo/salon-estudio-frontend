@@ -85,11 +85,15 @@ export function DashboardPage() {
           <div className="flex items-center gap-3">
             <span
               aria-hidden="true"
-              className={`h-12 w-12 rounded-2xl flex items-center justify-center text-2xl border border-[#64748b] ${
+              className={`h-12 w-12 rounded-2xl flex items-center justify-center text-2xl border border-[#64748b] overflow-hidden ${
                 isDark ? 'bg-[#0b1220]' : 'bg-[#f8fafc]'
               }`}
             >
-              {user?.avatar || '🚀'}
+              {user?.avatarUrl?.startsWith('https://') ? (
+                <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                user?.avatar || '🚀'
+              )}
             </span>
             <div>
               <p
@@ -178,7 +182,17 @@ export function ProfilePage() {
             <dt className={`text-xs font-bold uppercase ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}>
               Avatar
             </dt>
-            <dd className="text-xl">{user.avatar}</dd>
+            <dd className="text-xl">
+              {user.avatarUrl?.startsWith('https://') ? (
+                <img
+                  src={user.avatarUrl}
+                  alt="Avatar del estudiante"
+                  className="h-10 w-10 rounded-xl object-cover"
+                />
+              ) : (
+                user.avatar
+              )}
+            </dd>
           </div>
         </dl>
       )}

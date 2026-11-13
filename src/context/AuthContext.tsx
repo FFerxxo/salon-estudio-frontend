@@ -374,14 +374,28 @@ export function AuthProvider({
       }
 
       const token = await firebaseAuth.currentUser.getIdToken();
-      const profile = await createStudentProfile(token, {
-        nombres: payload.nombres.trim(),
-        apellidos: payload.apellidos.trim(),
-        username: payload.username.trim().toLowerCase(),
-        avatar: payload.avatar,
-        correo,
-        provider: 'google',
-      });
+      let profile: StudentProfile;
+      try {
+        profile = await createStudentProfile(token, {
+          nombres: payload.nombres.trim(),
+          apellidos: payload.apellidos.trim(),
+          username: payload.username.trim().toLowerCase(),
+          avatar: payload.avatar,
+          correo,
+          provider: 'google',
+        });
+      } catch (err) {
+        if (err instanceof AuthApiError && err.code === 'PROFILE_ALREADY_EXISTS') {
+          const existing = await getMyProfile(token);
+          if (existing.profileComplete && existing.user) {
+            profile = existing.user;
+          } else {
+            throw err;
+          }
+        } else {
+          throw err;
+        }
+      }
 
       setIdToken(token);
       setUser(profile);

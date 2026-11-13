@@ -5,7 +5,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import { INITIAL_GREETINGS_ES, RETURNING_GREETINGS_EN } from '../content/saludos';
 import type { AuthSessionAdapter } from '../context/AuthContext';
-import { AuthApiError, type StudentProfile } from '../services/authApi';
+import {
+  AuthApiError,
+  checkUsernameAvailability,
+  createStudentProfile,
+  getMyProfile,
+  type StudentProfile,
+} from '../services/authApi';
 
 function createMockAdapter(overrides: Partial<AuthSessionAdapter> = {}): AuthSessionAdapter {
   const defaultProfile: StudentProfile = {
@@ -384,6 +390,259 @@ describe('Sprint 1 Autenticación y Rutas Privadas (US-01, US-02, US-03)', () =>
       );
       expect(secondReturningEl).toHaveAttribute('lang', 'en');
       expect(secondReturningEl.textContent).not.toBe(firstReturningText);
+    });
+  });
+
+  describe('Contrato backend PR #5 · authApi y errores 400 por campo', () => {
+    it('consulta GET /api/usuarios/disponible?username= mapeando { disponible } y errores 400', async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ disponible: true }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              disponible: false,
+              error: 'Usa entre 3 y 20 letras, números o guion bajo (_), sin espacios.',
+            }),
+            {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' },
+            }
+          )
+        );
+      vi.stubGlobal('fetch', fetchMock);
+
+      const okRes = await checkUsernameAvailability('  @Andres_UV ');
+      expect(okRes).toEqual({ available: true });
+      expect(fetchMock.mock.calls[0][0]).toMatch(/\/api\/usuarios\/disponible\?username=%40andres_uv$|\/api\/usuarios\/disponible\?username=/);
+
+      try {
+        await checkUsernameAvailability('ab');
+        expect.fail('Debía lanzar AuthApiError en 400');
+      } catch (err) {
+        expect(err).toBeInstanceOf(AuthApiError);
+        const apiErr = err as AuthApiError;
+        expect(apiErr.status).toBe(400);
+        expect(apiErr.field).toBe('username');
+        expect(apiErr.message).toMatch(/entre 3 y 20 letras/i);
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    });
+
+    it('envía POST /api/usuarios sin correo ni provider, mapea avatar→avatarUrl null/https y adapta 201 + ambos 409', async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              uid: 'u-1',
+              nombres: 'Andrés',
+              apellidos: 'Barbosa',
+              username: 'andres_uv',
+              email: 'andres@correounivalle.edu.co',
+              avatarUrl: 'https://example.com/foto.png',
+              proveedor: 'google',
+              creadoEn: '2026-11-13T12:00:00.000Z',
+            }),
+            { status: 201, headers: { 'Content-Type': 'application/json' } }
+          )
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              error: 'Ese nombre de usuario ya está en uso. Prueba con otro.',
+              errores: { username: 'Ese nombre de usuario ya está en uso. Prueba con otro.' },
+            }),
+            { status: 409, headers: { 'Content-Type': 'application/json' } }
+          )
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ error: 'Tu cuenta ya tiene un perfil creado.' }), {
+            status: 409,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        );
+      vi.stubGlobal('fetch', fetchMock);
+
+      try {
+        const created = await createStudentProfile('tok-123', {
+          nombres: 'Andrés',
+          apellidos: 'Barbosa',
+          username: 'andres_uv',
+          avatar: '🚀',
+          correo: 'andres@correounivalle.edu.co',
+          provider: 'password',
+        });
+
+        const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+        expect(url).toMatch(/\/api\/usuarios$/);
+        expect(init.method).toBe('POST');
+        expect(init.headers).toMatchObject({ Authorization: 'Bearer tok-123' });
+        const sentBody = JSON.parse(String(init.body));
+        expect(sentBody).toEqual({
+          nombres: 'Andrés',
+          apellidos: 'Barbosa',
+          username: 'andres_uv',
+          avatarUrl: null,
+        });
+        expect(sentBody).not.toHaveProperty('correo');
+        expect(sentBody).not.toHaveProperty('provider');
+
+        expect(created).toMatchObject({
+          uid: 'u-1',
+          username: 'andres_uv',
+          correo: 'andres@correounivalle.edu.co',
+          avatarUrl: 'https://example.com/foto.png',
+          avatar: 'https://example.com/foto.png',
+          provider: 'google',
+        });
+
+        await expect(
+          createStudentProfile('tok-123', {
+            nombres: 'Andrés',
+            apellidos: 'Barbosa',
+            username: 'admin_uv',
+            avatarUrl: 'https://example.com/avatar.png',
+          })
+        ).rejects.toMatchObject({
+          status: 409,
+          code: 'USERNAME_TAKEN',
+          field: 'username',
+        });
+
+        await expect(
+          createStudentProfile('tok-123', {
+            nombres: 'Andrés',
+            apellidos: 'Barbosa',
+            username: 'andres_uv',
+            avatar: '🚀',
+          })
+        ).rejects.toMatchObject({
+          status: 409,
+          code: 'PROFILE_ALREADY_EXISTS',
+          field: 'general',
+        });
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    });
+
+    it('consulta GET /api/usuarios/me manejando 200 y 404 PERFIL_INCOMPLETO', async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              uid: 'u-2',
+              nombres: 'Esteban',
+              apellidos: 'Salazar',
+              username: 'esteban_uv',
+              email: 'esteban@correounivalle.edu.co',
+              avatarUrl: null,
+              proveedor: 'password',
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              error: 'Aún no has elegido tu nombre de usuario.',
+              codigo: 'PERFIL_INCOMPLETO',
+            }),
+            { status: 404, headers: { 'Content-Type': 'application/json' } }
+          )
+        );
+      vi.stubGlobal('fetch', fetchMock);
+
+      try {
+        const resOk = await getMyProfile('tok-me');
+        expect(fetchMock.mock.calls[0][0]).toMatch(/\/api\/usuarios\/me$/);
+        expect(resOk.profileComplete).toBe(true);
+        expect(resOk.user).toMatchObject({
+          username: 'esteban_uv',
+          correo: 'esteban@correounivalle.edu.co',
+          avatarUrl: null,
+          avatar: '🚀',
+          provider: 'password',
+        });
+
+        const resIncomplete = await getMyProfile('tok-me');
+        expect(resIncomplete).toEqual({ profileComplete: false });
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    });
+
+    it('muestra cada mensaje de errores de un 400 junto a su campo en RegisterPage', async () => {
+      const user = userEvent.setup();
+      const fetchMock = vi.fn(async () =>
+        new Response(
+          JSON.stringify({
+            error: 'Revisa los campos marcados.',
+            errores: {
+              nombres: 'Tus nombres pueden tener máximo 50 caracteres.',
+              username: 'Usa entre 3 y 20 letras, números o guion bajo (_), sin espacios.',
+            },
+          }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        )
+      );
+      vi.stubGlobal('fetch', fetchMock);
+
+      let parsedErr: AuthApiError | null = null;
+      try {
+        await createStudentProfile('tok-400', {
+          nombres: 'Andrés',
+          apellidos: 'Barbosa',
+          username: 'andres.uv',
+        });
+      } catch (err) {
+        parsedErr = err as AuthApiError;
+      } finally {
+        vi.unstubAllGlobals();
+      }
+
+      expect(parsedErr).toBeInstanceOf(AuthApiError);
+      expect(parsedErr?.fieldErrors).toEqual({
+        nombres: 'Tus nombres pueden tener máximo 50 caracteres.',
+        username: 'Usa entre 3 y 20 letras, números o guion bajo (_), sin espacios.',
+      });
+
+      const adapter = createMockAdapter({
+        registerWithEmail: vi.fn(async () => {
+          throw parsedErr!;
+        }),
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/registro']}>
+          <App authOverrides={{ adapter }} />
+        </MemoryRouter>
+      );
+
+      await user.type(screen.getByLabelText(/^Nombres$/i), 'Andrés');
+      await user.type(screen.getByLabelText(/^Apellidos$/i), 'Barbosa');
+      await user.type(screen.getByLabelText(/Nombre de usuario único/i), 'andres_uv');
+      await user.type(
+        screen.getByLabelText(/Correo institucional/i),
+        'andres.barbosa@correounivalle.edu.co'
+      );
+      await user.type(screen.getByLabelText(/^Contraseña$/i), 'Univalle2026!');
+      await user.click(screen.getByRole('button', { name: /Crear cuenta e ingresar al Panel/i }));
+
+      expect(
+        await screen.findByText(/Tus nombres pueden tener máximo 50 caracteres/i)
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/Usa entre 3 y 20 letras, números o guion bajo/i)
+      ).toBeInTheDocument();
     });
   });
 });

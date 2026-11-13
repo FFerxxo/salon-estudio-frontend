@@ -96,7 +96,19 @@ export function RegisterPage() {
       navigate('/panel', { replace: true });
     } catch (err) {
       if (err instanceof AuthApiError) {
-        if (err.field === 'username') {
+        const mapped: RegisterErrors = {};
+        if (err.fieldErrors?.nombres) mapped.nombres = err.fieldErrors.nombres;
+        if (err.fieldErrors?.apellidos) mapped.apellidos = err.fieldErrors.apellidos;
+        if (err.fieldErrors?.username) mapped.username = err.fieldErrors.username;
+        if (err.fieldErrors?.email) {
+          mapped.correo = err.fieldErrors.email;
+          if (err.code === 'EMAIL_TAKEN') mapped.emailRegistered = true;
+        }
+        if (err.fieldErrors?.avatarUrl) mapped.general = err.fieldErrors.avatarUrl;
+
+        if (Object.keys(mapped).length > 0) {
+          setErrors(mapped);
+        } else if (err.field === 'username') {
           setErrors({ username: err.message });
         } else if (err.field === 'email' || err.code === 'EMAIL_TAKEN') {
           setErrors({ correo: err.message, emailRegistered: true });

@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react';
 import { AlertCircle, Check } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
-import { checkUsernameAvailability } from '../services/authApi';
+import { AuthApiError, checkUsernameAvailability } from '../services/authApi';
 import { normalizeUsername, validateUsername } from '../utils/authValidation';
 import { getInlineErrorClasses } from '../utils/themeStyles';
 
@@ -33,9 +33,11 @@ export function UsernameField({
   const isDark = theme === 'dark';
 
   const [availability, setAvailability] = useState<AvailabilityState>('idle');
+  const [serverError, setServerError] = useState<string | null>(null);
 
   useEffect(() => {
     const clean = normalizeUsername(value);
+    setServerError(null);
     if (!checkAvailability || !clean || validateUsername(clean) !== null) {
       setAvailability('idle');
       return;
@@ -50,9 +52,14 @@ export function UsernameField({
         if (!cancelled) {
           setAvailability(result.available ? 'available' : 'taken');
         }
-      } catch {
+      } catch (err) {
         if (!cancelled) {
-          setAvailability('offline');
+          if (err instanceof AuthApiError && err.status === 400) {
+            setServerError(err.message);
+            setAvailability('idle');
+          } else {
+            setAvailability('offline');
+          }
         }
       }
     }, 350);
@@ -65,6 +72,7 @@ export function UsernameField({
 
   const effectiveError =
     error ||
+    serverError ||
     (availability === 'taken'
       ? `El nombre de usuario @${normalizeUsername(value)} ya está en uso. Elige otro para continuar.`
       : null);
