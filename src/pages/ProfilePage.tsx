@@ -9,6 +9,7 @@ import {
   RotateCcw,
   ShieldCheck,
 } from 'lucide-react';
+import { AppDialog } from '../components/AppDialog';
 import { AvatarPicker } from '../components/AvatarPicker';
 import { StatusBanner } from '../components/StatusBanner';
 import { UsernameField } from '../components/UsernameField';
@@ -221,7 +222,7 @@ function ProfileLoadError({
 
 export function ProfilePage() {
   useDocumentTitle('Perfil');
-  const { user, status, updateProfile, refreshProfile } = useAuth();
+  const { user, status, updateProfile, refreshProfile, deleteAccount } = useAuth();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -230,10 +231,15 @@ export function ProfilePage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [savedBannerVisible, setSavedBannerVisible] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const editHeadingRef = useRef<HTMLHeadingElement | null>(null);
   const editButtonRef = useRef<HTMLButtonElement | null>(null);
   const shouldRestoreEditBtnFocusRef = useRef(false);
+  const deleteTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const cancelDeleteBtnRef = useRef<HTMLButtonElement | null>(null);
 
   const [draft, setDraft] = useState<ProfileDraft>({
     nombres: '',
@@ -396,6 +402,23 @@ export function ProfilePage() {
       setErrors(mapSaveError(err));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteAccount();
+      setDeleteOpen(false);
+    } catch (err) {
+      setDeleteError(
+        err instanceof Error && err.message
+          ? err.message
+          : 'No pudimos eliminar tu cuenta. Intenta de nuevo.'
+      );
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -690,6 +713,111 @@ export function ProfilePage() {
           </dl>
         </>
       )}
+
+      <section
+        aria-labelledby="danger-zone-heading"
+        className={`mt-7 rounded-[14px] border p-4 space-y-3 ${
+          isDark
+            ? 'border-[#f87171]/60 bg-[#450a0a]/30'
+            : 'border-[#b91c1c]/40 bg-[#fef2f2]/60'
+        }`}
+      >
+        <div className="space-y-1">
+          <h2
+            id="danger-zone-heading"
+            className={`text-sm font-bold uppercase tracking-wide text-balance ${
+              isDark ? 'text-[#fecaca]' : 'text-[#b91c1c]'
+            }`}
+          >
+            Zona de peligro
+          </h2>
+          <p className={`text-sm text-pretty ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}>
+            Al eliminar tu cuenta se borran tu perfil, tus salas y tu acceso de forma permanente.
+          </p>
+        </div>
+
+        <button
+          ref={deleteTriggerRef}
+          type="button"
+          onClick={() => {
+            setDeleteError(null);
+            setDeleteOpen(true);
+          }}
+          className="min-h-[44px] px-4 py-2.5 rounded-xl bg-[#b91c1c] hover:bg-[#991b1b] text-white text-sm font-semibold active:scale-[0.96] transition-[transform,background-color]"
+        >
+          Eliminar cuenta
+        </button>
+      </section>
+
+      <AppDialog
+        open={deleteOpen}
+        role="alertdialog"
+        title="¿Eliminar tu cuenta?"
+        descriptionId="delete-account-desc"
+        initialFocusRef={cancelDeleteBtnRef}
+        disableClose={deleting}
+        onClose={() => {
+          if (!deleting) {
+            setDeleteOpen(false);
+            setDeleteError(null);
+          }
+        }}
+      >
+        <div className="space-y-3 text-sm">
+          <div id="delete-account-desc" className="space-y-3">
+            <p className={`text-pretty ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}>
+              Al confirmar se perderá de forma permanente:
+            </p>
+            <ul
+              className={`list-disc pl-5 space-y-1.5 text-pretty ${
+                isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'
+              }`}
+            >
+              <li>Tu perfil y tu nombre de usuario.</li>
+              <li>Las salas que creaste.</li>
+              <li>Tus mensajes en salas de otras personas quedan como «Cuenta eliminada».</li>
+            </ul>
+            <p className="font-bold text-pretty">Esto no se puede deshacer.</p>
+          </div>
+
+          {deleteError && (
+            <div
+              role="alert"
+              className={`rounded-xl p-3 text-sm font-semibold flex items-center gap-2 ${getErrorAlertClasses(
+                theme
+              )}`}
+            >
+              <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
+              <span className="text-pretty">{deleteError}</span>
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row sm:justify-end gap-2.5 pt-4">
+            <button
+              ref={cancelDeleteBtnRef}
+              type="button"
+              disabled={deleting}
+              onClick={() => {
+                setDeleteOpen(false);
+                setDeleteError(null);
+              }}
+              className={`min-h-[44px] px-4 py-2.5 rounded-xl border-[1.5px] border-[#64748b] text-sm font-semibold active:scale-[0.96] transition-[transform,background-color] disabled:opacity-60 disabled:cursor-not-allowed ${
+                isDark ? 'text-[#f8fafc] hover:bg-white/10' : 'text-[#0f172a] hover:bg-slate-100'
+              }`}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={() => void handleConfirmDelete()}
+              className="min-h-[44px] px-4 py-2.5 rounded-xl bg-[#b91c1c] hover:bg-[#991b1b] text-white text-sm font-semibold active:scale-[0.96] transition-[transform,background-color] disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {deleting ? 'Eliminando…' : 'Eliminar cuenta'}
+            </button>
+          </div>
+        </div>
+      </AppDialog>
     </section>
   );
 }

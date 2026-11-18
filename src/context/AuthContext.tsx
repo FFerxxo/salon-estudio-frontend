@@ -18,6 +18,7 @@ import {
 import {
   AuthApiError,
   createStudentProfile,
+  deleteMyAccount,
   getMyProfile,
   updateMyProfile,
   type StudentProfile,
@@ -61,6 +62,7 @@ export interface AuthSessionAdapter {
   completeGoogleUsername(payload: Omit<RegisterInput, 'password'>): Promise<StudentProfile>;
   updateProfile?: (payload: UpdateProfilePayload) => Promise<StudentProfile>;
   getMyProfile?: () => Promise<StudentProfile | null>;
+  deleteAccount?: () => Promise<void>;
   logout(): Promise<void>;
 }
 
@@ -69,6 +71,8 @@ interface AuthContextValue {
   user: StudentProfile | null;
   pendingGoogleUser: PendingGoogleUser | null;
   idToken: string | null;
+  pendingDeleteRedirect: boolean;
+  clearPendingDeleteRedirect: () => void;
   registerWithEmail: (input: RegisterInput) => Promise<StudentProfile>;
   loginWithEmail: (correo: string, password: string) => Promise<AuthStatus>;
   loginWithGoogle: () => Promise<AuthStatus>;
@@ -80,6 +84,7 @@ interface AuthContextValue {
   }) => Promise<StudentProfile>;
   updateProfile: (payload: UpdateProfilePayload) => Promise<StudentProfile>;
   refreshProfile: () => Promise<StudentProfile | null>;
+  deleteAccount: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -88,6 +93,8 @@ const defaultAuthContext: AuthContextValue = {
   user: null,
   pendingGoogleUser: null,
   idToken: null,
+  pendingDeleteRedirect: false,
+  clearPendingDeleteRedirect: () => {},
   registerWithEmail: async () => {
     throw new Error('AuthProvider no inicializado');
   },
@@ -100,6 +107,9 @@ const defaultAuthContext: AuthContextValue = {
     throw new Error('AuthProvider no inicializado');
   },
   refreshProfile: async () => null,
+  deleteAccount: async () => {
+    throw new Error('AuthProvider no inicializado');
+  },
   logout: async () => {},
 };
 
@@ -162,6 +172,11 @@ export function AuthProvider({
     initialPendingGoogle
   );
   const [idToken, setIdToken] = useState<string | null>(null);
+  const [pendingDeleteRedirect, setPendingDeleteRedirect] = useState(false);
+
+  const clearPendingDeleteRedirect = useCallback(() => {
+    setPendingDeleteRedirect(false);
+  }, []);
 
   useEffect(() => {
     if (adapter || initialStatus) {
@@ -582,6 +597,33 @@ export function AuthProvider({
     return res.user ?? null;
   }, [adapter, idToken]);
 
+  const deleteAccount = useCallback(async () => {
+    if (adapter?.deleteAccount) {
+      await adapter.deleteAccount();
+    } else if (isMocksEnabled()) {
+      await deleteMyAccount('mock-token');
+    } else {
+      const token = (await firebaseAuth?.currentUser?.getIdToken()) ?? idToken;
+      if (!token) {
+        throw new AuthApiError(
+          'Tu sesión terminó. Vuelve a ingresar.',
+          401,
+          'SESSION_EXPIRED'
+        );
+      }
+      await deleteMyAccount(token);
+      if (firebaseAuth) {
+        await signOut(firebaseAuth).catch(() => {});
+      }
+    }
+
+    setPendingDeleteRedirect(true);
+    setUser(null);
+    setPendingGoogleUser(null);
+    setIdToken(null);
+    setStatus('unauthenticated');
+  }, [adapter, idToken]);
+
   const logout = useCallback(async () => {
     if (adapter) {
       await adapter.logout();
@@ -604,12 +646,15 @@ export function AuthProvider({
         user,
         pendingGoogleUser,
         idToken,
+        pendingDeleteRedirect,
+        clearPendingDeleteRedirect,
         registerWithEmail,
         loginWithEmail,
         loginWithGoogle,
         completeGoogleUsername,
         updateProfile,
         refreshProfile,
+        deleteAccount,
         logout,
       }}
     >
