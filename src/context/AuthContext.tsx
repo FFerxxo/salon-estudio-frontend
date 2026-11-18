@@ -12,16 +12,27 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
-  updateProfile,
+  updateProfile as updateFirebaseProfile,
   type User as FirebaseUser,
 } from 'firebase/auth';
 import {
   AuthApiError,
   createStudentProfile,
   getMyProfile,
+  updateMyProfile,
   type StudentProfile,
+  type UpdateProfilePayload,
 } from '../services/authApi';
 import { firebaseAuth, googleProvider, hasFirebaseConfig } from '../services/firebase';
+import {
+  hasActiveMockSession,
+  mockCompleteGoogleUsername,
+  mockLoginWithEmail,
+  mockLoginWithGoogle,
+  mockLogout,
+  mockRegisterWithEmail,
+} from '../services/mockApi';
+import { isMocksEnabled } from '../services/mockConfig';
 import { markReturningUser } from '../content/saludos';
 
 export type AuthStatus = 'loading' | 'unauthenticated' | 'needs_username' | 'authenticated';
@@ -48,6 +59,8 @@ export interface AuthSessionAdapter {
   loginWithEmail(correo: string, password: string): Promise<{ status: AuthStatus; user?: StudentProfile; pending?: PendingGoogleUser }>;
   loginWithGoogle(): Promise<{ status: AuthStatus; user?: StudentProfile; pending?: PendingGoogleUser }>;
   completeGoogleUsername(payload: Omit<RegisterInput, 'password'>): Promise<StudentProfile>;
+  updateProfile?: (payload: UpdateProfilePayload) => Promise<StudentProfile>;
+  getMyProfile?: () => Promise<StudentProfile | null>;
   logout(): Promise<void>;
 }
 
@@ -65,6 +78,8 @@ interface AuthContextValue {
     username: string;
     avatar: string;
   }) => Promise<StudentProfile>;
+  updateProfile: (payload: UpdateProfilePayload) => Promise<StudentProfile>;
+  refreshProfile: () => Promise<StudentProfile | null>;
   logout: () => Promise<void>;
 }
 
@@ -81,6 +96,10 @@ const defaultAuthContext: AuthContextValue = {
   completeGoogleUsername: async () => {
     throw new Error('AuthProvider no inicializado');
   },
+  updateProfile: async () => {
+    throw new Error('AuthProvider no inicializado');
+  },
+  refreshProfile: async () => null,
   logout: async () => {},
 };
 
@@ -133,6 +152,9 @@ export function AuthProvider({
 }: AuthProviderProps) {
   const [status, setStatus] = useState<AuthStatus>(() => {
     if (initialStatus) return initialStatus;
+    if (!adapter && isMocksEnabled()) {
+      return hasActiveMockSession() ? 'loading' : 'unauthenticated';
+    }
     return hasFirebaseConfig && firebaseAuth && !adapter ? 'loading' : 'unauthenticated';
   });
   const [user, setUser] = useState<StudentProfile | null>(initialUser);
@@ -142,7 +164,47 @@ export function AuthProvider({
   const [idToken, setIdToken] = useState<string | null>(null);
 
   useEffect(() => {
-    if (adapter || initialStatus || !hasFirebaseConfig || !firebaseAuth) {
+    if (adapter || initialStatus) {
+      return;
+    }
+
+    if (isMocksEnabled()) {
+      if (!hasActiveMockSession()) {
+        return;
+      }
+
+      let cancelled = false;
+      void (async () => {
+        try {
+          const profileResp = await getMyProfile('mock-token');
+          if (cancelled) return;
+          if (profileResp.profileComplete && profileResp.user) {
+            setIdToken('mock-token');
+            setUser(profileResp.user);
+            setPendingGoogleUser(null);
+            setStatus('authenticated');
+          } else {
+            setUser(null);
+            setPendingGoogleUser(null);
+            setIdToken(null);
+            setStatus('unauthenticated');
+          }
+        } catch {
+          if (!cancelled) {
+            setUser(null);
+            setPendingGoogleUser(null);
+            setIdToken(null);
+            setStatus('unauthenticated');
+          }
+        }
+      })();
+
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (!hasFirebaseConfig || !firebaseAuth) {
       return;
     }
 
@@ -188,6 +250,15 @@ export function AuthProvider({
         return created;
       }
 
+      if (isMocksEnabled()) {
+        const created = await mockRegisterWithEmail(input);
+        setIdToken('mock-token');
+        setUser(created);
+        setPendingGoogleUser(null);
+        setStatus('authenticated');
+        return created;
+      }
+
       if (!firebaseAuth) {
         throw new AuthApiError(
           'Configuración de autenticación no disponible en este entorno.',
@@ -204,7 +275,7 @@ export function AuthProvider({
           input.password
         );
         createdFbUser = cred.user;
-        await updateProfile(cred.user, {
+        await updateFirebaseProfile(cred.user, {
           displayName: `${input.nombres.trim()} ${input.apellidos.trim()}`,
         });
         const token = await cred.user.getIdToken();
@@ -263,6 +334,15 @@ export function AuthProvider({
         return res.status;
       }
 
+      if (isMocksEnabled()) {
+        const res = await mockLoginWithEmail(correo);
+        setIdToken('mock-token');
+        setUser(res.user ?? null);
+        setPendingGoogleUser(null);
+        setStatus(res.status);
+        return res.status;
+      }
+
       if (!firebaseAuth) {
         throw new AuthApiError(
           'Configuración de autenticación no disponible en este entorno.',
@@ -300,6 +380,15 @@ export function AuthProvider({
       const res = await adapter.loginWithGoogle();
       setUser(res.user ?? null);
       setPendingGoogleUser(res.pending ?? null);
+      setStatus(res.status);
+      return res.status;
+    }
+
+    if (isMocksEnabled()) {
+      const res = await mockLoginWithGoogle();
+      setIdToken('mock-token');
+      setUser(res.user ?? null);
+      setPendingGoogleUser(null);
       setStatus(res.status);
       return res.status;
     }
@@ -365,6 +454,15 @@ export function AuthProvider({
         return profile;
       }
 
+      if (isMocksEnabled()) {
+        const profile = await mockCompleteGoogleUsername({ ...payload, correo });
+        setIdToken('mock-token');
+        setUser(profile);
+        setPendingGoogleUser(null);
+        setStatus('authenticated');
+        return profile;
+      }
+
       if (!firebaseAuth?.currentUser) {
         throw new AuthApiError(
           'Tu sesión de Google expiró. Vuelve a iniciar sesión.',
@@ -406,9 +504,89 @@ export function AuthProvider({
     [adapter, pendingGoogleUser]
   );
 
+  const updateProfile = useCallback(
+    async (payload: UpdateProfilePayload): Promise<StudentProfile> => {
+      if (adapter?.updateProfile) {
+        const updated = await adapter.updateProfile(payload);
+        setUser(updated);
+        return updated;
+      }
+
+      if (isMocksEnabled()) {
+        const updated = await updateMyProfile('mock-token', payload);
+        setUser(updated);
+        return updated;
+      }
+
+      const token = firebaseAuth?.currentUser
+        ? await firebaseAuth.currentUser.getIdToken()
+        : idToken;
+      if (!token) {
+        throw new AuthApiError(
+          'Tu sesión terminó. Vuelve a ingresar.',
+          401,
+          'SESSION_EXPIRED'
+        );
+      }
+
+      setIdToken(token);
+      const updated = await updateMyProfile(token, payload);
+      setUser(updated);
+
+      if (
+        firebaseAuth?.currentUser &&
+        (payload.nombres !== undefined || payload.apellidos !== undefined)
+      ) {
+        const nextDisplayName = `${updated.nombres} ${updated.apellidos}`.trim();
+        if (nextDisplayName) {
+          await updateFirebaseProfile(firebaseAuth.currentUser, {
+            displayName: nextDisplayName,
+          }).catch(() => {});
+        }
+      }
+
+      return updated;
+    },
+    [adapter, idToken]
+  );
+
+  const refreshProfile = useCallback(async (): Promise<StudentProfile | null> => {
+    if (adapter?.getMyProfile) {
+      const profile = await adapter.getMyProfile();
+      if (profile) {
+        setUser(profile);
+      }
+      return profile;
+    }
+
+    if (isMocksEnabled()) {
+      const res = await getMyProfile('mock-token');
+      if (res.user) {
+        setUser(res.user);
+      }
+      return res.user ?? null;
+    }
+
+    const token = firebaseAuth?.currentUser
+      ? await firebaseAuth.currentUser.getIdToken()
+      : idToken;
+    if (!token) {
+      return null;
+    }
+
+    setIdToken(token);
+    const res = await getMyProfile(token);
+    if (res.user) {
+      setUser(res.user);
+    }
+    return res.user ?? null;
+  }, [adapter, idToken]);
+
   const logout = useCallback(async () => {
     if (adapter) {
       await adapter.logout();
+    } else if (isMocksEnabled()) {
+      await mockLogout();
     } else if (firebaseAuth) {
       await signOut(firebaseAuth);
     }
@@ -430,6 +608,8 @@ export function AuthProvider({
         loginWithEmail,
         loginWithGoogle,
         completeGoogleUsername,
+        updateProfile,
+        refreshProfile,
         logout,
       }}
     >

@@ -9,6 +9,7 @@ interface UsernameFieldProps {
   id?: string;
   label?: string;
   value: string;
+  currentUsername?: string;
   onChange: (normalizedValue: string) => void;
   error?: string | null;
   checkAvailability?: boolean;
@@ -21,6 +22,7 @@ export function UsernameField({
   id,
   label = 'Nombre de usuario único',
   value,
+  currentUsername,
   onChange,
   error,
   checkAvailability = true,
@@ -37,8 +39,14 @@ export function UsernameField({
 
   useEffect(() => {
     const clean = normalizeUsername(value);
+    const currentClean = currentUsername ? normalizeUsername(currentUsername) : '';
     setServerError(null);
-    if (!checkAvailability || !clean || validateUsername(clean) !== null) {
+    if (
+      !checkAvailability ||
+      !clean ||
+      (currentClean && clean === currentClean) ||
+      validateUsername(clean) !== null
+    ) {
       setAvailability('idle');
       return;
     }
@@ -68,13 +76,13 @@ export function UsernameField({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [value, checkAvailability]);
+  }, [value, checkAvailability, currentUsername]);
 
   const effectiveError =
     error ||
     serverError ||
     (availability === 'taken'
-      ? `El nombre de usuario @${normalizeUsername(value)} ya está en uso. Elige otro para continuar.`
+      ? 'Ese nombre de usuario ya está en uso. Prueba con otro.'
       : null);
 
   return (

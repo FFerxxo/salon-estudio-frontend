@@ -1,3 +1,6 @@
+import { isMocksEnabled } from './mockConfig';
+import * as mockApi from './mockApi';
+
 export interface StudentProfile {
   uid: string;
   nombres: string;
@@ -20,7 +23,22 @@ export interface CreateProfilePayload {
   provider?: 'password' | 'google';
 }
 
-export type AuthApiFieldName = 'nombres' | 'apellidos' | 'username' | 'avatarUrl' | 'email';
+export interface UpdateProfilePayload {
+  nombres?: string;
+  apellidos?: string;
+  username?: string;
+  avatar?: string;
+  avatarUrl?: string | null;
+  correo?: string;
+}
+
+export type AuthApiFieldName =
+  | 'nombres'
+  | 'apellidos'
+  | 'username'
+  | 'avatarUrl'
+  | 'email'
+  | 'correo';
 export type AuthApiFieldErrors = Partial<Record<AuthApiFieldName, string>>;
 
 interface BackendUserPayload {
@@ -105,13 +123,24 @@ function normalizeStudentProfile(
 function sanitizeFieldErrors(raw: unknown): AuthApiFieldErrors | undefined {
   if (!raw || typeof raw !== 'object') return undefined;
   const entries = Object.entries(raw as Record<string, unknown>);
-  const validKeys: AuthApiFieldName[] = ['nombres', 'apellidos', 'username', 'avatarUrl', 'email'];
+  const validKeys: AuthApiFieldName[] = [
+    'nombres',
+    'apellidos',
+    'username',
+    'avatarUrl',
+    'email',
+    'correo',
+  ];
   const cleaned: AuthApiFieldErrors = {};
 
   for (const [key, val] of entries) {
     if (validKeys.includes(key as AuthApiFieldName) && typeof val === 'string' && val.trim()) {
       cleaned[key as AuthApiFieldName] = val.trim();
     }
+  }
+
+  if (cleaned.correo && !cleaned.email) {
+    cleaned.email = cleaned.correo;
   }
 
   return Object.keys(cleaned).length > 0 ? cleaned : undefined;
@@ -125,6 +154,7 @@ async function parseErrorResponse(
   let code = `HTTP_${response.status}`;
   let field: 'username' | 'email' | 'general' | undefined = defaultField;
   let fieldErrors: AuthApiFieldErrors | undefined;
+  let rawField: 'username' | 'email' | 'correo' | 'general' | undefined;
 
   try {
     const body = (await response.json()) as {
@@ -132,12 +162,16 @@ async function parseErrorResponse(
       message?: string;
       code?: string;
       codigo?: string;
-      field?: 'username' | 'email' | 'general';
+      field?: 'username' | 'email' | 'correo' | 'general';
+      campo?: 'username' | 'email' | 'correo' | 'general';
       errores?: Record<string, unknown>;
     };
     message = body.error || body.message || message;
     if (body.code || body.codigo) code = body.code || body.codigo || code;
-    if (body.field) field = body.field;
+    rawField = body.field ?? body.campo;
+    if (rawField) {
+      field = rawField === 'correo' ? 'email' : rawField;
+    }
     fieldErrors = sanitizeFieldErrors(body.errores);
   } catch {
     // Mantiene el mensaje predeterminado cuando no hay cuerpo JSON
@@ -145,7 +179,16 @@ async function parseErrorResponse(
 
   if (response.status === 409) {
     const lowerMsg = message.toLowerCase();
-    if (fieldErrors?.username || lowerMsg.includes('usuario') || lowerMsg.includes('username')) {
+    const isEmailConflict =
+      rawField === 'correo' ||
+      rawField === 'email' ||
+      Boolean(fieldErrors?.correo || fieldErrors?.email) ||
+      lowerMsg.includes('correo');
+
+    if (isEmailConflict) {
+      code = 'EMAIL_TAKEN';
+      field = 'email';
+    } else if (fieldErrors?.username || lowerMsg.includes('usuario') || lowerMsg.includes('username')) {
       if (code === 'HTTP_409') code = 'USERNAME_TAKEN';
       field = field ?? 'username';
     } else if (lowerMsg.includes('perfil creado') || lowerMsg.includes('ya tiene un perfil')) {
@@ -156,7 +199,7 @@ async function parseErrorResponse(
     }
   } else if (response.status === 400 && !field && fieldErrors) {
     if (fieldErrors.username) field = 'username';
-    else if (fieldErrors.email) field = 'email';
+    else if (fieldErrors.email || fieldErrors.correo) field = 'email';
   }
 
   return new AuthApiError(message, response.status, code, field, fieldErrors);
@@ -166,6 +209,10 @@ async function parseErrorResponse(
 export async function checkUsernameAvailability(
   username: string
 ): Promise<{ available: boolean }> {
+  if (isMocksEnabled()) {
+    return mockApi.mockCheckUsernameAvailability(username);
+  }
+
   const clean = encodeURIComponent(username.trim().toLowerCase());
   const response = await fetch(
     `${getApiBaseUrl()}/api/usuarios/disponible?username=${clean}`
@@ -218,6 +265,10 @@ export async function createStudentProfile(
 export async function getMyProfile(
   idToken: string
 ): Promise<{ profileComplete: boolean; user?: StudentProfile }> {
+  if (isMocksEnabled()) {
+    return mockApi.mockGetMyProfile();
+  }
+
   const response = await fetch(`${getApiBaseUrl()}/api/usuarios/me`, {
     headers: {
       Authorization: `Bearer ${idToken}`,
@@ -247,4 +298,67 @@ export async function getMyProfile(
     profileComplete: data.profileComplete ?? Boolean(user?.username),
     user,
   };
+}
+
+/** Actualiza parcialmente el perfil autenticado vía PATCH /api/usuarios/me. */
+export async function updateMyProfile(
+  idToken: string,
+  payload: UpdateProfilePayload
+): Promise<StudentProfile> {
+  if (isMocksEnabled()) {
+    return mockApi.mockUpdateMyProfile(payload);
+  }
+
+  const requestBody: Record<string, unknown> = {};
+
+  if (payload.nombres !== undefined) {
+    requestBody.nombres = payload.nombres.trim();
+  }
+  if (payload.apellidos !== undefined) {
+    requestBody.apellidos = payload.apellidos.trim();
+  }
+  if (payload.username !== undefined) {
+    requestBody.username = payload.username.trim().toLowerCase();
+  }
+  if (payload.correo !== undefined) {
+    requestBody.correo = payload.correo.trim();
+  }
+
+  if (payload.avatar !== undefined) {
+    const validAvatarHttps = toValidHttpsAvatarUrl(payload.avatar);
+    if (validAvatarHttps) {
+      requestBody.avatarUrl = validAvatarHttps;
+    } else if (payload.avatar.trim()) {
+      requestBody.avatar = payload.avatar.trim();
+    }
+  }
+
+  if (payload.avatarUrl !== undefined) {
+    if (payload.avatarUrl === null) {
+      requestBody.avatarUrl = null;
+    } else {
+      const validHttps = toValidHttpsAvatarUrl(payload.avatarUrl);
+      if (validHttps) {
+        requestBody.avatarUrl = validHttps;
+      } else if (payload.avatarUrl.trim() && requestBody.avatar === undefined) {
+        requestBody.avatar = payload.avatarUrl.trim();
+      }
+    }
+  }
+
+  const response = await fetch(`${getApiBaseUrl()}/api/usuarios/me`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${idToken}`,
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  if (!response.ok) {
+    throw await parseErrorResponse(response);
+  }
+
+  const data = (await response.json()) as { user?: BackendUserPayload } & BackendUserPayload;
+  return normalizeStudentProfile(data.user ?? data);
 }
