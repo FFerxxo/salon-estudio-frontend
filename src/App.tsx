@@ -6,13 +6,13 @@ import { ThemeProvider } from './context/ThemeContext';
 import { BaseTecnicaPage } from './pages/BaseTecnicaPage';
 import { GoogleUsernamePage } from './pages/GoogleUsernamePage';
 import { LoginPage } from './pages/LoginPage';
+import { ProfilePage } from './pages/ProfilePage';
 import { RegisterPage } from './pages/RegisterPage';
 import {
   DashboardPage,
   HelpPage,
   HomePage,
   NotFoundPage,
-  ProfilePage,
   RoomPage,
 } from './pages/SiteMapPages';
 
