@@ -75,7 +75,7 @@ export function HomePage() {
   };
 
   return (
-    <div className="tuga-anclada w-full max-w-[720px] mx-auto flex flex-col items-center">
+    <div className="tuga-anclada w-full max-w-[720px] mx-auto flex flex-col items-center overflow-x-clip">
       <TugaStage
         phrase={phrase}
         theme={theme}

@@ -362,3 +362,35 @@ export async function updateMyProfile(
   const data = (await response.json()) as { user?: BackendUserPayload } & BackendUserPayload;
   return normalizeStudentProfile(data.user ?? data);
 }
+
+/** Elimina la cuenta del estudiante autenticado vía DELETE /api/usuarios/me. */
+export async function deleteMyAccount(idToken: string): Promise<void> {
+  if (isMocksEnabled()) {
+    return mockApi.mockDeleteMyAccount();
+  }
+
+  const response = await fetch(`${getApiBaseUrl()}/api/usuarios/me`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${idToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    let msg =
+      response.status === 401
+        ? 'Tu sesión terminó. Vuelve a ingresar.'
+        : 'No pudimos eliminar tu cuenta. Intenta de nuevo.';
+    try {
+      const body = (await response.json()) as { error?: string; message?: string };
+      msg = body.error || body.message || msg;
+    } catch {
+      // Mantiene el mensaje predeterminado cuando no hay cuerpo JSON
+    }
+    throw new AuthApiError(
+      msg,
+      response.status,
+      response.status === 401 ? 'SESSION_EXPIRED' : 'DELETE_ACCOUNT_ERROR'
+    );
+  }
+}

@@ -4,7 +4,7 @@ import { useTheme } from '../context/ThemeContext';
 
 /** Protege rutas privadas (/panel, /perfil, /salas/:id) y bloquea omitir username en Google. */
 export function ProtectedRoute() {
-  const { status } = useAuth();
+  const { status, pendingDeleteRedirect } = useAuth();
   const { theme } = useTheme();
   const location = useLocation();
 
@@ -29,6 +29,9 @@ export function ProtectedRoute() {
   }
 
   if (status !== 'authenticated') {
+    if (pendingDeleteRedirect) {
+      return <Navigate to="/ingresar" replace state={{ accountDeleted: true }} />;
+    }
     return <Navigate to="/ingresar" state={{ from: location.pathname }} replace />;
   }
 

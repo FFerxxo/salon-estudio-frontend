@@ -1,8 +1,9 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { AlertCircle, Mail } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { GoogleAuthButton } from '../components/GoogleAuthButton';
 import { PasswordField } from '../components/PasswordField';
+import { StatusBanner } from '../components/StatusBanner';
 import { selectLoginGreeting } from '../content/saludos';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -19,18 +20,32 @@ import {
 
 interface LocationState {
   from?: string;
+  accountDeleted?: boolean;
 }
 
 export function LoginPage() {
   useDocumentTitle('Ingresar');
   const navigate = useNavigate();
   const location = useLocation();
-  const { loginWithEmail, loginWithGoogle } = useAuth();
+  const { loginWithEmail, loginWithGoogle, pendingDeleteRedirect, clearPendingDeleteRedirect } =
+    useAuth();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
   const state = (location.state as LocationState | null) ?? null;
   const redirectTarget = state?.from && state.from !== '/ingresar' ? state.from : '/panel';
+  const [deletedBannerVisible, setDeletedBannerVisible] = useState(
+    Boolean(state?.accountDeleted || pendingDeleteRedirect)
+  );
+
+  useEffect(() => {
+    if (state?.accountDeleted || pendingDeleteRedirect) {
+      setDeletedBannerVisible(true);
+      if (pendingDeleteRedirect) {
+        clearPendingDeleteRedirect();
+      }
+    }
+  }, [state?.accountDeleted, pendingDeleteRedirect, clearPendingDeleteRedirect]);
 
   const [greeting] = useState(() => selectLoginGreeting());
   const [correo, setCorreo] = useState('');
@@ -117,6 +132,13 @@ export function LoginPage() {
       >
         {greeting.text}
       </p>
+
+      {deletedBannerVisible && (
+        <StatusBanner
+          message="Tu cuenta fue eliminada"
+          onDismiss={() => setDeletedBannerVisible(false)}
+        />
+      )}
 
       {authError && (
         <div

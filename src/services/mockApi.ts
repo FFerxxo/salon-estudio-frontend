@@ -36,7 +36,7 @@ export interface MockRegisterInput {
   password?: string;
 }
 
-let inMemoryProfile: StudentProfile | null = null;
+let inMemoryProfile: StudentProfile | null = { ...DEFAULT_MOCK_PROFILE };
 let inMemorySessionActive: boolean | null = null;
 
 function isValidHttpsUrl(raw?: string | null): string | null {
@@ -51,7 +51,7 @@ function isValidHttpsUrl(raw?: string | null): string | null {
   }
 }
 
-function readStoredProfile(): StudentProfile {
+function readStoredProfileOrNull(): StudentProfile | null {
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
       const raw = window.localStorage.getItem(MOCK_PROFILE_STORAGE_KEY);
@@ -80,7 +80,11 @@ function readStoredProfile(): StudentProfile {
     return { ...inMemoryProfile };
   }
 
-  return { ...DEFAULT_MOCK_PROFILE };
+  return null;
+}
+
+function readStoredProfile(): StudentProfile {
+  return readStoredProfileOrNull() ?? { ...DEFAULT_MOCK_PROFILE };
 }
 
 function writeStoredProfile(profile: StudentProfile): void {
@@ -129,10 +133,7 @@ export function getMockProfileSnapshot(): StudentProfile {
   return { ...readStoredProfile() };
 }
 
-/** Restaura el perfil y la sesión mock a su estado inicial por defecto. */
-export function resetMockState(): void {
-  inMemoryProfile = { ...DEFAULT_MOCK_PROFILE };
-  inMemorySessionActive = false;
+function clearStoredMockAuth(): void {
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
       window.localStorage.removeItem(MOCK_PROFILE_STORAGE_KEY);
@@ -141,6 +142,13 @@ export function resetMockState(): void {
   } catch {
     // Ignora cuando localStorage no está disponible
   }
+}
+
+/** Restaura el perfil y la sesión mock a su estado inicial por defecto. */
+export function resetMockState(): void {
+  inMemoryProfile = { ...DEFAULT_MOCK_PROFILE };
+  inMemorySessionActive = false;
+  clearStoredMockAuth();
 }
 
 /** Simula verificación de disponibilidad de @username con demora de red. */
@@ -158,9 +166,12 @@ export async function mockGetMyProfile(): Promise<{
   user?: StudentProfile;
 }> {
   await waitMockDelay();
-  const profile = readStoredProfile();
+  const profile = readStoredProfileOrNull();
+  if (!profile || !profile.username) {
+    return { profileComplete: false };
+  }
   return {
-    profileComplete: Boolean(profile.username),
+    profileComplete: true,
     user: { ...profile },
   };
 }
@@ -425,4 +436,12 @@ export async function mockCompleteGoogleUsername(payload: {
 export async function mockLogout(): Promise<void> {
   await waitMockDelay();
   setMockSessionActive(false);
+}
+
+/** Simula la eliminación definitiva de la cuenta y limpia el estado mock local. */
+export async function mockDeleteMyAccount(): Promise<void> {
+  await waitMockDelay();
+  clearStoredMockAuth();
+  inMemoryProfile = null;
+  inMemorySessionActive = false;
 }
