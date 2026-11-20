@@ -24,7 +24,7 @@ const ACCESS_ROUTES = new Set(['/', '/ingresar', '/registro', '/registro/google-
 
 const workspaceTitleMap: Record<string, string> = {
   '/panel': 'Inicio',
-  '/salas': 'Mis salas',
+  '/salas': 'Mis salones',
   '/perfil': 'Perfil',
 };
 
@@ -63,7 +63,7 @@ function WorkspaceLayout({ theme, toggleTheme, user, onLogout }: WorkspaceLayout
   const isRoomRoute = location.pathname.startsWith('/salas/');
 
   const currentWorkspaceTitle = isMisSalasView
-    ? 'Mis salas'
+    ? 'Mis salones'
     : isRoomRoute
       ? 'Mi salón'
       : workspaceTitleMap[location.pathname] ?? 'Salón de Estudio';
@@ -79,7 +79,7 @@ function WorkspaceLayout({ theme, toggleTheme, user, onLogout }: WorkspaceLayout
     },
     {
       to: '/salas',
-      label: 'Mis salas',
+      label: 'Mis salones',
       icon: LayoutGrid,
       active: location.pathname === '/salas' || isMisSalasView,
     },

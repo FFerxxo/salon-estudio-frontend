@@ -26,7 +26,7 @@ function MyRoomsSkeleton({ theme }: { theme: ThemeMode }) {
           id="mis-salas-heading"
           className="text-2xl sm:text-[28px] font-bold tracking-tight text-balance text-center"
         >
-          Mis salas
+          Mis salones
         </h1>
         <p
           role="status"
@@ -55,7 +55,7 @@ function MyRoomsSkeleton({ theme }: { theme: ThemeMode }) {
 
 /** Vista de administración de salas propias (renombrar, eliminar, copiar ID y entrar). */
 export function MyRoomsPage() {
-  useDocumentTitle('Mis salas');
+  useDocumentTitle('Mis salones');
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -105,7 +105,7 @@ export function MyRoomsPage() {
           id="mis-salas-heading"
           className="text-2xl sm:text-[28px] font-bold tracking-tight text-balance text-center"
         >
-          Mis salas
+          Mis salones
         </h1>
         <div
           role="alert"
@@ -138,7 +138,7 @@ export function MyRoomsPage() {
         id="mis-salas-heading"
         className="text-2xl sm:text-[28px] font-bold tracking-tight text-balance text-center"
       >
-        Mis salas
+        Mis salones
       </h1>
 
       {statusBanner && (
@@ -154,7 +154,7 @@ export function MyRoomsPage() {
           }`}
         >
           <h2 className="text-lg font-bold tracking-tight text-balance">
-            Todavía no tienes salas
+            Todavía no tienes salones
           </h2>
           <p
             className={`text-sm max-w-[40ch] text-pretty ${

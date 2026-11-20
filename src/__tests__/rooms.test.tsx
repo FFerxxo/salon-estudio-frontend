@@ -251,7 +251,7 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
       expect(screen.queryByText(/0 en línea/i)).not.toBeInTheDocument();
     });
 
-    it('muestra error «No pudimos cargar tus salas.» con «Reintentar» ante 500 en Mis salas y lista las salas al recuperar', async () => {
+    it('muestra error «No pudimos cargar tus salas.» con «Reintentar» ante 500 en Mis salones y lista las salas al recuperar', async () => {
       const user = userEvent.setup();
       const fetchMock = vi
         .fn()
@@ -272,7 +272,7 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
       expect(fetchMock).toHaveBeenCalledTimes(2);
     });
 
-    it('no lista las salas en Inicio (/panel): viven solo en Mis salas', async () => {
+    it('no lista las salas en Inicio (/panel): viven solo en Mis salones', async () => {
       vi.stubGlobal(
         'fetch',
         vi.fn().mockResolvedValue(jsonResponse({ salas: sampleRooms }, 200))
@@ -288,7 +288,7 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
       expect(screen.queryByRole('list', { name: /Tus salas creadas/i })).not.toBeInTheDocument();
     });
 
-    it('renderiza las salas en Mis salas (/salas) cuando existen', async () => {
+    it('renderiza las salas en Mis salones (/salas) cuando existen', async () => {
       vi.stubGlobal(
         'fetch',
         vi.fn().mockResolvedValue(jsonResponse({ salas: sampleRooms }, 200))
@@ -323,7 +323,7 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
       const nav = await screen.findByRole('navigation', { name: /Navegación principal/i });
 
       // Primera visita a /salas con hasLoaded === false: muestra esqueleto mientras la carga inicial sigue pendiente
-      await user.click(within(nav).getByRole('link', { name: /^Mis salas$/i }));
+      await user.click(within(nav).getByRole('link', { name: /^Mis salones$/i }));
       await waitFor(() => {
         expect(getPathname()).toBe('/salas');
       });
@@ -349,7 +349,7 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
       });
 
       // Vuelve a /salas: nunca parpadea «Cargando tus salas» aunque el fetch en segundo plano esté pendiente
-      await user.click(within(nav).getByRole('link', { name: /^Mis salas$/i }));
+      await user.click(within(nav).getByRole('link', { name: /^Mis salones$/i }));
       await waitFor(() => {
         expect(getPathname()).toBe('/salas');
       });
@@ -403,8 +403,8 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
     });
   });
 
-  describe('Mis salas (/salas): carga, vacío, error con Reintentar, tarjetas y Copiar ID', () => {
-    it('muestra esqueleto de carga con aria-busy="true" mientras GET /api/salas/mias está pendiente y estado vacío «Todavía no tienes salas»', async () => {
+  describe('Mis salones (/salas): carga, vacío, error con Reintentar, tarjetas y Copiar ID', () => {
+    it('muestra esqueleto de carga con aria-busy="true" mientras GET /api/salas/mias está pendiente y estado vacío «Todavía no tienes salones»', async () => {
       const pending = createDeferred<Response>();
       vi.stubGlobal(
         'fetch',
@@ -416,13 +416,13 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
       await waitFor(() => {
         expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument();
       });
-      expect(screen.getByRole('heading', { name: /^Mis salas$/i })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /^Mis salones$/i })).toBeInTheDocument();
       expect(screen.getByText('Cargando tus salas')).toBeInTheDocument();
 
       pending.resolve(jsonResponse({ salas: [] }));
 
       expect(
-        await screen.findByRole('heading', { name: 'Todavía no tienes salas' })
+        await screen.findByRole('heading', { name: 'Todavía no tienes salones' })
       ).toBeInTheDocument();
       expect(screen.getByRole('link', { name: /Ir a Inicio/i })).toHaveAttribute('href', '/panel');
       expect(screen.queryByText(/0 en línea/i)).not.toBeInTheDocument();
@@ -464,9 +464,9 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
       const { getPathname } = renderAuthenticatedApp('/salas');
 
       expect(await screen.findByText('Cálculo II')).toBeInTheDocument();
-      expect(screen.getByRole('heading', { name: 'Mis salas', level: 1 })).toBeInTheDocument();
-      expect(screen.getAllByText('Mis salas')).toHaveLength(2);
-      expect(screen.getByRole('link', { name: /^Mis salas$/i })).toHaveAttribute(
+      expect(screen.getByRole('heading', { name: 'Mis salones', level: 1 })).toBeInTheDocument();
+      expect(screen.getAllByText('Mis salones')).toHaveLength(2);
+      expect(screen.getByRole('link', { name: /^Mis salones$/i })).toHaveAttribute(
         'aria-current',
         'page'
       );
@@ -1375,7 +1375,7 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
   });
 
   describe('Auditoría automática de accesibilidad (vitest-axe)', () => {
-    it('no reporta violaciones en Inicio ni en Mis salas vacía o con salas', async () => {
+    it('no reporta violaciones en Inicio ni en Mis salones vacía o con salas', async () => {
       vi.stubGlobal(
         'fetch',
         vi
@@ -1393,7 +1393,7 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
       unmount();
 
       const { container: emptyContainer, unmount: unmountEmpty } = renderAuthenticatedApp('/salas');
-      expect(await screen.findByText('Todavía no tienes salas')).toBeInTheDocument();
+      expect(await screen.findByText('Todavía no tienes salones')).toBeInTheDocument();
       expect(await axe(emptyContainer)).toHaveNoViolations();
       unmountEmpty();
 
@@ -1432,7 +1432,7 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
 
       const { container: emptyContainer, unmount } = renderAuthenticatedApp('/salas');
       expect(
-        await screen.findByRole('heading', { name: 'Todavía no tienes salas' })
+        await screen.findByRole('heading', { name: 'Todavía no tienes salones' })
       ).toBeInTheDocument();
       expect(await axe(emptyContainer)).toHaveNoViolations();
       unmount();
