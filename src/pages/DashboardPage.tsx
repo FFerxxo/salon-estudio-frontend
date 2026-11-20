@@ -33,7 +33,7 @@ function DashboardInicioView() {
   const [createOpen, setCreateOpen] = useState(false);
   const [initialAmbiente, setInitialAmbiente] = useState<AmbienteId>('ninguno');
 
-  // Precarga las salas para que Mis salas se pinte al instante.
+  // Precarga las salas para que Mis salones se pinte al instante.
   useEffect(() => {
     void refreshRooms();
   }, [refreshRooms]);

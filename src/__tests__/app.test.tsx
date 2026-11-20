@@ -78,7 +78,7 @@ describe('Rutas base, redirección de /base-tecnica y separación de pies de pá
       });
       expect(within(sidebarNav).queryByRole('link', { name: /Base técnica/i })).not.toBeInTheDocument();
       expect(within(sidebarNav).getByRole('link', { name: /^Inicio$/i })).toBeInTheDocument();
-      expect(within(sidebarNav).getByRole('link', { name: /^Mis salas$/i })).toBeInTheDocument();
+      expect(within(sidebarNav).getByRole('link', { name: /^Mis salones$/i })).toBeInTheDocument();
       expect(within(sidebarNav).getByRole('link', { name: /^Perfil$/i })).toBeInTheDocument();
 
       expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();

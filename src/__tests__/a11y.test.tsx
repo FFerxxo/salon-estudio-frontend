@@ -265,7 +265,7 @@ describe('Accesibilidad Base TS-04 y Navegación Sprint 2 (Tema Marea)', () => {
       ).toBeInTheDocument();
     });
 
-    it('muestra cabecera/pie mínimos sin Base técnica en acceso (/registro) y barra lateral Inicio/Mis salas/Perfil sin pie público dentro de la app (/panel, /salas)', async () => {
+    it('muestra cabecera/pie mínimos sin Base técnica en acceso (/registro) y barra lateral Inicio/Mis salones/Perfil sin pie público dentro de la app (/panel, /salas)', async () => {
       const { unmount } = render(
         <MemoryRouter initialEntries={['/registro']}>
           <App />
@@ -318,7 +318,7 @@ describe('Accesibilidad Base TS-04 y Navegación Sprint 2 (Tema Marea)', () => {
         'aria-current',
         'page'
       );
-      expect(within(menu).getByRole('link', { name: /^Mis salas$/i })).toBeInTheDocument();
+      expect(within(menu).getByRole('link', { name: /^Mis salones$/i })).toBeInTheDocument();
       expect(within(menu).getByRole('link', { name: /^Perfil$/i })).toBeInTheDocument();
       expect(within(menu).queryByRole('link', { name: /^Panel$/i })).not.toBeInTheDocument();
       expect(within(menu).queryByRole('link', { name: /^Base técnica$/i })).not.toBeInTheDocument();
@@ -361,7 +361,7 @@ describe('Accesibilidad Base TS-04 y Navegación Sprint 2 (Tema Marea)', () => {
       );
 
       expect(
-        await screen.findByRole('heading', { name: /^Todavía no tienes salas$/i })
+        await screen.findByRole('heading', { name: /^Todavía no tienes salones$/i })
       ).toBeInTheDocument();
       expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
       expect(await axe(salasContainer)).toHaveNoViolations();
@@ -377,7 +377,7 @@ describe('Accesibilidad Base TS-04 y Navegación Sprint 2 (Tema Marea)', () => {
       expect(screen.queryByRole('link', { name: /^Base técnica$/i })).not.toBeInTheDocument();
       expect(screen.getByRole('link', { name: /^Ingresar$/i })).toBeInTheDocument();
       expect(screen.queryByRole('link', { name: /^Inicio$/i })).toBeInTheDocument();
-      expect(screen.queryByRole('link', { name: /^Mis salas$/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: /^Mis salones$/i })).not.toBeInTheDocument();
       expect(screen.queryByRole('link', { name: /^Perfil$/i })).not.toBeInTheDocument();
     });
   });
@@ -411,7 +411,7 @@ describe('Accesibilidad Base TS-04 y Navegación Sprint 2 (Tema Marea)', () => {
 
     const privateRoutes = [
       { path: '/panel', expectedTitle: 'Inicio · Tuga - Salón de Estudio' },
-      { path: '/salas', expectedTitle: 'Mis salas · Tuga - Salón de Estudio' },
+      { path: '/salas', expectedTitle: 'Mis salones · Tuga - Salón de Estudio' },
       { path: '/perfil', expectedTitle: 'Perfil · Tuga - Salón de Estudio' },
       { path: '/salas/demo-1', expectedTitle: 'Sala demo-1 · Tuga - Salón de Estudio' },
     ];
