@@ -7,7 +7,7 @@ import {
   getSceneInnerClasses,
 } from '../components/SceneBanner';
 import { AMBIENTES, type AmbienteId } from '../content/ambientes';
-import { selectTugaGreeting } from '../content/vozTuga';
+import { selectTugaPhrase } from '../content/vozTuga';
 import { useRooms } from '../context/RoomsContext';
 import { useTheme } from '../context/ThemeContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
@@ -27,7 +27,7 @@ function DashboardInicioView() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  const [{ phrase: greeting }] = useState(() => selectTugaGreeting());
+  const [{ phrase: greeting }] = useState(() => selectTugaPhrase('inicio'));
   const { refreshRooms, addRoom } = useRooms();
 
   const [createOpen, setCreateOpen] = useState(false);

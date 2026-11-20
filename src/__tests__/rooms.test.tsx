@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import { AmbientePlayer } from '../components/AmbientePlayer';
 import { AMBIENTES, shuffleTracks } from '../content/ambientes';
-import { TUGA_SLOTS } from '../content/vozTuga';
+import { TUGA_INICIO_PHRASES } from '../content/vozTuga';
 import { ThemeProvider } from '../context/ThemeContext';
 import type { StudentProfile } from '../services/authApi';
 import { resetMockState } from '../services/mockApi';
@@ -23,8 +23,9 @@ import {
   type Room,
 } from '../services/roomsApi';
 
-const ALL_TUGA_PHRASES = TUGA_SLOTS.flatMap((slot) =>
-  slot.phrases.map((phrase) => phrase.fullText)
+// Inicio usa su propio pool de frases (distinto al de la portada).
+const ALL_TUGA_PHRASES = Object.values(TUGA_INICIO_PHRASES).flatMap((phrases) =>
+  phrases.map((phrase) => phrase.fullText)
 );
 
 const mockStudent: StudentProfile = {
