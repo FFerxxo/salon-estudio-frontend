@@ -202,10 +202,10 @@ export function RegisterPage() {
       </div>
 
       <div className="space-y-1.5">
-        <h1 id="registro-heading" className="text-2xl sm:text-[26px] font-bold tracking-tight">
+        <h1 id="registro-heading" className="text-2xl sm:text-[26px] font-bold tracking-tight text-balance">
           Crea tu cuenta en el Salón de Estudio
         </h1>
-        <p className={`text-sm ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}>
+        <p className={`text-sm text-pretty ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}>
           Regístrate con tu correo institucional o continúa con Google y elige un{' '}
           <span className="font-mono font-semibold">@username</span> único.
         </p>
@@ -356,9 +356,11 @@ export function RegisterPage() {
           showStrengthMeter
         />
 
-        <button type="submit" disabled={submitting} className={getPrimaryCtaClasses(theme)}>
-          {submitting ? 'Creando cuenta de Estudiante...' : 'Crear cuenta e ingresar al Panel'}
-        </button>
+        <div className="flex justify-center pt-1">
+          <button type="submit" disabled={submitting} className={getPrimaryCtaClasses(theme)}>
+            {submitting ? 'Creando cuenta de Estudiante...' : 'Crear cuenta e ingresar al Panel'}
+          </button>
+        </div>
       </form>
 
       <p className={`text-sm text-center ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}>

@@ -5,7 +5,6 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import { Layout } from '../components/Layout';
-import { BaseTecnicaPage } from '../pages/BaseTecnicaPage';
 
 const mockStudent = {
   uid: 'uid-est-1',
@@ -16,7 +15,7 @@ const mockStudent = {
   correo: 'andres.barbosa@correounivalle.edu.co',
 };
 
-describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () => {
+describe('Accesibilidad Base TS-04 y Navegación Sprint 2 (Tema Marea)', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -35,7 +34,6 @@ describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () =
       );
       expect(screen.queryByRole('link', { name: /^Crear cuenta$/i })).not.toBeInTheDocument();
       expect(screen.getByRole('banner')).toBeInTheDocument();
-      // Inicio sin pie (decisión de Andres 13/11): solo Tuga, la tarjeta y los controles flotantes.
       expect(screen.queryByRole('navigation', { name: /Enlaces secundarios/i })).not.toBeInTheDocument();
       expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
       expect(screen.queryByText(/Estudia en grupo, en tiempo real/i)).not.toBeInTheDocument();
@@ -109,7 +107,10 @@ describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () =
       );
 
       expect(screen.getByRole('heading', { name: /^Ingresar$/i })).toBeInTheDocument();
-      expect(screen.queryByRole('link', { name: /Volver al inicio/i })).not.toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /Volver a la página de inicio/i })).toHaveAttribute(
+        'href',
+        '/'
+      );
       const greetingEl = container.querySelector('section p.text-center');
       expect(greetingEl).toBeInTheDocument();
       expect(screen.getByLabelText(/^Correo$/i)).toBeInTheDocument();
@@ -124,61 +125,14 @@ describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () =
       expect(results).toHaveNoViolations();
     });
 
-    it('la página de Base técnica en estado de carga no tiene violaciones', async () => {
-      vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise(() => {}));
-
+    it('la página de Ayuda (/ayuda) no tiene violaciones axe', async () => {
       const { container } = render(
-        <MemoryRouter initialEntries={['/base-tecnica']}>
-          <BaseTecnicaPage />
+        <MemoryRouter initialEntries={['/ayuda']}>
+          <App />
         </MemoryRouter>
       );
 
-      const results = await axe(container);
-      expect(results).toHaveNoViolations();
-    });
-
-    it('la página de Base técnica en estado de éxito no tiene violaciones', async () => {
-      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          nombre: 'Salón de Estudio',
-          mensaje: 'Bienvenido',
-        }),
-      } as Response);
-
-      const { container } = render(
-        <MemoryRouter initialEntries={['/base-tecnica']}>
-          <BaseTecnicaPage />
-        </MemoryRouter>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('Bienvenido')).toBeInTheDocument();
-      });
-
-      const results = await axe(container);
-      expect(results).toHaveNoViolations();
-    });
-
-    it('la página de Base técnica en estado de error no tiene violaciones', async () => {
-      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
-        ok: false,
-        status: 503,
-        json: async () => ({
-          error: 'No se pudo leer la base de datos.',
-        }),
-      } as Response);
-
-      const { container } = render(
-        <MemoryRouter initialEntries={['/base-tecnica']}>
-          <BaseTecnicaPage />
-        </MemoryRouter>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText(/No se pudo leer la base de datos/i)).toBeInTheDocument();
-      });
-
+      expect(screen.getByRole('heading', { name: /^Ayuda$/i })).toBeInTheDocument();
       const results = await axe(container);
       expect(results).toHaveNoViolations();
     });
@@ -252,7 +206,7 @@ describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () =
       ).toBeInTheDocument();
     });
 
-    it('muestra cabecera/pie mínimos en pantallas de acceso (/registro) y la barra completa dentro de la app (/panel)', async () => {
+    it('muestra cabecera/pie mínimos sin Base técnica en acceso (/registro) y barra lateral Inicio/Mis salas/Perfil sin pie público dentro de la app (/panel, /salas)', async () => {
       const { unmount } = render(
         <MemoryRouter initialEntries={['/registro']}>
           <App />
@@ -264,16 +218,18 @@ describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () =
       expect(screen.getByRole('main')).toBeInTheDocument();
       expect(screen.getByRole('contentinfo')).toBeInTheDocument();
       expect(screen.queryByText(/Estudia en grupo, en tiempo real/i)).not.toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /^Inicio$/i })).toBeInTheDocument();
       expect(screen.getByRole('link', { name: /^Ayuda$/i })).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: /^Base técnica$/i })).toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: /^Base técnica$/i })).not.toBeInTheDocument();
       expect(screen.queryByText(/Vista previa/i)).not.toBeInTheDocument();
       unmount();
 
-      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-        new Response(JSON.stringify({ salas: [] }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(
+        async () =>
+          new Response(JSON.stringify({ salas: [] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
       );
 
       const { container: panelContainer, unmount: unmountPanel } = render(
@@ -287,15 +243,28 @@ describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () =
         </MemoryRouter>
       );
 
-      expect(screen.getByRole('banner')).toBeInTheDocument();
+      expect(screen.getAllByRole('banner').length).toBeGreaterThanOrEqual(1);
+      expect(
+        screen.getByRole('link', { name: /Cuenta de Andrés \(@andres\.uv\)/i })
+      ).toBeInTheDocument();
       expect(screen.getByRole('navigation', { name: /Navegación principal/i })).toBeInTheDocument();
       expect(screen.getByRole('main')).toBeInTheDocument();
-      expect(screen.getByRole('contentinfo')).toBeInTheDocument();
+      expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/Salón de Estudio Colaborativo en Tiempo Real · Universidad del Valle/i)
+      ).not.toBeInTheDocument();
+
       const menu = screen.getByRole('navigation', { name: /Navegación principal/i });
-      expect(within(menu).getByRole('link', { name: /^Panel$/i })).toBeInTheDocument();
+      expect(within(menu).getByRole('link', { name: /^Inicio$/i })).toHaveAttribute(
+        'aria-current',
+        'page'
+      );
+      expect(within(menu).getByRole('link', { name: /^Mis salas$/i })).toBeInTheDocument();
       expect(within(menu).getByRole('link', { name: /^Perfil$/i })).toBeInTheDocument();
-      expect(within(menu).getByRole('link', { name: /^Base técnica$/i })).toBeInTheDocument();
-      expect(within(menu).queryByRole('link', { name: /^(Mis salas|Ayuda)$/i })).not.toBeInTheDocument();
+      expect(within(menu).queryByRole('link', { name: /^Panel$/i })).not.toBeInTheDocument();
+      expect(within(menu).queryByRole('link', { name: /^Base técnica$/i })).not.toBeInTheDocument();
+      expect(within(menu).queryByRole('link', { name: /^Ayuda$/i })).not.toBeInTheDocument();
+
       const collapseBtn = screen.getByRole('button', { name: /Contraer menú/i });
       expect(collapseBtn).toHaveAttribute('aria-expanded', 'true');
       await userEvent.click(collapseBtn);
@@ -305,17 +274,38 @@ describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () =
       );
 
       expect(
-        await screen.findByText('Aún no tienes salas. Crea una para estudiar con tu grupo.')
+        await screen.findByText('Puedes elegir entre dos ambientes o crear el tuyo')
       ).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /^Crear sala$/i })).toBeInTheDocument();
-      expect(screen.queryByRole('heading', { name: 'Studio Ghibli' })).not.toBeInTheDocument();
-      expect(screen.queryByRole('heading', { name: 'Ruido azul' })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Crear sala con ambiente Green/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Crear sala con ambiente Blue/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /Crear sala personalizada sin sonido/i })
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: 'Tus salas' })).not.toBeInTheDocument();
       expect(screen.queryByText(/0 en línea/)).not.toBeInTheDocument();
 
       const panelResults = await axe(panelContainer);
       expect(panelResults).toHaveNoViolations();
-      fetchSpy.mockRestore();
       unmountPanel();
+
+      const { container: salasContainer, unmount: unmountSalas } = render(
+        <MemoryRouter initialEntries={['/salas']}>
+          <App
+            authOverrides={{
+              initialStatus: 'authenticated',
+              initialUser: mockStudent,
+            }}
+          />
+        </MemoryRouter>
+      );
+
+      expect(
+        await screen.findByRole('heading', { name: /^Todavía no tienes salas$/i })
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
+      expect(await axe(salasContainer)).toHaveNoViolations();
+      fetchSpy.mockRestore();
+      unmountSalas();
 
       render(
         <MemoryRouter initialEntries={['/ayuda']}>
@@ -323,23 +313,11 @@ describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () =
         </MemoryRouter>
       );
 
-      expect(screen.getByRole('link', { name: /^Base técnica$/i })).toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: /^Base técnica$/i })).not.toBeInTheDocument();
       expect(screen.getByRole('link', { name: /^Ingresar$/i })).toBeInTheDocument();
-      expect(screen.queryByRole('link', { name: /^Panel$/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: /^Inicio$/i })).toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: /^Mis salas$/i })).not.toBeInTheDocument();
       expect(screen.queryByRole('link', { name: /^Perfil$/i })).not.toBeInTheDocument();
-    });
-
-    it('los estados de Base técnica se anuncian con aria-live="polite"', () => {
-      vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise(() => {}));
-
-      const { container } = render(
-        <MemoryRouter initialEntries={['/base-tecnica']}>
-          <BaseTecnicaPage />
-        </MemoryRouter>
-      );
-
-      const liveRegion = container.querySelector('[aria-live="polite"]');
-      expect(liveRegion).toBeInTheDocument();
     });
   });
 
@@ -349,7 +327,7 @@ describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () =
       { path: '/ingresar', expectedTitle: 'Ingresar · Tuga - Salón de Estudio' },
       { path: '/registro', expectedTitle: 'Registro · Tuga - Salón de Estudio' },
       { path: '/ayuda', expectedTitle: 'Ayuda · Tuga - Salón de Estudio' },
-      { path: '/base-tecnica', expectedTitle: 'Base técnica · Tuga - Salón de Estudio' },
+      { path: '/base-tecnica', expectedTitle: 'Inicio · Tuga - Salón de Estudio' },
       {
         path: '/ruta-desconocida-404',
         expectedTitle: '404 · Página no encontrada · Tuga - Salón de Estudio',
@@ -371,7 +349,8 @@ describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () =
     });
 
     const privateRoutes = [
-      { path: '/panel', expectedTitle: 'Panel · Tuga - Salón de Estudio' },
+      { path: '/panel', expectedTitle: 'Inicio · Tuga - Salón de Estudio' },
+      { path: '/salas', expectedTitle: 'Mis salas · Tuga - Salón de Estudio' },
       { path: '/perfil', expectedTitle: 'Perfil · Tuga - Salón de Estudio' },
       { path: '/salas/demo-1', expectedTitle: 'Sala demo-1 · Tuga - Salón de Estudio' },
     ];
@@ -390,6 +369,13 @@ describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () =
       });
 
       it(`establece "${expectedTitle}" en ruta privada ${path} cuando el Estudiante está autenticado`, async () => {
+        vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+          new Response(JSON.stringify({ salas: [] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        );
+
         render(
           <MemoryRouter initialEntries={[path]}>
             <App
@@ -407,7 +393,7 @@ describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () =
       });
     });
 
-    it('Perfil muestra «Mi cuenta» con correo, dominio, acceso y fecha de alta sin violaciones axe', async () => {
+    it('Perfil muestra «Mi cuenta» con correo, dominio, acceso y fecha de alta sin violaciones axe ni pie público', async () => {
       const { container } = render(
         <MemoryRouter initialEntries={['/perfil']}>
           <App
@@ -427,6 +413,7 @@ describe('Accesibilidad Base TS-04 y Formularios Sprint 1 (Tema Marea v3)', () =
       expect(screen.getByText('Conectado con Google')).toBeInTheDocument();
       expect(screen.getByText(/13 de noviembre de 2026/)).toBeInTheDocument();
       expect(screen.queryByText(/sprint/i)).not.toBeInTheDocument();
+      expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
       expect(await axe(container)).toHaveNoViolations();
     });
   });

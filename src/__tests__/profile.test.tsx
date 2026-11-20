@@ -161,7 +161,12 @@ describe('Perfil de Estudiante: ver y editar', () => {
     await user.type(nombresInput, 'Andrés Fernando');
     await user.clear(apellidosInput);
     await user.type(apellidosInput, 'Barbosa Salazar');
-    await user.click(screen.getByRole('radio', { name: /Marea Calma/i }));
+    expect(screen.getByText('Tu avatar')).toBeInTheDocument();
+    expect(screen.queryByText('Avatar en Sala')).not.toBeInTheDocument();
+    for (const label of ['Cohete', 'Audífonos', 'Rayo', 'Búho']) {
+      expect(screen.getByRole('radio', { name: new RegExp(label, 'i') })).toBeInTheDocument();
+    }
+    await user.click(screen.getByRole('radio', { name: /Audífonos/i }));
 
     await user.click(screen.getByRole('button', { name: /Guardar cambios/i }));
 
@@ -231,6 +236,26 @@ describe('Perfil de Estudiante: ver y editar', () => {
     expect(usernameInput).toHaveValue('ocupado');
     expect(nombresInput).toHaveValue('Andrés Editado');
     expect(screen.getByRole('button', { name: /Guardar cambios/i })).toBeInTheDocument();
+  });
+
+  it('muestra aviso inline role="status" en UsernameField al escribir mayúsculas o espacios', async () => {
+    const user = userEvent.setup();
+    const initialUser = buildStudentProfile({ provider: 'password' });
+    const adapter = createMockAdapter({}, initialUser);
+
+    renderProfile({ user: initialUser, adapter });
+
+    await user.click(await screen.findByRole('button', { name: /Editar perfil/i }));
+    const usernameInput = screen.getByLabelText(/Nombre de usuario/i);
+    await user.clear(usernameInput);
+    await user.paste('Andres UV');
+
+    expect(usernameInput).toHaveValue('andresuv');
+    const statusNotice = screen
+      .getAllByRole('status')
+      .find((el) => /Se ajustó a minúsculas y sin espacios/i.test(el.textContent || ''));
+    expect(statusNotice).toBeDefined();
+    expect(statusNotice).toHaveTextContent('Se ajustó a minúsculas y sin espacios: @andresuv');
   });
 
   it('muestra error inline junto al correo cuando el servidor devuelve 409 en cuenta manual y mantiene modo edición', async () => {

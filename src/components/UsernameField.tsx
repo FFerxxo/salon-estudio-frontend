@@ -36,6 +36,10 @@ export function UsernameField({
 
   const [availability, setAvailability] = useState<AvailabilityState>('idle');
   const [serverError, setServerError] = useState<string | null>(null);
+  const [adjustmentInfo, setAdjustmentInfo] = useState<{
+    forValue: string;
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     const clean = normalizeUsername(value);
@@ -85,18 +89,40 @@ export function UsernameField({
       ? 'Ese nombre de usuario ya está en uso. Prueba con otro.'
       : null);
 
+  const activeAdjustmentNotice =
+    adjustmentInfo && adjustmentInfo.forValue === value ? adjustmentInfo.message : null;
+
+  const showAvailabilityStatus =
+    !effectiveError && (availability === 'checking' || availability === 'available');
+  const hasVisibleStatus = Boolean(activeAdjustmentNotice) || showAvailabilityStatus;
+
+  const handleInputChange = (raw: string) => {
+    const normalized = normalizeUsername(raw);
+    if (raw !== normalized) {
+      setAdjustmentInfo({
+        forValue: normalized,
+        message: normalized
+          ? `Se ajustó a minúsculas y sin espacios: @${normalized}`
+          : 'Se ajustó a minúsculas y sin espacios.',
+      });
+    } else {
+      setAdjustmentInfo(null);
+    }
+    onChange(normalized);
+  };
+
   return (
-    <div className="space-y-1.5">
+    <div>
       <label
         htmlFor={fieldId}
-        className={`block text-sm font-semibold ${isDark ? 'text-[#f8fafc]' : 'text-[#0f172a]'}`}
+        className={`block text-sm font-semibold mb-1.5 ${isDark ? 'text-[#f8fafc]' : 'text-[#0f172a]'}`}
       >
         {label}
       </label>
 
       <div
-        className={`flex items-center rounded-[10px] border-[1.5px] overflow-hidden transition-colors ${
-          isDark ? 'bg-[#0b1220]' : 'bg-white'
+        className={`flex items-center rounded-[10px] border-[1.5px] transition-colors ${
+          isDark ? 'bg-[#0b1220]' : 'bg-[#f8fafc]'
         } ${
           effectiveError
             ? isDark
@@ -107,8 +133,8 @@ export function UsernameField({
       >
         <span
           aria-hidden="true"
-          className={`px-3.5 py-2.5 text-sm font-bold border-r border-[#64748b] select-none ${
-            isDark ? 'bg-[#0f172a] text-[#cbd5e1]' : 'bg-slate-100 text-[#0f172a]'
+          className={`px-3.5 py-2.5 text-sm font-bold border-r border-[#64748b] rounded-l-[8px] select-none ${
+            isDark ? 'bg-[#0f172a] text-[#cbd5e1]' : 'bg-[#eef4fa] text-[#0f172a]'
           }`}
         >
           @
@@ -117,12 +143,12 @@ export function UsernameField({
           id={fieldId}
           type="text"
           value={value}
-          onChange={(e) => onChange(normalizeUsername(e.target.value))}
+          onChange={(e) => handleInputChange(e.target.value)}
           placeholder="andres.salazar"
           autoComplete="username"
           aria-invalid={Boolean(effectiveError)}
           aria-describedby={[statusId, effectiveError ? errorId : null].filter(Boolean).join(' ')}
-          className={`w-full min-h-[44px] bg-transparent px-3 py-2 text-base font-mono font-semibold ${
+          className={`w-full min-h-[44px] bg-transparent rounded-r-[8px] px-3 py-2 text-base font-mono font-semibold ${
             isDark
               ? 'text-[#f8fafc] placeholder:text-[#94a3b8]'
               : 'text-[#0f172a] placeholder:text-[#475569]'
@@ -130,38 +156,40 @@ export function UsernameField({
         />
       </div>
 
-      <div className="min-h-[48px] flex items-start pt-0.5">
-        <div
-          id={statusId}
-          aria-live="polite"
-          className={effectiveError ? 'sr-only' : 'text-xs font-semibold leading-5'}
-        >
-          {availability === 'checking' && !effectiveError && (
-            <span className={isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}>
-              Comprobando disponibilidad en el servidor...
-            </span>
-          )}
-          {availability === 'available' && !effectiveError && (
-            <span
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border ${
-                isDark
-                  ? 'bg-[#022c22] text-[#6ee7b7] border-[#6ee7b7]'
-                  : 'bg-[#ecfdf5] text-[#047857] border-[#047857]'
-              }`}
-            >
-              <Check className="w-3.5 h-3.5" aria-hidden="true" />
-              <span>Disponible en el Salón de Estudio</span>
-            </span>
-          )}
-        </div>
-
-        {effectiveError && (
-          <p id={errorId} role="alert" className={getInlineErrorClasses(theme)}>
-            <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-            <span>{effectiveError}</span>
+      <div
+        id={statusId}
+        role="status"
+        aria-live="polite"
+        className={hasVisibleStatus ? 'mt-1.5 space-y-1 text-xs font-semibold leading-5' : 'sr-only'}
+      >
+        {activeAdjustmentNotice && (
+          <p className={isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}>{activeAdjustmentNotice}</p>
+        )}
+        {!effectiveError && availability === 'checking' && (
+          <p className={isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}>
+            Comprobando disponibilidad en el servidor...
           </p>
         )}
+        {!effectiveError && availability === 'available' && (
+          <span
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border ${
+              isDark
+                ? 'bg-[#022c22] text-[#6ee7b7] border-[#6ee7b7]'
+                : 'bg-[#ecfdf5] text-[#047857] border-[#047857]'
+            }`}
+          >
+            <Check className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>Disponible en el Salón de Estudio</span>
+          </span>
+        )}
       </div>
+
+      {effectiveError && (
+        <p id={errorId} role="alert" className={`mt-1.5 ${getInlineErrorClasses(theme)}`}>
+          <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+          <span>{effectiveError}</span>
+        </p>
+      )}
     </div>
   );
 }

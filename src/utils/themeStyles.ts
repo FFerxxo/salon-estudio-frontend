@@ -10,8 +10,8 @@ export function getGlassCardClasses(theme: ThemeMode): string {
 /** Superficie sólida sin blur para contenedores internos y pantallas de lectura larga. */
 export function getSolidSurfaceClasses(theme: ThemeMode): string {
   return theme === 'dark'
-    ? 'bg-[#0f172a] text-[#f8fafc] border border-[#64748b]'
-    : 'bg-white text-[#0f172a] border border-[#64748b] shadow-sm';
+    ? 'bg-[#111c30] text-[#f8fafc] border border-[#64748b]'
+    : 'bg-[#f8fafc] text-[#0f172a] border border-[#64748b] shadow-sm';
 }
 
 /** Campos con borde #64748b (>= 3:1 en Noche y Día) y altura mínima táctil de 44px. */
@@ -19,7 +19,7 @@ export function getInputClasses(theme: ThemeMode, hasError = false): string {
   const base =
     theme === 'dark'
       ? 'bg-[#0b1220] text-[#f8fafc] placeholder:text-[#94a3b8]'
-      : 'bg-white text-[#0f172a] placeholder:text-[#475569]';
+      : 'bg-[#f8fafc] text-[#0f172a] placeholder:text-[#475569]';
 
   const border = hasError
     ? theme === 'dark'
@@ -30,14 +30,39 @@ export function getInputClasses(theme: ThemeMode, hasError = false): string {
   return `w-full min-h-[44px] rounded-[10px] border-[1.5px] px-3.5 py-2.5 text-base transition-colors ${base} ${border}`;
 }
 
-/** Acción principal Marea v3: Noche #38bdf8 con texto #0b1220 (8.74:1); Día #075985 con texto #ffffff (7.56:1). */
+/** Acción principal Marea v4: Noche #38bdf8 con texto #0b1220 (8.74:1); Día #075985 con texto #ffffff (7.56:1). */
 export function getPrimaryCtaClasses(theme: ThemeMode = 'dark'): string {
   const palette =
     theme === 'dark'
       ? 'bg-[#38bdf8] text-[#0b1220] hover:bg-[#7dd3fc]'
       : 'bg-[#075985] text-white hover:bg-[#0369a1]';
 
-  return `w-full min-h-[48px] px-5 py-3 rounded-xl font-semibold text-base ${palette} disabled:opacity-60 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center gap-2`;
+  return `w-full min-h-[48px] px-5 py-3 rounded-xl font-semibold text-base ${palette} disabled:opacity-60 disabled:cursor-not-allowed transition-[background-color,transform] duration-150 active:scale-[0.98] motion-reduce:active:scale-100 motion-reduce:transition-none inline-flex items-center justify-center gap-2`;
+}
+
+/** Botón secundario con borde visible (>= 3:1) y área táctil mínima de 44px. */
+export function getSecondaryBtnClasses(theme: ThemeMode): string {
+  const palette =
+    theme === 'dark'
+      ? 'border-[#64748b] bg-transparent text-[#f8fafc] hover:bg-white/[0.07]'
+      : 'border-[#5b6e84] bg-transparent text-[#0f172a] hover:bg-[#0f172a]/[0.07]';
+
+  return `min-h-[44px] px-4 rounded-xl text-sm font-medium border ${palette} disabled:opacity-60 disabled:cursor-not-allowed transition-[background-color,transform] duration-150 active:scale-[0.98] motion-reduce:active:scale-100 motion-reduce:transition-none inline-flex items-center justify-center gap-2`;
+}
+
+/** Botón destructivo de solo borde para Zona de peligro (fondo transparente, contraste >= 4.5:1). */
+export function getDangerOutlineBtnClasses(theme: ThemeMode): string {
+  const palette =
+    theme === 'dark'
+      ? 'text-[#fca5a5] border-[#f87171] hover:bg-red-950/40'
+      : 'text-[#b91c1c] border-[#b91c1c] hover:bg-red-50';
+
+  return `bg-transparent min-h-[44px] px-4 rounded-xl text-sm font-semibold border transition-colors ${palette} disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98] motion-reduce:active:scale-100 motion-reduce:transition-none inline-flex items-center justify-center gap-2`;
+}
+
+/** Grupo de acciones centrado en formularios y modales (en móvil apilado con primario arriba). */
+export function getFormActionGroupClasses(): string {
+  return 'flex flex-col-reverse sm:flex-row justify-center gap-3 pt-2';
 }
 
 /** Enlaces con contraste verificado: Noche #7dd3fc (6.83:1); Día #075985 (7.56:1). */

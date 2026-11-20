@@ -95,6 +95,38 @@ describe('Sprint 1 Autenticación y Rutas Privadas (US-01, US-02, US-03)', () =>
   });
 
   describe('US-01 · Registro manual de Estudiante', () => {
+    it('muestra «Tu avatar» con opciones Cohete, Audífonos, Rayo y Búho y aviso inline en UsernameField al escribir mayúsculas/espacios', async () => {
+      const user = userEvent.setup();
+      render(
+        <MemoryRouter initialEntries={['/registro']}>
+          <App authOverrides={{ adapter: createMockAdapter() }} />
+        </MemoryRouter>
+      );
+
+      expect(screen.getByText('Tu avatar')).toBeInTheDocument();
+      expect(screen.queryByText('Avatar en Sala')).not.toBeInTheDocument();
+
+      const avatarGroup = screen.getByRole('radiogroup', { name: 'Tu avatar' });
+      expect(avatarGroup).toBeInTheDocument();
+      for (const label of ['Cohete', 'Audífonos', 'Rayo', 'Búho']) {
+        expect(screen.getByRole('radio', { name: new RegExp(label, 'i') })).toBeInTheDocument();
+      }
+      for (const legacyLabel of ['Constructor', 'Marea Calma', 'Maratón UV', 'Búho Nocturno']) {
+        expect(screen.queryByRole('radio', { name: new RegExp(legacyLabel, 'i') })).not.toBeInTheDocument();
+      }
+
+      const usernameInput = screen.getByLabelText(/Nombre de usuario único/i);
+      await user.click(usernameInput);
+      await user.paste('Andres UV');
+
+      expect(usernameInput).toHaveValue('andresuv');
+      const statusRegion = screen
+        .getAllByRole('status')
+        .find((el) => /Se ajustó a minúsculas y sin espacios/i.test(el.textContent || ''));
+      expect(statusRegion).toBeDefined();
+      expect(statusRegion).toHaveTextContent('Se ajustó a minúsculas y sin espacios: @andresuv');
+    });
+
     it('valida campos inválidos inline conservando los datos escritos y permite pegar contraseña', async () => {
       const user = userEvent.setup();
       render(
@@ -118,7 +150,6 @@ describe('Sprint 1 Autenticación y Rutas Privadas (US-01, US-02, US-03)', () =>
       expect(await screen.findByText(/mínimo 2 caracteres/i)).toBeInTheDocument();
       expect(screen.getByText(/Ingresa un correo válido/i)).toBeInTheDocument();
       expect(screen.getByText(/mínimo 8 caracteres, mayúscula, minúscula y número/i)).toBeInTheDocument();
-      // Heurística S1-C02: conserva lo escrito sin limpiar campos
       expect(screen.getByLabelText(/^Apellidos$/i)).toHaveValue('Barbosa');
       expect(screen.getByLabelText(/Correo institucional/i)).toHaveValue('correo-invalido');
     });
@@ -192,7 +223,7 @@ describe('Sprint 1 Autenticación y Rutas Privadas (US-01, US-02, US-03)', () =>
       expect(screen.getByRole('link', { name: /Ir a Ingresar/i })).toHaveAttribute('href', '/ingresar');
     });
 
-    it('crea la cuenta exitosamente y navega al Panel privado', async () => {
+    it('crea la cuenta exitosamente y navega a Inicio (/panel)', async () => {
       const user = userEvent.setup();
       const adapter = createMockAdapter();
 
@@ -213,8 +244,15 @@ describe('Sprint 1 Autenticación y Rutas Privadas (US-01, US-02, US-03)', () =>
       await user.click(screen.getByRole('button', { name: /Crear cuenta e ingresar al Panel/i }));
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: /^Panel$/i })).toBeInTheDocument();
+        expect(
+          screen.getByText('Puedes elegir entre dos ambientes o crear el tuyo')
+        ).toBeInTheDocument();
       });
+      expect(screen.getByRole('link', { name: /^Inicio$/i })).toHaveAttribute(
+        'aria-current',
+        'page'
+      );
+      expect(document.title).toBe('Inicio · Tuga - Salón de Estudio');
     });
   });
 
@@ -257,8 +295,14 @@ describe('Sprint 1 Autenticación y Rutas Privadas (US-01, US-02, US-03)', () =>
       await user.click(screen.getByRole('button', { name: /Entrar al Salón/i }));
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: /^Panel$/i })).toBeInTheDocument();
+        expect(
+          screen.getByText('Puedes elegir entre dos ambientes o crear el tuyo')
+        ).toBeInTheDocument();
       });
+      expect(screen.getByRole('link', { name: /^Inicio$/i })).toHaveAttribute(
+        'aria-current',
+        'page'
+      );
 
       expect(adapter.completeGoogleUsername).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -389,7 +433,9 @@ describe('Sprint 1 Autenticación y Rutas Privadas (US-01, US-02, US-03)', () =>
       await user.click(screen.getByRole('button', { name: /^Ingresar con correo$/i }));
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: /^Panel$/i })).toBeInTheDocument();
+        expect(
+          screen.getByText('Puedes elegir entre dos ambientes o crear el tuyo')
+        ).toBeInTheDocument();
       });
 
       await user.click(screen.getByRole('button', { name: /Salir de la sesión/i }));

@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, type ReactNode, type RefObject } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
@@ -125,7 +126,7 @@ export function AppDialog({
     return null;
   }
 
-  return (
+  const dialogOverlay = (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#020617]/75"
       onClick={(event) => {
@@ -170,4 +171,6 @@ export function AppDialog({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(dialogOverlay, document.body) : dialogOverlay;
 }

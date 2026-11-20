@@ -182,13 +182,21 @@ describe('Eliminar cuenta de Estudiante', () => {
     window.localStorage?.clear?.();
   });
 
-  it('muestra la Zona de peligro, abre el alertdialog con lista de pérdidas y enfoca inicialmente «Cancelar»', async () => {
+  it('muestra la sección «Eliminar cuenta» con disparador outline, abre el alertdialog con botón sólido «Eliminar definitivamente» y enfoca inicialmente «Cancelar»', async () => {
     const user = userEvent.setup();
     renderProfile();
 
-    expect(await screen.findByText('Zona de peligro')).toBeInTheDocument();
-    const triggerBtn = screen.getByRole('button', { name: /Eliminar cuenta/i });
+    const heading = await screen.findByRole('heading', { name: 'Eliminar cuenta' });
+    expect(heading).toBeInTheDocument();
+    expect(screen.queryByText('Zona de peligro')).not.toBeInTheDocument();
+    expect(
+      screen.getByText('Se borran tu perfil y tus salas. No se puede deshacer.')
+    ).toBeInTheDocument();
+
+    const triggerBtn = screen.getByRole('button', { name: 'Eliminar cuenta' });
     expect(triggerBtn).toBeInTheDocument();
+    expect(triggerBtn.className).toMatch(/border/);
+    expect(triggerBtn.className).not.toMatch(/bg-\[#b91c1c\]/);
 
     await user.click(triggerBtn);
 
@@ -199,6 +207,9 @@ describe('Eliminar cuenta de Estudiante', () => {
     expect(within(dialog).getAllByRole('listitem').length).toBeGreaterThanOrEqual(1);
 
     const cancelBtn = within(dialog).getByRole('button', { name: /^Cancelar$/i });
+    const confirmBtn = within(dialog).getByRole('button', { name: /^Eliminar definitivamente$/i });
+    expect(confirmBtn.className).toMatch(/bg-\[#b91c1c\]/);
+
     await waitFor(() => {
       expect(cancelBtn).toHaveFocus();
     });
@@ -211,8 +222,8 @@ describe('Eliminar cuenta de Estudiante', () => {
 
     renderProfile({ adapter });
 
-    expect(await screen.findByText('Zona de peligro')).toBeInTheDocument();
-    const triggerBtn = screen.getByRole('button', { name: /Eliminar cuenta/i });
+    expect(await screen.findByRole('heading', { name: 'Eliminar cuenta' })).toBeInTheDocument();
+    const triggerBtn = screen.getByRole('button', { name: 'Eliminar cuenta' });
 
     await user.click(triggerBtn);
     const dialog = await screen.findByRole('alertdialog');
@@ -255,12 +266,12 @@ describe('Eliminar cuenta de Estudiante', () => {
 
     renderProfile({ adapter });
 
-    const triggerBtn = await screen.findByRole('button', { name: /Eliminar cuenta/i });
+    const triggerBtn = await screen.findByRole('button', { name: 'Eliminar cuenta' });
     await user.click(triggerBtn);
 
     const dialog = await screen.findByRole('alertdialog');
     const cancelBtn = within(dialog).getByRole('button', { name: /^Cancelar$/i });
-    const confirmBtn = within(dialog).getByRole('button', { name: /Eliminar cuenta/i });
+    const confirmBtn = within(dialog).getByRole('button', { name: /^Eliminar definitivamente$/i });
 
     await user.click(confirmBtn);
     expect(deleteAccount).toHaveBeenCalledTimes(1);
@@ -277,10 +288,12 @@ describe('Eliminar cuenta de Estudiante', () => {
     const alert = await within(dialog).findByRole('alert');
     expect(alert).toHaveTextContent('No pudimos eliminar tu cuenta. Intenta de nuevo.');
     expect(screen.getByRole('alertdialog')).toBeInTheDocument();
-    expect(screen.getByText('Zona de peligro')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Eliminar cuenta' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: /Bienvenido a Tuga/i })).not.toBeInTheDocument();
     expect(cancelBtn).toBeEnabled();
-    expect(within(dialog).getByRole('button', { name: /Eliminar cuenta/i })).toBeEnabled();
+    expect(
+      within(dialog).getByRole('button', { name: /^Eliminar definitivamente$/i })
+    ).toBeEnabled();
   });
 
   it('al confirmar exitosamente redirige a Ingresar (/ingresar) con «Tu cuenta fue eliminada» en role="status" y limpia la sesión', async () => {
@@ -290,11 +303,11 @@ describe('Eliminar cuenta de Estudiante', () => {
 
     const { navigateTo, getPathname } = renderProfile({ adapter });
 
-    const triggerBtn = await screen.findByRole('button', { name: /Eliminar cuenta/i });
+    const triggerBtn = await screen.findByRole('button', { name: 'Eliminar cuenta' });
     await user.click(triggerBtn);
 
     const dialog = await screen.findByRole('alertdialog');
-    await user.click(within(dialog).getByRole('button', { name: /Eliminar cuenta/i }));
+    await user.click(within(dialog).getByRole('button', { name: /^Eliminar definitivamente$/i }));
 
     expect(deleteAccount).toHaveBeenCalledTimes(1);
     expect(await screen.findByRole('heading', { name: /^Ingresar$/i })).toBeInTheDocument();
@@ -312,16 +325,16 @@ describe('Eliminar cuenta de Estudiante', () => {
     expect(getPathname()).toBe('/ingresar');
   });
 
-  it('coloca «Cancelar» antes de «Eliminar cuenta» en el orden del DOM dentro del alertdialog', async () => {
+  it('coloca «Cancelar» antes de «Eliminar definitivamente» en el orden del DOM dentro del alertdialog', async () => {
     const user = userEvent.setup();
     renderProfile();
 
-    const triggerBtn = await screen.findByRole('button', { name: /Eliminar cuenta/i });
+    const triggerBtn = await screen.findByRole('button', { name: 'Eliminar cuenta' });
     await user.click(triggerBtn);
 
     const dialog = await screen.findByRole('alertdialog');
     const cancelBtn = within(dialog).getByRole('button', { name: /^Cancelar$/i });
-    const confirmBtn = within(dialog).getByRole('button', { name: /Eliminar cuenta/i });
+    const confirmBtn = within(dialog).getByRole('button', { name: /^Eliminar definitivamente$/i });
 
     expect(
       cancelBtn.compareDocumentPosition(confirmBtn) & Node.DOCUMENT_POSITION_FOLLOWING
@@ -393,10 +406,10 @@ describe('Eliminar cuenta de Estudiante', () => {
   });
 
   describe('Auditoría automática de accesibilidad (vitest-axe)', () => {
-    it('no reporta violaciones en /perfil con la «Zona de peligro»', async () => {
+    it('no reporta violaciones en /perfil con la sección «Eliminar cuenta»', async () => {
       const { container } = renderProfile();
 
-      expect(await screen.findByText('Zona de peligro')).toBeInTheDocument();
+      expect(await screen.findByRole('heading', { name: 'Eliminar cuenta' })).toBeInTheDocument();
       expect(await axe(container)).toHaveNoViolations();
     });
 
@@ -404,7 +417,7 @@ describe('Eliminar cuenta de Estudiante', () => {
       const user = userEvent.setup();
       const { container } = renderProfile();
 
-      await user.click(await screen.findByRole('button', { name: /Eliminar cuenta/i }));
+      await user.click(await screen.findByRole('button', { name: 'Eliminar cuenta' }));
       const dialog = await screen.findByRole('alertdialog');
       expect(within(dialog).getByText(/¿Eliminar tu cuenta\?/i)).toBeInTheDocument();
 
@@ -418,9 +431,9 @@ describe('Eliminar cuenta de Estudiante', () => {
       const user = userEvent.setup();
       const { container } = renderProfile();
 
-      await user.click(await screen.findByRole('button', { name: /Eliminar cuenta/i }));
+      await user.click(await screen.findByRole('button', { name: 'Eliminar cuenta' }));
       const dialog = await screen.findByRole('alertdialog');
-      await user.click(within(dialog).getByRole('button', { name: /Eliminar cuenta/i }));
+      await user.click(within(dialog).getByRole('button', { name: /^Eliminar definitivamente$/i }));
 
       expect(await screen.findByRole('heading', { name: /^Ingresar$/i })).toBeInTheDocument();
       expect(await screen.findByText(/Tu cuenta fue eliminada/i)).toBeInTheDocument();

@@ -25,10 +25,13 @@ import {
   validateUsername,
 } from '../utils/authValidation';
 import {
+  getDangerOutlineBtnClasses,
   getErrorAlertClasses,
+  getFormActionGroupClasses,
   getInlineErrorClasses,
   getInputClasses,
   getPrimaryCtaClasses,
+  getSecondaryBtnClasses,
   getSolidSurfaceClasses,
 } from '../utils/themeStyles';
 
@@ -206,10 +209,8 @@ function ProfileLoadError({
         <button
           type="button"
           onClick={onRetry}
-          className={`min-h-[44px] px-4 py-2 rounded-lg border-[1.5px] border-[#64748b] text-sm font-semibold inline-flex items-center gap-1.5 active:scale-[0.96] transition-[transform,background-color] ${
-            isDark
-              ? 'bg-[#0f172a] text-[#f8fafc] hover:bg-white/10'
-              : 'bg-white text-[#0f172a] hover:bg-slate-50'
+          className={`${getSecondaryBtnClasses(theme)} ${
+            isDark ? '!bg-[#0f172a]' : '!bg-white'
           }`}
         >
           <RotateCcw className="w-4 h-4 shrink-0" aria-hidden="true" />
@@ -582,21 +583,21 @@ export function ProfilePage() {
             onChange={(nextAvatar) => setDraft((prev) => ({ ...prev, avatar: nextAvatar }))}
           />
 
-          <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
+          <div className={getFormActionGroupClasses()}>
             <button
               type="button"
               disabled={saving}
               onClick={handleCancelEdit}
-              className={`min-h-[44px] px-4 py-2 rounded-xl border-[1.5px] border-[#64748b] text-sm font-semibold active:scale-[0.96] transition-[transform,background-color] disabled:opacity-60 disabled:cursor-not-allowed ${
-                isDark ? 'text-[#f8fafc] hover:bg-white/10' : 'text-[#0f172a] hover:bg-slate-100'
-              }`}
+              className={`${getSecondaryBtnClasses(theme)} w-full sm:w-auto sm:min-w-[130px]`}
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={saving}
-              className={`${getPrimaryCtaClasses(theme)} !w-auto !min-h-[44px] !py-2.5 text-sm active:scale-[0.96] transition-[transform,background-color]`}
+              className={`${getPrimaryCtaClasses(
+                theme
+              )} !w-full sm:!w-auto sm:min-w-[160px] !min-h-[44px] !py-2.5 text-sm`}
             >
               {saving ? 'Guardando…' : 'Guardar cambios'}
             </button>
@@ -716,7 +717,7 @@ export function ProfilePage() {
 
       <section
         aria-labelledby="danger-zone-heading"
-        className={`mt-7 rounded-[14px] border p-4 space-y-3 ${
+        className={`mt-7 rounded-[14px] border p-5 text-center space-y-2.5 ${
           isDark
             ? 'border-[#f87171]/60 bg-[#450a0a]/30'
             : 'border-[#b91c1c]/40 bg-[#fef2f2]/60'
@@ -725,28 +726,32 @@ export function ProfilePage() {
         <div className="space-y-1">
           <h2
             id="danger-zone-heading"
-            className={`text-sm font-bold uppercase tracking-wide text-balance ${
-              isDark ? 'text-[#fecaca]' : 'text-[#b91c1c]'
+            className="text-lg font-bold tracking-tight text-balance"
+          >
+            Eliminar cuenta
+          </h2>
+          <p
+            className={`text-sm font-normal tracking-normal text-pretty ${
+              isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'
             }`}
           >
-            Zona de peligro
-          </h2>
-          <p className={`text-sm text-pretty ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}>
-            Al eliminar tu cuenta se borran tu perfil, tus salas y tu acceso de forma permanente.
+            Se borran tu perfil y tus salas. No se puede deshacer.
           </p>
         </div>
 
-        <button
-          ref={deleteTriggerRef}
-          type="button"
-          onClick={() => {
-            setDeleteError(null);
-            setDeleteOpen(true);
-          }}
-          className="min-h-[44px] px-4 py-2.5 rounded-xl bg-[#b91c1c] hover:bg-[#991b1b] text-white text-sm font-semibold active:scale-[0.96] transition-[transform,background-color]"
-        >
-          Eliminar cuenta
-        </button>
+        <div className="flex justify-center pt-1">
+          <button
+            ref={deleteTriggerRef}
+            type="button"
+            onClick={() => {
+              setDeleteError(null);
+              setDeleteOpen(true);
+            }}
+            className={getDangerOutlineBtnClasses(theme)}
+          >
+            Eliminar cuenta
+          </button>
+        </div>
       </section>
 
       <AppDialog
@@ -792,7 +797,7 @@ export function ProfilePage() {
             </div>
           )}
 
-          <div className="flex flex-col sm:flex-row sm:justify-end gap-2.5 pt-4">
+          <div className={getFormActionGroupClasses()}>
             <button
               ref={cancelDeleteBtnRef}
               type="button"
@@ -801,9 +806,7 @@ export function ProfilePage() {
                 setDeleteOpen(false);
                 setDeleteError(null);
               }}
-              className={`min-h-[44px] px-4 py-2.5 rounded-xl border-[1.5px] border-[#64748b] text-sm font-semibold active:scale-[0.96] transition-[transform,background-color] disabled:opacity-60 disabled:cursor-not-allowed ${
-                isDark ? 'text-[#f8fafc] hover:bg-white/10' : 'text-[#0f172a] hover:bg-slate-100'
-              }`}
+              className={`${getSecondaryBtnClasses(theme)} w-full sm:w-auto sm:min-w-[130px]`}
             >
               Cancelar
             </button>
@@ -811,9 +814,9 @@ export function ProfilePage() {
               type="button"
               disabled={deleting}
               onClick={() => void handleConfirmDelete()}
-              className="min-h-[44px] px-4 py-2.5 rounded-xl bg-[#b91c1c] hover:bg-[#991b1b] text-white text-sm font-semibold active:scale-[0.96] transition-[transform,background-color] disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full sm:w-auto sm:min-w-[190px] min-h-[44px] px-4 py-2.5 rounded-xl bg-[#b91c1c] hover:bg-[#991b1b] text-white text-sm font-semibold active:scale-[0.96] transition-[transform,background-color] disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {deleting ? 'Eliminando…' : 'Eliminar cuenta'}
+              {deleting ? 'Eliminando…' : 'Eliminar definitivamente'}
             </button>
           </div>
         </div>
