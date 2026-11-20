@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { AlertCircle, Leaf, VolumeX, Waves } from 'lucide-react';
-import { AMBIENTE_LIST, AMBIENTES, type AmbienteId } from '../content/ambientes';
+import { AMBIENTE_LIST, type AmbienteId } from '../content/ambientes';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import {
@@ -174,11 +174,6 @@ export function CreateRoomDialog({
           <AmbientePillIcon ambiente={ambiente} />
           <span>{getAmbientePillLabel(ambiente)}</span>
         </span>
-        {ambiente !== 'ninguno' && (
-          <span className={`text-xs ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}>
-            {AMBIENTES[ambiente].description}
-          </span>
-        )}
       </div>
 
       <form noValidate onSubmit={(event) => void handleSubmit(event)} className="space-y-4">
