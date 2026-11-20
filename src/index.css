@@ -452,11 +452,11 @@ img.tuga-parte {
   .inicio-card { margin-top: -4.5rem !important; }
 }
 
-/* ---------- Tarjeta de sala con paisaje (2.6:1 + 40 px difuminados en 9 pasos) ---------- */
+/* ---------- Tarjeta de sala con paisaje (2.2:1 + 30 px difuminados en 9 pasos) ---------- */
 .room-card-banner::after {
   content: '';
   display: block;
-  aspect-ratio: 2.6 / 1;
+  aspect-ratio: 2.2 / 1;
 }
 
 .room-card-banner-mask {

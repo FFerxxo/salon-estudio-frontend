@@ -19,6 +19,7 @@ const mockStudent = {
 describe('Accesibilidad Base TS-04 y Navegación Sprint 2 (Tema Marea)', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    window.localStorage?.clear?.();
   });
 
   describe('Auditoría automática con vitest-axe (0 violaciones por página)', () => {
@@ -323,19 +324,21 @@ describe('Accesibilidad Base TS-04 y Navegación Sprint 2 (Tema Marea)', () => {
       expect(within(menu).queryByRole('link', { name: /^Base técnica$/i })).not.toBeInTheDocument();
       expect(within(menu).queryByRole('link', { name: /^Ayuda$/i })).not.toBeInTheDocument();
 
-      const collapseBtn = screen.getByRole('button', { name: /Contraer menú/i });
-      expect(collapseBtn).toHaveAttribute('aria-expanded', 'true');
-      await userEvent.click(collapseBtn);
-      expect(screen.getByRole('button', { name: /Expandir menú/i })).toHaveAttribute(
+      // El menú lateral arranca contraído (Andres, 20/11) y se puede expandir.
+      const expandBtn = screen.getByRole('button', { name: /Expandir menú/i });
+      expect(expandBtn).toHaveAttribute('aria-expanded', 'false');
+      await userEvent.click(expandBtn);
+      expect(screen.getByRole('button', { name: /Contraer menú/i })).toHaveAttribute(
         'aria-expanded',
-        'false'
+        'true'
       );
+      // Este entorno no tiene localStorage: el menú arranca contraído igual y no falla (try/catch).
 
       expect(
         await screen.findByText('Puedes elegir entre dos ambientes o crear el tuyo')
       ).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Crear sala con ambiente Green/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Crear sala con ambiente Blue/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Crear sala con ambiente Chill/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Crear sala con ambiente Focus/i })).toBeInTheDocument();
       expect(
         screen.getByRole('button', { name: /Crear sala personalizada sin sonido/i })
       ).toBeInTheDocument();

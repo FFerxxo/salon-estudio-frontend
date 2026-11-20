@@ -250,8 +250,8 @@ export function RoomBar({
 
   const ambienteBadgeText: Record<AmbienteId, string> = {
     ninguno: 'Sin sonido',
-    blue: 'Blue',
-    green: 'Green',
+    blue: 'Focus',
+    green: 'Chill',
   };
 
   return (
