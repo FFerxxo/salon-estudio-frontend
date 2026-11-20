@@ -60,9 +60,24 @@ export function getDangerOutlineBtnClasses(theme: ThemeMode): string {
   return `bg-transparent min-h-[44px] px-4 rounded-xl text-sm font-semibold border transition-colors ${palette} disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98] motion-reduce:active:scale-100 motion-reduce:transition-none inline-flex items-center justify-center gap-2`;
 }
 
-/** Grupo de acciones centrado en formularios y modales (en móvil apilado con primario arriba). */
+/** Botón secundario discreto para cancelar debajo del CTA principal. */
+export function getCancelActionClasses(theme: ThemeMode): string {
+  const palette =
+    theme === 'dark'
+      ? 'text-[#cbd5e1] hover:bg-white/[0.08] hover:text-[#f8fafc]'
+      : 'text-[#334155] hover:bg-[#0f172a]/[0.07] hover:text-[#0f172a]';
+
+  return `min-h-[44px] px-5 py-2 rounded-xl text-sm font-medium bg-transparent transition-[background-color,color,transform] duration-150 active:scale-[0.98] motion-reduce:active:scale-100 motion-reduce:transition-none disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center ${palette}`;
+}
+
+/** Botón destructivo principal a todo el ancho con rojo sólido (contraste >= 4.5:1). */
+export function getDangerCtaClasses(_theme?: ThemeMode): string {
+  return 'w-full min-h-[46px] px-5 py-3 rounded-xl bg-[#b91c1c] hover:bg-[#991b1b] text-white text-sm font-bold shadow-sm transition-[background-color,transform] duration-150 active:scale-[0.98] motion-reduce:active:scale-100 motion-reduce:transition-none disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2';
+}
+
+/** Grupo de acciones apilado en formularios y modales (acción principal arriba a todo el ancho y Cancelar centrado abajo). */
 export function getFormActionGroupClasses(): string {
-  return 'flex flex-col-reverse sm:flex-row justify-center gap-3 pt-2';
+  return 'flex flex-col-reverse items-center gap-2 pt-2 w-full';
 }
 
 /** Enlaces con contraste verificado: Noche #7dd3fc (6.83:1); Día #075985 (7.56:1). */

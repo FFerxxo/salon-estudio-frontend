@@ -25,6 +25,8 @@ import {
   validateUsername,
 } from '../utils/authValidation';
 import {
+  getCancelActionClasses,
+  getDangerCtaClasses,
   getDangerOutlineBtnClasses,
   getErrorAlertClasses,
   getFormActionGroupClasses,
@@ -586,16 +588,14 @@ export function ProfilePage() {
               type="button"
               disabled={saving}
               onClick={handleCancelEdit}
-              className={`${getSecondaryBtnClasses(theme)} w-full sm:w-auto sm:min-w-[130px]`}
+              className={getCancelActionClasses(theme)}
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={saving}
-              className={`${getPrimaryCtaClasses(
-                theme
-              )} !w-full sm:!w-auto sm:min-w-[160px] !min-h-[44px] !py-2.5 text-sm`}
+              className={getPrimaryCtaClasses(theme)}
             >
               {saving ? 'Guardando…' : 'Guardar cambios'}
             </button>
@@ -804,7 +804,7 @@ export function ProfilePage() {
                 setDeleteOpen(false);
                 setDeleteError(null);
               }}
-              className={`${getSecondaryBtnClasses(theme)} w-full sm:w-auto sm:min-w-[130px]`}
+              className={getCancelActionClasses(theme)}
             >
               Cancelar
             </button>
@@ -812,7 +812,7 @@ export function ProfilePage() {
               type="button"
               disabled={deleting}
               onClick={() => void handleConfirmDelete()}
-              className="w-full sm:w-auto sm:min-w-[190px] min-h-[44px] px-4 py-2.5 rounded-xl bg-[#b91c1c] hover:bg-[#991b1b] text-white text-sm font-semibold active:scale-[0.96] transition-[transform,background-color] disabled:opacity-60 disabled:cursor-not-allowed"
+              className={getDangerCtaClasses(theme)}
             >
               {deleting ? 'Eliminando…' : 'Eliminar definitivamente'}
             </button>
