@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { AlertCircle, Check, Copy, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { ROOM_BACKGROUNDS } from '../content/ambientes';
 import { type ThemeMode } from '../context/ThemeContext';
 import { type Room } from '../services/roomsApi';
 import { copyText } from '../utils/roomHelpers';
@@ -10,7 +11,6 @@ import {
   getSecondaryBtnClasses,
   getSuccessAlertClasses,
 } from '../utils/themeStyles';
-import { AmbienteChip } from './AmbienteChip';
 
 export interface RoomCardProps {
   room: Room;
@@ -19,9 +19,85 @@ export interface RoomCardProps {
   onDelete: (room: Room) => void;
 }
 
-/** Tarjeta de sala propia con chip de ambiente, código ID, menú de opciones y acciones rápidas. */
+function CustomFogBanner({ isDark }: { isDark: boolean }) {
+  const uid = useId().replace(/:/g, '');
+  const primaryFilterId = `fog-primary-${uid}`;
+  const secondaryFilterId = `fog-secondary-${uid}`;
+
+  return (
+    <div
+      data-room-banner="custom"
+      className="room-card-banner-mask absolute inset-0 overflow-hidden"
+    >
+      <div
+        className={`absolute inset-0 ${
+          isDark ? 'room-card-fog-base-dark' : 'room-card-fog-base-light'
+        }`}
+      />
+      <svg
+        aria-hidden="true"
+        preserveAspectRatio="none"
+        className="absolute -inset-[10%] w-[120%] h-[120%]"
+      >
+        <defs>
+          <filter id={primaryFilterId} x="0" y="0" width="100%" height="100%">
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency="0.0035 0.028"
+              numOctaves="4"
+              seed="7"
+              result="n"
+            />
+            <feColorMatrix
+              in="n"
+              type="matrix"
+              values={
+                isDark
+                  ? '0 0 0 0 0.6  0 0 0 0 0.65  0 0 0 0 0.72  0 0 0 1.2 -0.5'
+                  : '0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 2.2 -0.78'
+              }
+            />
+            <feGaussianBlur stdDeviation="1.5" />
+          </filter>
+          <filter id={secondaryFilterId} x="0" y="0" width="100%" height="100%">
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency="0.002 0.016"
+              numOctaves="3"
+              seed="23"
+              result="n"
+            />
+            <feColorMatrix
+              in="n"
+              type="matrix"
+              values={
+                isDark
+                  ? '0 0 0 0 0.55  0 0 0 0 0.6  0 0 0 0 0.68  0 0 0 1.1 -0.48'
+                  : '0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 2 -0.72'
+              }
+            />
+            <feGaussianBlur stdDeviation="3" />
+          </filter>
+        </defs>
+        <rect width="100%" height="100%" filter={`url(#${primaryFilterId})`} />
+        <rect width="100%" height="100%" filter={`url(#${secondaryFilterId})`} opacity="0.7" />
+      </svg>
+      <span
+        aria-hidden="true"
+        className={`absolute left-1/2 top-[42%] -translate-x-1/2 -translate-y-1/2 text-2xl font-light ${
+          isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'
+        }`}
+      >
+        +
+      </span>
+    </div>
+  );
+}
+
+/** Tarjeta de sala propia con paisaje difuminado, código ID, menú de opciones y acciones rápidas. */
 export function RoomCard({ room, theme, onRename, onDelete }: RoomCardProps) {
   const isDark = theme === 'dark';
+  const bgSrc = ROOM_BACKGROUNDS[room.ambiente];
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuEntered, setMenuEntered] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -120,21 +196,39 @@ export function RoomCard({ room, theme, onRename, onDelete }: RoomCardProps) {
       }`}
     >
       <div
-        className={`rounded-[10px] p-4 flex-1 flex flex-col justify-between gap-3 ${
+        className={`relative isolate rounded-[10px] p-4 flex-1 flex flex-col justify-between gap-3 ${
           isDark ? 'bg-[#0f172a]' : 'bg-white'
         }`}
       >
-        <div className="flex items-start justify-between gap-2">
-          <h2 className="text-base font-bold leading-snug text-balance break-words min-w-0 pt-1">
+        <div
+          aria-hidden="true"
+          className="room-card-banner relative -mx-4 -mt-4 -mb-10 pb-10 rounded-t-[10px] overflow-hidden z-0 pointer-events-none select-none"
+        >
+          {bgSrc ? (
+            <div className="room-card-banner-mask absolute inset-0">
+              <img
+                src={bgSrc}
+                alt=""
+                aria-hidden="true"
+                loading="lazy"
+                decoding="async"
+                className={`room-card-img w-full h-full object-cover block ${
+                  room.ambiente === 'blue' ? 'object-[center_78%]' : 'object-[center_60%]'
+                }`}
+              />
+              {isDark && <div aria-hidden="true" className="room-card-tint absolute inset-0" />}
+            </div>
+          ) : (
+            <CustomFogBanner isDark={isDark} />
+          )}
+        </div>
+
+        <div className="relative z-10 flex items-start justify-between gap-2">
+          <h2 className="room-card-title-glow text-base font-bold leading-snug text-balance break-words min-w-0 pt-1">
             {room.nombre}
           </h2>
 
-          <div ref={menuWrapRef} className="relative inline-flex items-center gap-1.5 shrink-0">
-            <AmbienteChip
-              ambiente={room.ambiente}
-              theme={theme}
-              className="shrink-0 whitespace-nowrap"
-            />
+          <div ref={menuWrapRef} className="relative inline-flex items-center shrink-0">
             <button
               ref={moreBtnRef}
               type="button"
@@ -159,7 +253,7 @@ export function RoomCard({ room, theme, onRename, onDelete }: RoomCardProps) {
               <div
                 role="menu"
                 aria-label={`Acciones de ${room.nombre}`}
-                className={`absolute top-[calc(100%+6px)] right-0 min-w-[180px] p-1.5 rounded-[14px] border z-20 flex flex-col gap-0.5 origin-top-right transition-[transform,opacity] duration-150 ease-out motion-reduce:transition-none ${
+                className={`absolute top-[calc(100%+6px)] right-0 min-w-[180px] p-1.5 rounded-[14px] border z-30 flex flex-col gap-0.5 origin-top-right transition-[transform,opacity] duration-150 ease-out motion-reduce:transition-none ${
                   menuEntered
                     ? 'opacity-100 scale-100 translate-y-0'
                     : 'opacity-0 scale-95 -translate-y-1 motion-reduce:opacity-100 motion-reduce:scale-100 motion-reduce:translate-y-0'
