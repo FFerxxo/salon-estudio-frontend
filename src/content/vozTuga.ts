@@ -166,7 +166,94 @@ export const TUGA_SLOTS: TugaTimeSlot[] = [
   },
 ];
 
-const LAST_PHRASE_STORAGE_KEY = 'uv_tuga_last_phrase';
+const plain = (text: string): TugaPhrase => ({ fullText: text, segments: [{ text }] });
+
+/**
+ * Frases de Inicio (donde se crean las salas). Pool distinto al de la portada, así
+ * nunca se repite la frase que el estudiante acaba de leer al entrar. Cortas, con la
+ * misma ironía, y sobre lo que toca hacer ahí: escoger sala y arrancar.
+ */
+export const TUGA_INICIO_PHRASES: Record<TugaSlotId, TugaPhrase[]> = {
+  madrugon: [
+    plain('Madrugaste. Que no sea para mirar el techo.'),
+    plain('Ya que estás despierto, escogé sala.'),
+    plain('El café todavía no hace efecto. La sala espera.'),
+  ],
+  manana: [
+    plain('Escogé sala antes de que se te pase la mañana.'),
+    plain('Una sala, un tema. No veinte pestañas.'),
+    plain('Mañana productiva o de pestañas abiertas. Vos decidís.'),
+  ],
+  almuerzo: [
+    plain('Estudiar con la barriga llena: deporte extremo.'),
+    plain('Escogé rápido, que el sueño de las dos ya viene.'),
+    plain('Digestión y estudio. Ambicioso, pero va.'),
+  ],
+  tarde: [
+    plain('La tarde se va volando. Escogé sala ya.'),
+    plain('Una sala y el celular lejos. Solo eso.'),
+    plain('Menos scroll, más sala.'),
+  ],
+  noche: [
+    plain('Escogé sala antes de que las series te escojan a vos.'),
+    plain('Elegí sala y no mirés el reloj.'),
+    plain('Con calma, que la noche es larga… y el parcial también.'),
+  ],
+  trasnocho: [
+    plain('A esta hora, mejor una sala tranquila.'),
+    plain('Escogé sala y prometé dormir después. Mentira, pero bueno.'),
+    plain('El trasnocho pesa menos con buena música. Escogé.'),
+  ],
+};
+
+export type TugaContext = 'bienvenida' | 'inicio';
+
+interface SeenState {
+  seen: string[];
+  last?: string;
+}
+
+interface CurrentState {
+  slot: TugaSlotId;
+  text: string;
+}
+
+const SEEN_KEY = (context: TugaContext, slot: TugaSlotId) => `uv_tuga_vistas_${context}_${slot}`;
+const CURRENT_KEY = (context: TugaContext) => `uv_tuga_actual_${context}`;
+
+function readJson<T>(storage: Storage | undefined, key: string): T | null {
+  try {
+    const raw = storage?.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeJson(storage: Storage | undefined, key: string, value: unknown): void {
+  try {
+    storage?.setItem(key, JSON.stringify(value));
+  } catch {
+    // Sin almacenamiento en entornos restringidos
+  }
+}
+
+function getStorages(): { local?: Storage; session?: Storage } {
+  if (typeof window === 'undefined') return {};
+  let local: Storage | undefined;
+  let session: Storage | undefined;
+  try {
+    local = window.localStorage;
+  } catch {
+    local = undefined;
+  }
+  try {
+    session = window.sessionStorage;
+  } catch {
+    session = undefined;
+  }
+  return { local, session };
+}
 
 export function getTugaTimeSlot(date: Date = new Date()): TugaTimeSlot {
   const rawHour = date.getHours();
@@ -178,33 +265,54 @@ export function getTugaTimeSlot(date: Date = new Date()): TugaTimeSlot {
   );
 }
 
-export function selectTugaGreeting(
+function poolFor(context: TugaContext, slot: TugaTimeSlot): TugaPhrase[] {
+  return context === 'inicio' ? TUGA_INICIO_PHRASES[slot.id] : slot.phrases;
+}
+
+/**
+ * Escoge la frase de Tuga según la hora y el lugar:
+ * - Dentro de la misma visita (pestaña) la frase se queda quieta, para no cansar.
+ * - Entre visitas no repite ninguna de la franja hasta haberlas mostrado todas,
+ *   y al volver a empezar tampoco repite la última.
+ * - Portada e Inicio usan pools distintos, así que nunca coinciden.
+ */
+export function selectTugaPhrase(
+  context: TugaContext,
   date: Date = new Date(),
-  previousPhrase?: string
+  random: () => number = Math.random
 ): { slot: TugaTimeSlot; phrase: TugaPhrase } {
   const slot = getTugaTimeSlot(date);
-  let lastSeen = previousPhrase;
+  const pool = poolFor(context, slot);
+  const { local, session } = getStorages();
 
-  if (!lastSeen && typeof window !== 'undefined') {
-    try {
-      lastSeen = window.sessionStorage.getItem(LAST_PHRASE_STORAGE_KEY) ?? undefined;
-    } catch {
-      lastSeen = undefined;
-    }
+  const current = readJson<Partial<CurrentState>>(session, CURRENT_KEY(context));
+  if (current && current.slot === slot.id && typeof current.text === 'string') {
+    const kept = pool.find((item) => item.fullText === current.text);
+    if (kept) return { slot, phrase: kept };
   }
 
-  const candidates = slot.phrases.filter((item) => item.fullText !== lastSeen);
-  const pool = candidates.length > 0 ? candidates : slot.phrases;
-  const index = Math.floor(Math.random() * pool.length);
-  const selected = pool[index] ?? slot.phrases[0];
-
-  if (typeof window !== 'undefined') {
-    try {
-      window.sessionStorage.setItem(LAST_PHRASE_STORAGE_KEY, selected.fullText);
-    } catch {
-      // Sin almacenamiento en entornos restringidos
-    }
+  // Lo guardado puede venir dañado: solo se confía en listas de textos.
+  const stored = readJson<Partial<SeenState>>(local, SEEN_KEY(context, slot.id));
+  const storedSeen = stored && Array.isArray(stored.seen) ? stored.seen : [];
+  const lastShown = stored && typeof stored.last === 'string' ? stored.last : undefined;
+  let seen = storedSeen.filter((text): text is string => typeof text === 'string');
+  let candidates = pool.filter((item) => !seen.includes(item.fullText));
+  if (candidates.length === 0) {
+    seen = [];
+    candidates = pool.filter((item) => item.fullText !== lastShown);
+    if (candidates.length === 0) candidates = pool;
   }
+
+  const index = Math.min(Math.floor(random() * candidates.length), candidates.length - 1);
+  const selected = candidates[index] ?? pool[0];
+
+  writeJson(local, SEEN_KEY(context, slot.id), { seen: [...seen, selected.fullText], last: selected.fullText });
+  writeJson(session, CURRENT_KEY(context), { slot: slot.id, text: selected.fullText });
 
   return { slot, phrase: selected };
+}
+
+/** Frase de la portada (`/`). Se mantiene por compatibilidad. */
+export function selectTugaGreeting(date: Date = new Date()): { slot: TugaTimeSlot; phrase: TugaPhrase } {
+  return selectTugaPhrase('bienvenida', date);
 }
