@@ -28,8 +28,8 @@ export interface CreateRoomDialogProps {
 }
 
 function getAmbientePillLabel(ambiente: AmbienteId): string {
-  if (ambiente === 'blue') return 'Blue';
-  if (ambiente === 'green') return 'Green';
+  if (ambiente === 'blue') return 'Focus';
+  if (ambiente === 'green') return 'Chill';
   return 'Personalizado · sin sonido';
 }
 

@@ -35,9 +35,25 @@ interface WorkspaceLayoutProps {
   onLogout: () => Promise<void>;
 }
 
+const SIDEBAR_COLLAPSED_KEY = 'uv_sidebar_collapsed';
+
 function WorkspaceLayout({ theme, toggleTheme, user, onLogout }: WorkspaceLayoutProps) {
   const location = useLocation();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Contraído por defecto (Andres, 20/11); se recuerda la elección del usuario.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) !== 'false';
+    } catch {
+      return true;
+    }
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(sidebarCollapsed));
+    } catch {
+      // Sin almacenamiento: se queda con el valor por defecto
+    }
+  }, [sidebarCollapsed]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isDark = theme === 'dark';
@@ -154,6 +170,7 @@ function WorkspaceLayout({ theme, toggleTheme, user, onLogout }: WorkspaceLayout
                     onClick={() => setMobileMenuOpen(false)}
                     aria-current={item.active ? 'page' : undefined}
                     title={item.label}
+                    aria-label={item.label}
                     className={`${navItemBaseClass} ${item.active ? activeClass : navInactiveClass}`}
                   >
                     <Icon
@@ -205,7 +222,9 @@ function WorkspaceLayout({ theme, toggleTheme, user, onLogout }: WorkspaceLayout
             ) : (
               <ChevronLeft className="w-[18px] h-[18px] shrink-0" aria-hidden="true" />
             )}
-            <span className={sidebarCollapsed ? 'md:hidden' : ''}>Contraer menú</span>
+            <span className={sidebarCollapsed ? 'md:hidden' : ''}>
+              {sidebarCollapsed ? 'Expandir menú' : 'Contraer menú'}
+            </span>
           </button>
 
           <button

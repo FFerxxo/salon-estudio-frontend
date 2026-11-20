@@ -1,16 +1,15 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, Check, Copy, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { ROOM_BACKGROUNDS } from '../content/ambientes';
 import { type ThemeMode } from '../context/ThemeContext';
 import { type Room } from '../services/roomsApi';
 import { copyText } from '../utils/roomHelpers';
 import {
   getErrorAlertClasses,
   getPrimaryCtaClasses,
-  getSecondaryBtnClasses,
   getSuccessAlertClasses,
 } from '../utils/themeStyles';
+import { SceneBanner, getSceneCardShellClasses, getSceneInnerClasses } from './SceneBanner';
 
 export interface RoomCardProps {
   room: Room;
@@ -19,85 +18,9 @@ export interface RoomCardProps {
   onDelete: (room: Room) => void;
 }
 
-function CustomFogBanner({ isDark }: { isDark: boolean }) {
-  const uid = useId().replace(/:/g, '');
-  const primaryFilterId = `fog-primary-${uid}`;
-  const secondaryFilterId = `fog-secondary-${uid}`;
-
-  return (
-    <div
-      data-room-banner="custom"
-      className="room-card-banner-mask absolute inset-0 overflow-hidden"
-    >
-      <div
-        className={`absolute inset-0 ${
-          isDark ? 'room-card-fog-base-dark' : 'room-card-fog-base-light'
-        }`}
-      />
-      <svg
-        aria-hidden="true"
-        preserveAspectRatio="none"
-        className="absolute -inset-[10%] w-[120%] h-[120%]"
-      >
-        <defs>
-          <filter id={primaryFilterId} x="0" y="0" width="100%" height="100%">
-            <feTurbulence
-              type="fractalNoise"
-              baseFrequency="0.0035 0.028"
-              numOctaves="4"
-              seed="7"
-              result="n"
-            />
-            <feColorMatrix
-              in="n"
-              type="matrix"
-              values={
-                isDark
-                  ? '0 0 0 0 0.6  0 0 0 0 0.65  0 0 0 0 0.72  0 0 0 1.2 -0.5'
-                  : '0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 2.2 -0.78'
-              }
-            />
-            <feGaussianBlur stdDeviation="1.5" />
-          </filter>
-          <filter id={secondaryFilterId} x="0" y="0" width="100%" height="100%">
-            <feTurbulence
-              type="fractalNoise"
-              baseFrequency="0.002 0.016"
-              numOctaves="3"
-              seed="23"
-              result="n"
-            />
-            <feColorMatrix
-              in="n"
-              type="matrix"
-              values={
-                isDark
-                  ? '0 0 0 0 0.55  0 0 0 0 0.6  0 0 0 0 0.68  0 0 0 1.1 -0.48'
-                  : '0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 2 -0.72'
-              }
-            />
-            <feGaussianBlur stdDeviation="3" />
-          </filter>
-        </defs>
-        <rect width="100%" height="100%" filter={`url(#${primaryFilterId})`} />
-        <rect width="100%" height="100%" filter={`url(#${secondaryFilterId})`} opacity="0.7" />
-      </svg>
-      <span
-        aria-hidden="true"
-        className={`absolute left-1/2 top-[42%] -translate-x-1/2 -translate-y-1/2 text-2xl font-light ${
-          isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'
-        }`}
-      >
-        +
-      </span>
-    </div>
-  );
-}
-
 /** Tarjeta de sala propia con paisaje difuminado, código ID, menú de opciones y acciones rápidas. */
 export function RoomCard({ room, theme, onRename, onDelete }: RoomCardProps) {
   const isDark = theme === 'dark';
-  const bgSrc = ROOM_BACKGROUNDS[room.ambiente];
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuEntered, setMenuEntered] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -188,126 +111,98 @@ export function RoomCard({ room, theme, onRename, onDelete }: RoomCardProps) {
   };
 
   return (
-    <article
-      className={`w-full rounded-[20px] p-2.5 flex flex-col justify-between gap-2.5 border ${
-        isDark
-          ? 'bg-[#1f2e4a]/80 border-slate-400/25 shadow-[0_10px_24px_rgba(2,6,23,0.32)]'
-          : 'bg-[#eef6fb] border-[#075985]/15 shadow-[0_6px_18px_rgba(15,23,42,0.08)]'
-      }`}
-    >
-      <div
-        className={`relative isolate rounded-[10px] p-4 flex-1 flex flex-col justify-between gap-3 ${
-          isDark ? 'bg-[#0f172a]' : 'bg-white'
-        }`}
-      >
-        <div
-          aria-hidden="true"
-          className="room-card-banner relative -mx-4 -mt-4 -mb-10 pb-10 rounded-t-[10px] overflow-hidden z-0 pointer-events-none select-none"
-        >
-          {bgSrc ? (
-            <div className="room-card-banner-mask absolute inset-0">
-              <img
-                src={bgSrc}
-                alt=""
-                aria-hidden="true"
-                loading="lazy"
-                decoding="async"
-                className={`room-card-img w-full h-full object-cover block ${
-                  room.ambiente === 'blue' ? 'object-[center_78%]' : 'object-[center_60%]'
+    <article className={getSceneCardShellClasses(isDark)}>
+      <div className={getSceneInnerClasses(isDark)}>
+        <SceneBanner ambiente={room.ambiente} isDark={isDark} />
+
+        <div ref={menuWrapRef} className="absolute top-1.5 right-1.5 z-20">
+          <button
+            ref={moreBtnRef}
+            type="button"
+            aria-label={`Opciones de ${room.nombre}`}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((prev) => !prev)}
+            className={`relative size-8 rounded-[8px] inline-flex items-center justify-center text-white backdrop-blur-sm before:absolute before:-inset-1.5 before:content-[''] active:scale-[0.96] transition-[transform,background-color] duration-150 ${
+              menuOpen ? 'bg-[#0f172a]/70' : 'bg-[#0f172a]/40 hover:bg-[#0f172a]/60'
+            }`}
+          >
+            <MoreHorizontal className="w-[18px] h-[18px]" aria-hidden="true" />
+          </button>
+
+          {menuOpen && (
+            <div
+              role="menu"
+              aria-label={`Acciones de ${room.nombre}`}
+              className={`absolute top-[calc(100%+6px)] right-0 min-w-[180px] p-1.5 rounded-[14px] border z-30 flex flex-col gap-0.5 text-left origin-top-right transition-[transform,opacity] duration-150 ease-out motion-reduce:transition-none ${
+                menuEntered
+                  ? 'opacity-100 scale-100 translate-y-0'
+                  : 'opacity-0 scale-95 -translate-y-1 motion-reduce:opacity-100 motion-reduce:scale-100 motion-reduce:translate-y-0'
+              } ${
+                isDark
+                  ? 'bg-[#0f172a] border-[#64748b] shadow-[0_16px_36px_rgba(2,6,23,0.5)]'
+                  : 'bg-white border-[#64748b] shadow-[0_16px_36px_rgba(15,23,42,0.16)]'
+              }`}
+            >
+              <button
+                type="button"
+                role="menuitem"
+                onClick={handleMenuRename}
+                className={`min-h-[40px] px-3 py-2 rounded-[10px] text-[13px] font-medium flex items-center gap-2 text-left transition-colors duration-150 ${
+                  isDark ? 'text-[#f8fafc] hover:bg-white/10' : 'text-[#0f172a] hover:bg-slate-100'
                 }`}
-              />
-              {isDark && <div aria-hidden="true" className="room-card-tint absolute inset-0" />}
+              >
+                <Pencil className="w-4 h-4 shrink-0" aria-hidden="true" />
+                <span>Renombrar sala</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={handleMenuDelete}
+                className={`min-h-[40px] px-3 py-2 rounded-[10px] text-[13px] font-semibold flex items-center gap-2 text-left transition-colors duration-150 ${
+                  isDark ? 'text-[#fca5a5] hover:bg-[#450a0a]/70' : 'text-[#b91c1c] hover:bg-[#fef2f2]'
+                }`}
+              >
+                <Trash2 className="w-4 h-4 shrink-0" aria-hidden="true" />
+                <span>Eliminar sala</span>
+              </button>
             </div>
-          ) : (
-            <CustomFogBanner isDark={isDark} />
           )}
         </div>
 
-        <div className="relative z-10 flex items-start justify-between gap-2">
-          <h2 className="room-card-title-glow text-base font-bold leading-snug text-balance break-words min-w-0 pt-1">
-            {room.nombre}
-          </h2>
-
-          <div ref={menuWrapRef} className="relative inline-flex items-center shrink-0">
-            <button
-              ref={moreBtnRef}
-              type="button"
-              aria-label={`Opciones de ${room.nombre}`}
-              aria-haspopup="menu"
-              aria-expanded={menuOpen}
-              onClick={() => setMenuOpen((prev) => !prev)}
-              className={`size-11 -mr-1.5 -my-1.5 rounded-[10px] inline-flex items-center justify-center active:scale-[0.96] transition-[transform,background-color,color] duration-150 ${
-                menuOpen
-                  ? isDark
-                    ? 'bg-white/15 text-[#f8fafc]'
-                    : 'bg-slate-200/80 text-[#0f172a]'
-                  : isDark
-                    ? 'text-[#cbd5e1] hover:bg-white/10 hover:text-[#f8fafc]'
-                    : 'text-[#334155] hover:bg-slate-100 hover:text-[#0f172a]'
-              }`}
-            >
-              <MoreHorizontal className="w-5 h-5" aria-hidden="true" />
-            </button>
-
-            {menuOpen && (
-              <div
-                role="menu"
-                aria-label={`Acciones de ${room.nombre}`}
-                className={`absolute top-[calc(100%+6px)] right-0 min-w-[180px] p-1.5 rounded-[14px] border z-30 flex flex-col gap-0.5 origin-top-right transition-[transform,opacity] duration-150 ease-out motion-reduce:transition-none ${
-                  menuEntered
-                    ? 'opacity-100 scale-100 translate-y-0'
-                    : 'opacity-0 scale-95 -translate-y-1 motion-reduce:opacity-100 motion-reduce:scale-100 motion-reduce:translate-y-0'
-                } ${
-                  isDark
-                    ? 'bg-[#0f172a] border-[#64748b] shadow-[0_16px_36px_rgba(2,6,23,0.5)]'
-                    : 'bg-white border-[#64748b] shadow-[0_16px_36px_rgba(15,23,42,0.16)]'
-                }`}
-              >
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={handleMenuRename}
-                  className={`min-h-[40px] px-3 py-2 rounded-[10px] text-[13px] font-medium flex items-center gap-2 text-left transition-colors duration-150 ${
-                    isDark
-                      ? 'text-[#f8fafc] hover:bg-white/10'
-                      : 'text-[#0f172a] hover:bg-slate-100'
-                  }`}
-                >
-                  <Pencil className="w-4 h-4 shrink-0" aria-hidden="true" />
-                  <span>Renombrar sala</span>
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={handleMenuDelete}
-                  className={`min-h-[40px] px-3 py-2 rounded-[10px] text-[13px] font-semibold flex items-center gap-2 text-left transition-colors duration-150 ${
-                    isDark
-                      ? 'text-[#fca5a5] hover:bg-[#450a0a]/70'
-                      : 'text-[#b91c1c] hover:bg-[#fef2f2]'
-                  }`}
-                >
-                  <Trash2 className="w-4 h-4 shrink-0" aria-hidden="true" />
-                  <span>Eliminar sala</span>
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+        <h2 className="room-card-title-glow relative z-10 text-[15px] font-bold leading-snug text-balance break-words max-w-full">
+          {room.nombre}
+        </h2>
 
         <div
-          className={`flex items-center gap-1.5 text-xs ${
+          className={`relative z-10 flex items-center justify-center gap-1.5 text-[11px] whitespace-nowrap ${
             isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'
           }`}
         >
           <span>ID:</span>
-          <code className="font-mono font-semibold tabular-nums break-all">{room.id}</code>
+          <code className={`font-mono font-semibold tabular-nums whitespace-nowrap ${isDark ? 'text-[#f8fafc]' : 'text-[#0f172a]'}`}>
+            {room.id}
+          </code>
+          <button
+            type="button"
+            onClick={() => void handleCopyId()}
+            aria-label={`Copiar ID de ${room.nombre}`}
+            className={`relative shrink-0 whitespace-nowrap h-[26px] px-2 rounded-[7px] border inline-flex items-center gap-1 text-[11px] font-semibold before:absolute before:-inset-[9px] before:content-[''] active:scale-[0.96] transition-[transform,background-color] duration-150 ${
+              isDark
+                ? 'border-slate-400/35 bg-slate-400/10 text-[#f8fafc] hover:bg-slate-400/20'
+                : 'border-[#cbd5e1] bg-[#f1f5f9] text-[#0f172a] hover:bg-[#e2e8f0]'
+            }`}
+          >
+            <Copy className="w-3 h-3 shrink-0" aria-hidden="true" />
+            <span>Copiar ID</span>
+          </button>
         </div>
       </div>
 
       {copied && !copyError && (
         <div
           role="status"
-          className={`rounded-lg px-2.5 py-1.5 text-xs font-bold inline-flex items-center justify-center gap-1.5 ${getSuccessAlertClasses(
+          className={`rounded-lg px-2 py-1 text-xs font-bold inline-flex items-center justify-center gap-1.5 ${getSuccessAlertClasses(
             theme
           )}`}
         >
@@ -319,7 +214,7 @@ export function RoomCard({ room, theme, onRename, onDelete }: RoomCardProps) {
       {copyError && (
         <div
           role="alert"
-          className={`rounded-lg px-2.5 py-1.5 text-xs font-bold inline-flex items-start gap-1.5 ${getErrorAlertClasses(
+          className={`rounded-lg px-2 py-1 text-xs font-bold inline-flex items-start gap-1.5 ${getErrorAlertClasses(
             theme
           )}`}
         >
@@ -328,30 +223,14 @@ export function RoomCard({ room, theme, onRename, onDelete }: RoomCardProps) {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          onClick={() => void handleCopyId()}
-          aria-label={`Copiar ID de ${room.nombre}`}
-          className={`${getSecondaryBtnClasses(theme)} !px-3 ${
-            isDark ? '!bg-[#0f172a] !border-[#94a3b8]' : '!bg-white'
-          }`}
-        >
-          <Copy className="w-4 h-4 shrink-0" aria-hidden="true" />
-          <span>Copiar ID</span>
-        </button>
-
-        <Link
-          to={`/salas/${room.id}`}
-          state={{ room }}
-          aria-label={`Entrar a ${room.nombre}`}
-          className={`${getPrimaryCtaClasses(
-            theme
-          )} !w-full !min-h-[44px] !py-2 text-sm`}
-        >
-          Entrar
-        </Link>
-      </div>
+      <Link
+        to={`/salas/${room.id}`}
+        state={{ room }}
+        aria-label={`Entrar a ${room.nombre}`}
+        className={`${getPrimaryCtaClasses(theme)} !w-full !min-h-[44px] sm:!min-h-[38px] !py-1.5 !rounded-[10px] text-sm`}
+      >
+        Entrar
+      </Link>
     </article>
   );
 }

@@ -21,8 +21,8 @@ export const AMBIENTES: Record<AmbienteId, AmbienteDefinition> = {
   },
   blue: {
     id: 'blue',
-    label: 'Blue',
-    description: 'mar, olas, chill',
+    label: 'Focus',
+    description: 'mar y olas',
     tracks: [
       {
         title: 'Ocean Waves Chill',
@@ -44,7 +44,7 @@ export const AMBIENTES: Record<AmbienteId, AmbienteDefinition> = {
   },
   green: {
     id: 'green',
-    label: 'Green',
+    label: 'Chill',
     description: 'bosque, vals, clásica suave',
     tracks: [
       {

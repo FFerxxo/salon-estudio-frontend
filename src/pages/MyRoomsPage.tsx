@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { RoomCard } from '../components/RoomCard';
 import { DeleteRoomDialog, RenameRoomDialog } from '../components/RoomDialogs';
 import { StatusBanner } from '../components/StatusBanner';
+import { getSceneCardShellClasses, getSceneInnerClasses } from '../components/SceneBanner';
 import { useRooms } from '../context/RoomsContext';
 import { useTheme, type ThemeMode } from '../context/ThemeContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
@@ -20,10 +21,10 @@ function MyRoomsSkeleton({ theme }: { theme: ThemeMode }) {
 
   return (
     <section aria-labelledby="mis-salas-heading" aria-busy="true" className="py-2 space-y-5">
-      <div className="space-y-1">
+      <div className="space-y-1 text-center">
         <h1
           id="mis-salas-heading"
-          className="text-2xl sm:text-[28px] font-bold tracking-tight text-balance"
+          className="text-2xl sm:text-[28px] font-bold tracking-tight text-balance text-center"
         >
           Mis salas
         </h1>
@@ -36,39 +37,15 @@ function MyRoomsSkeleton({ theme }: { theme: ThemeMode }) {
         </p>
       </div>
 
-      <div
-        className="grid grid-cols-[repeat(auto-fill,minmax(min(280px,100%),1fr))] gap-4"
-        aria-hidden="true"
-      >
+      <div className="flex flex-wrap justify-center gap-[18px]" aria-hidden="true">
         {[1, 2, 3].map((item) => (
-          <div
-            key={item}
-            className={`rounded-[20px] p-2.5 flex flex-col gap-2.5 border ${
-              isDark
-                ? 'bg-[#1f2e4a]/80 border-slate-400/20'
-                : 'bg-[#eef6fb] border-[#075985]/15'
-            }`}
-          >
-            <div
-              className={`rounded-[10px] p-4 space-y-3 ${
-                isDark ? 'bg-[#0f172a]' : 'bg-white'
-              }`}
-            >
-              <div
-                className={`h-5 w-3/4 rounded-lg animate-pulse motion-reduce:animate-none ${blockBg}`}
-              />
-              <div
-                className={`h-4 w-1/2 rounded-lg animate-pulse motion-reduce:animate-none ${blockBg}`}
-              />
+          <div key={item} className={`${getSceneCardShellClasses(isDark)} mx-auto sm:mx-0`}>
+            <div className={`${getSceneInnerClasses(isDark)} gap-2`}>
+              <div className={`self-stretch aspect-[2.2/1] rounded-[8px] animate-pulse motion-reduce:animate-none ${blockBg}`} />
+              <div className={`h-4 w-2/3 rounded-md animate-pulse motion-reduce:animate-none ${blockBg}`} />
+              <div className={`h-3 w-1/2 rounded-md animate-pulse motion-reduce:animate-none ${blockBg}`} />
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div
-                className={`h-11 rounded-xl animate-pulse motion-reduce:animate-none ${blockBg}`}
-              />
-              <div
-                className={`h-11 rounded-xl animate-pulse motion-reduce:animate-none ${blockBg}`}
-              />
-            </div>
+            <div className={`h-11 sm:h-[38px] rounded-[10px] animate-pulse motion-reduce:animate-none ${blockBg}`} />
           </div>
         ))}
       </div>
@@ -126,7 +103,7 @@ export function MyRoomsPage() {
       <section aria-labelledby="mis-salas-heading" className="py-2 space-y-5">
         <h1
           id="mis-salas-heading"
-          className="text-2xl sm:text-[28px] font-bold tracking-tight text-balance"
+          className="text-2xl sm:text-[28px] font-bold tracking-tight text-balance text-center"
         >
           Mis salas
         </h1>
@@ -159,7 +136,7 @@ export function MyRoomsPage() {
     <section aria-labelledby="mis-salas-heading" className="py-2 space-y-5">
       <h1
         id="mis-salas-heading"
-        className="text-2xl sm:text-[28px] font-bold tracking-tight text-balance"
+        className="text-2xl sm:text-[28px] font-bold tracking-tight text-balance text-center"
       >
         Mis salas
       </h1>
@@ -184,7 +161,7 @@ export function MyRoomsPage() {
               isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'
             }`}
           >
-            Crea una sala desde Inicio y aparecerá aquí con su ID para invitar a tu grupo.
+            Crea una en Inicio.
           </p>
           <Link
             to="/panel"
@@ -198,11 +175,11 @@ export function MyRoomsPage() {
         </div>
       ) : (
         <ul
-          className="grid grid-cols-[repeat(auto-fill,minmax(min(280px,100%),1fr))] gap-4 list-none p-0 m-0"
+          className="flex flex-wrap justify-center gap-[18px] list-none p-0 m-0"
           aria-label="Tus salas creadas"
         >
           {rooms.map((room) => (
-            <li key={room.id} className="flex">
+            <li key={room.id} className="flex justify-center w-full sm:w-auto">
               <RoomCard
                 room={room}
                 theme={theme}

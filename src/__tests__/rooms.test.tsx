@@ -224,18 +224,25 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
         screen.getByText('Puedes elegir entre dos ambientes o crear el tuyo')
       ).toBeInTheDocument();
 
-      const envGroup = screen.getByRole('group', {
+      const envGroup = screen.getByRole('list', {
         name: /Elegir ambiente para crear una sala/i,
       });
-      expect(within(envGroup).getByRole('button', { name: /ambiente Green/i })).toHaveTextContent(
-        'Green'
+      // Orden Focus, Chill, Personalizado; cada tarjeta con un solo botón «Crear sala».
+      const cardNames = within(envGroup)
+        .getAllByRole('listitem')
+        .map((item) => item.querySelector('p')?.textContent);
+      expect(cardNames).toEqual(['Focus', 'Chill', 'Personalizado']);
+      expect(within(envGroup).getByText('Focus')).toHaveAttribute('lang', 'en');
+      expect(within(envGroup).getByText('Chill')).toHaveAttribute('lang', 'en');
+      expect(within(envGroup).getByRole('button', { name: /ambiente Focus/i })).toHaveTextContent(
+        'Crear sala'
       );
-      expect(within(envGroup).getByRole('button', { name: /ambiente Blue/i })).toHaveTextContent(
-        'Blue'
+      expect(within(envGroup).getByRole('button', { name: /ambiente Chill/i })).toHaveTextContent(
+        'Crear sala'
       );
       expect(
         within(envGroup).getByRole('button', { name: /personalizada sin sonido/i })
-      ).toHaveTextContent('Personalizado');
+      ).toHaveTextContent('Crear sala');
 
       await waitFor(() => {
         expect(screen.queryByRole('heading', { name: 'Tus salas' })).not.toBeInTheDocument();
@@ -243,7 +250,7 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
       expect(screen.queryByText(/0 en línea/i)).not.toBeInTheDocument();
     });
 
-    it('muestra error «No pudimos cargar tus salas.» con «Reintentar» ante 500 y muestra «Tus salas» al recuperar salas', async () => {
+    it('muestra error «No pudimos cargar tus salas.» con «Reintentar» ante 500 en Mis salas y lista las salas al recuperar', async () => {
       const user = userEvent.setup();
       const fetchMock = vi
         .fn()
@@ -253,18 +260,18 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
         .mockResolvedValueOnce(jsonResponse({ salas: [sampleRooms[0]] }, 200));
       vi.stubGlobal('fetch', fetchMock);
 
-      renderAuthenticatedApp('/panel');
+      renderAuthenticatedApp('/salas');
 
       expect(await screen.findByText('No pudimos cargar tus salas.')).toBeInTheDocument();
       const retryBtn = screen.getByRole('button', { name: /Reintentar/i });
       await user.click(retryBtn);
 
-      expect(await screen.findByRole('heading', { name: 'Tus salas' })).toBeInTheDocument();
+      expect(await screen.findByRole('list', { name: /Tus salas creadas/i })).toBeInTheDocument();
       expect(screen.getByText('Cálculo II')).toBeInTheDocument();
       expect(fetchMock).toHaveBeenCalledTimes(2);
     });
 
-    it('renderiza «Tus salas» en /panel cuando existen salas', async () => {
+    it('no lista las salas en Inicio (/panel): viven solo en Mis salas', async () => {
       vi.stubGlobal(
         'fetch',
         vi.fn().mockResolvedValue(jsonResponse({ salas: sampleRooms }, 200))
@@ -272,8 +279,23 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
 
       renderAuthenticatedApp('/panel');
 
-      expect(await screen.findByRole('heading', { name: 'Tus salas' })).toBeInTheDocument();
-      const roomsList = screen.getByRole('list', { name: /Tus salas creadas/i });
+      expect(await screen.findByText('Puedes elegir entre dos ambientes o crear el tuyo')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.queryByText('Cálculo II')).not.toBeInTheDocument();
+      });
+      expect(screen.queryByRole('heading', { name: 'Tus salas' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('list', { name: /Tus salas creadas/i })).not.toBeInTheDocument();
+    });
+
+    it('renderiza las salas en Mis salas (/salas) cuando existen', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(jsonResponse({ salas: sampleRooms }, 200))
+      );
+
+      renderAuthenticatedApp('/salas');
+
+      const roomsList = await screen.findByRole('list', { name: /Tus salas creadas/i });
       expect(within(roomsList).getAllByRole('listitem')).toHaveLength(sampleRooms.length);
       expect(within(roomsList).getByText('Cálculo II')).toBeInTheDocument();
       expect(within(roomsList).getByText('Lectura silenciosa')).toBeInTheDocument();
@@ -312,17 +334,18 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
       expect(await screen.findByText('Cálculo II')).toBeInTheDocument();
       expect(screen.queryByText('Cargando tus salas')).not.toBeInTheDocument();
 
-      // Navega a /panel (Inicio): pinta la caché al instante mientras refresca en segundo plano
+      // Navega a /panel (Inicio): no lista salas, pero refresca la caché en segundo plano
       await user.click(within(nav).getByRole('link', { name: /^Inicio$/i }));
       await waitFor(() => {
         expect(getPathname()).toBe('/panel');
       });
-      expect(screen.getByRole('heading', { name: 'Tus salas' })).toBeInTheDocument();
-      expect(screen.getByText('Cálculo II')).toBeInTheDocument();
+      expect(screen.queryByText('Cálculo II')).not.toBeInTheDocument();
       expect(screen.queryByText('Cargando tus salas')).not.toBeInTheDocument();
 
       secondDeferred.resolve(jsonResponse({ salas: [sampleRooms[0], sampleRooms[1]] }, 200));
-      expect(await screen.findByText('Lectura silenciosa')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+      });
 
       // Vuelve a /salas: nunca parpadea «Cargando tus salas» aunque el fetch en segundo plano esté pendiente
       await user.click(within(nav).getByRole('link', { name: /^Mis salas$/i }));
@@ -332,7 +355,7 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
       expect(screen.queryByText('Cargando tus salas')).not.toBeInTheDocument();
       expect(container.querySelector('[aria-busy="true"]')).not.toBeInTheDocument();
       expect(screen.getByText('Cálculo II')).toBeInTheDocument();
-      expect(screen.getByText('Lectura silenciosa')).toBeInTheDocument();
+      expect(await screen.findByText('Lectura silenciosa')).toBeInTheDocument();
 
       thirdDeferred.resolve(jsonResponse({ salas: sampleRooms }, 200));
       expect(await screen.findByText('Taller de Física')).toBeInTheDocument();
@@ -342,7 +365,6 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
       await waitFor(() => {
         expect(getPathname()).toBe('/panel');
       });
-      expect(screen.getByText('Taller de Física')).toBeInTheDocument();
       fourthDeferred.resolve(jsonResponse({ salas: sampleRooms }, 200));
 
       await waitFor(() => {
@@ -355,7 +377,7 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
       vi.stubGlobal('fetch', fetchMock);
 
       const { rerender } = render(
-        <MemoryRouter initialEntries={['/panel']}>
+        <MemoryRouter initialEntries={['/salas']}>
           <App
             authOverrides={{
               initialStatus: 'authenticated',
@@ -366,7 +388,7 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
       );
 
       rerender(
-        <MemoryRouter initialEntries={['/panel']}>
+        <MemoryRouter initialEntries={['/salas']}>
           <App
             authOverrides={{
               initialStatus: 'authenticated',
@@ -376,8 +398,7 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
         </MemoryRouter>
       );
 
-      expect(await screen.findByRole('heading', { name: 'Tus salas' })).toBeInTheDocument();
-      expect(screen.getByText('Cálculo II')).toBeInTheDocument();
+      expect(await screen.findByText('Cálculo II')).toBeInTheDocument();
     });
   });
 
@@ -455,9 +476,9 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
       expect(within(roomsList).getByText('sala-beta')).toBeInTheDocument();
       expect(within(roomsList).getByText('sala-gamma')).toBeInTheDocument();
 
-      expect(within(roomsList).queryByText('Blue')).not.toBeInTheDocument();
+      expect(within(roomsList).queryByText('Focus')).not.toBeInTheDocument();
       expect(within(roomsList).queryByText('Sin sonido')).not.toBeInTheDocument();
-      expect(within(roomsList).queryByText('Green')).not.toBeInTheDocument();
+      expect(within(roomsList).queryByText('Chill')).not.toBeInTheDocument();
 
       const blueBannerImg = roomsList.querySelector('img[src="/ambientes/fondo-blue.webp"]');
       const greenBannerImg = roomsList.querySelector('img[src="/ambientes/fondo-green.webp"]');
@@ -531,7 +552,7 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
   });
 
   describe('Ventana Crear sala desde tarjetas de ambiente (CreateRoomDialog)', () => {
-    it('abre «¿Cómo se llama tu sala?» desde Green, Blue y Personalizado sin chip/ruido de ambiente, con maxLength=50, botones apilados y foco restaurado', async () => {
+    it('abre «¿Cómo se llama tu sala?» desde Focus, Chill y Personalizado sin chip/ruido de ambiente, con maxLength=50, botones apilados y foco restaurado', async () => {
       const user = userEvent.setup();
       vi.stubGlobal(
         'fetch',
@@ -540,14 +561,14 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
 
       renderAuthenticatedApp('/panel');
 
-      const greenBtn = await screen.findByRole('button', { name: /ambiente Green/i });
+      const greenBtn = await screen.findByRole('button', { name: /ambiente Chill/i });
       await user.click(greenBtn);
 
       let dialog = await screen.findByRole('dialog');
       const heading = within(dialog).getByRole('heading', { name: '¿Cómo se llama tu sala?' });
       expect(heading).toBeInTheDocument();
       expect(heading).toHaveClass('text-center');
-      expect(within(dialog).queryByText('Green')).not.toBeInTheDocument();
+      expect(within(dialog).queryByText('Chill')).not.toBeInTheDocument();
       expect(within(dialog).queryByText('Personalizado · sin sonido')).not.toBeInTheDocument();
       expect(within(dialog).queryByRole('radiogroup', { name: 'Ambiente' })).not.toBeInTheDocument();
       expect(within(dialog).queryByText(/bosque, vals/i)).not.toBeInTheDocument();
@@ -576,13 +597,13 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
         expect(greenBtn).toHaveFocus();
       });
 
-      const blueBtn = screen.getByRole('button', { name: /ambiente Blue/i });
+      const blueBtn = screen.getByRole('button', { name: /ambiente Focus/i });
       await user.click(blueBtn);
       dialog = await screen.findByRole('dialog');
       expect(
         within(dialog).getByRole('heading', { name: '¿Cómo se llama tu sala?' })
       ).toBeInTheDocument();
-      expect(within(dialog).queryByText('Blue')).not.toBeInTheDocument();
+      expect(within(dialog).queryByText('Focus')).not.toBeInTheDocument();
       expect(within(dialog).queryByRole('radiogroup', { name: 'Ambiente' })).not.toBeInTheDocument();
       expect(within(dialog).queryByText(/mar, olas, chill/i)).not.toBeInTheDocument();
 
@@ -612,7 +633,7 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
 
       renderAuthenticatedApp('/panel');
 
-      await user.click(await screen.findByRole('button', { name: /ambiente Blue/i }));
+      await user.click(await screen.findByRole('button', { name: /ambiente Focus/i }));
       const dialog = await screen.findByRole('dialog');
       const nameInput = within(dialog).getByLabelText(/Nombre de la sala/i) as HTMLInputElement;
       const submitBtn = within(dialog).getByRole('button', { name: /^Entrar$/i });
@@ -670,7 +691,7 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
 
       renderAuthenticatedApp('/panel');
 
-      await user.click(await screen.findByRole('button', { name: /ambiente Green/i }));
+      await user.click(await screen.findByRole('button', { name: /ambiente Chill/i }));
       const dialog = await screen.findByRole('dialog');
       const nameInput = within(dialog).getByLabelText(/Nombre de la sala/i);
 
@@ -712,7 +733,7 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
 
       const { getPathname } = renderAuthenticatedApp('/panel');
 
-      await user.click(await screen.findByRole('button', { name: /ambiente Blue/i }));
+      await user.click(await screen.findByRole('button', { name: /ambiente Focus/i }));
       const dialog = await screen.findByRole('dialog');
 
       await user.type(
@@ -777,7 +798,7 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
       vi.stubGlobal('fetch', fetchMock);
 
       const { unmount } = renderAuthenticatedApp('/panel');
-      await user.click(await screen.findByRole('button', { name: /ambiente Green/i }));
+      await user.click(await screen.findByRole('button', { name: /ambiente Chill/i }));
       let dialog = await screen.findByRole('dialog');
       await user.type(within(dialog).getByLabelText(/Nombre de la sala/i), 'Bosque tranquilo');
       await user.click(within(dialog).getByRole('button', { name: /^Entrar$/i }));
@@ -1030,7 +1051,7 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
       const soundBtn = screen.getByRole('button', { name: 'Ambiente sonoro' });
       await user.click(soundBtn);
       const soundDialog = await screen.findByRole('dialog', { name: 'Ambiente sonoro' });
-      expect(within(soundDialog).getByText('Ambiente: Blue')).toBeInTheDocument();
+      expect(within(soundDialog).getByText('Ambiente: Focus')).toBeInTheDocument();
       expect(
         within(soundDialog).getByRole('group', { name: 'Pistas del ambiente' })
       ).toBeInTheDocument();
@@ -1353,24 +1374,30 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
   });
 
   describe('Auditoría automática de accesibilidad (vitest-axe)', () => {
-    it('no reporta violaciones en /panel vacío ni con salas', async () => {
+    it('no reporta violaciones en Inicio ni en Mis salas vacía o con salas', async () => {
       vi.stubGlobal(
         'fetch',
         vi
           .fn()
           .mockResolvedValueOnce(jsonResponse({ salas: [] }, 200))
+          .mockResolvedValueOnce(jsonResponse({ salas: [] }, 200))
           .mockResolvedValueOnce(jsonResponse({ salas: sampleRooms }, 200))
       );
 
-      const { container: emptyContainer, unmount } = renderAuthenticatedApp('/panel');
+      const { container: panelContainer, unmount } = renderAuthenticatedApp('/panel');
       expect(
         await screen.findByText('Puedes elegir entre dos ambientes o crear el tuyo')
       ).toBeInTheDocument();
-      expect(await axe(emptyContainer)).toHaveNoViolations();
+      expect(await axe(panelContainer)).toHaveNoViolations();
       unmount();
 
-      const { container: withRoomsContainer } = renderAuthenticatedApp('/panel');
-      expect(await screen.findByRole('heading', { name: 'Tus salas' })).toBeInTheDocument();
+      const { container: emptyContainer, unmount: unmountEmpty } = renderAuthenticatedApp('/salas');
+      expect(await screen.findByText('Todavía no tienes salas')).toBeInTheDocument();
+      expect(await axe(emptyContainer)).toHaveNoViolations();
+      unmountEmpty();
+
+      const { container: withRoomsContainer } = renderAuthenticatedApp('/salas');
+      expect(await screen.findByRole('list', { name: /Tus salas creadas/i })).toBeInTheDocument();
       expect(await axe(withRoomsContainer)).toHaveNoViolations();
     });
 
@@ -1383,7 +1410,7 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
 
       const { container } = renderAuthenticatedApp('/panel');
 
-      await user.click(await screen.findByRole('button', { name: /ambiente Blue/i }));
+      await user.click(await screen.findByRole('button', { name: /ambiente Focus/i }));
       const dialog = await screen.findByRole('dialog');
 
       expect(await axe(container)).toHaveNoViolations();
