@@ -9,9 +9,10 @@ import { AuthApiError } from '../services/authApi';
 import { validateUsername } from '../utils/authValidation';
 import {
   getErrorAlertClasses,
+  getFormActionGroupClasses,
   getGlassCardClasses,
-  getLinkClasses,
   getPrimaryCtaClasses,
+  getSecondaryBtnClasses,
 } from '../utils/themeStyles';
 
 function toTitleCase(raw: string): string {
@@ -167,26 +168,22 @@ export function GoogleUsernamePage() {
           error={usernameError}
         />
 
-        <div className="space-y-2 pt-1 text-center">
-          <button
-            type="submit"
-            disabled={submitting}
-            className={`${getPrimaryCtaClasses(
-              theme
-            )} active:scale-[0.96] motion-reduce:active:scale-100 motion-reduce:transition-none transition-[background-color,color,transform] duration-150 ease-out`}
-          >
-            {submitting ? 'Entrando...' : 'Entrar al Salón'}
-          </button>
-
+        <div className={getFormActionGroupClasses()}>
           <button
             type="button"
             onClick={() => void handleSwitchAccount()}
             disabled={submitting}
-            className={`min-h-[44px] px-3 inline-flex items-center justify-center rounded-lg text-sm ${getLinkClasses(
-              theme
-            )}`}
+            className={`${getSecondaryBtnClasses(theme)} w-full sm:w-auto sm:min-w-[150px]`}
           >
             Usar otra cuenta
+          </button>
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className={`${getPrimaryCtaClasses(theme)} !w-full sm:!w-auto sm:min-w-[160px] !min-h-[44px] !py-2.5 text-sm`}
+          >
+            {submitting ? 'Entrando...' : 'Entrar al Salón'}
           </button>
         </div>
       </form>

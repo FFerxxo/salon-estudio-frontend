@@ -206,3 +206,88 @@ export async function getRoomById(idToken: string, roomId: string): Promise<Room
   const data = (await response.json()) as { sala?: BackendRoomPayload } & BackendRoomPayload;
   return normalizeRoom(data.sala ?? data);
 }
+
+async function throwRoomResponseError(
+  response: Response,
+  fallbackMessage: string
+): Promise<never> {
+  const body = await readErrorBody(response);
+
+  if (response.status === 400) {
+    const rawNombreErr = body.errores?.nombre;
+    const nombreErr =
+      typeof rawNombreErr === 'string' && rawNombreErr.trim()
+        ? rawNombreErr.trim()
+        : body.error || body.message || 'El nombre debe tener entre 3 y 50 caracteres.';
+    const message = body.error || body.message || nombreErr;
+    const code = body.code || body.codigo || 'VALIDATION_ERROR';
+    throw new RoomsApiError(message, 400, code, { nombre: nombreErr });
+  }
+
+  if (response.status === 404) {
+    const message = body.error || body.message || 'Esta sala no existe o fue eliminada.';
+    const code = body.code || body.codigo || 'ROOM_NOT_FOUND';
+    throw new RoomsApiError(message, 404, code);
+  }
+
+  if (response.status === 401) {
+    const message = body.error || body.message || 'Tu sesión terminó. Vuelve a ingresar.';
+    const code = body.code || body.codigo || 'SESSION_EXPIRED';
+    throw new RoomsApiError(message, 401, code);
+  }
+
+  const message = body.error || body.message || fallbackMessage;
+  const code = body.code || body.codigo || `HTTP_${response.status}`;
+  throw new RoomsApiError(message, response.status, code);
+}
+
+/** Renombra una sala propia vía PATCH /api/salas/:id. */
+export async function renameRoom(
+  idToken: string,
+  roomId: string,
+  nombre: string
+): Promise<Room> {
+  if (isMocksEnabled()) {
+    return mockApi.mockRenameRoom(roomId, nombre);
+  }
+
+  const response = await fetch(
+    `${getApiBaseUrl()}/api/salas/${encodeURIComponent(roomId)}`,
+    {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${idToken}`,
+      },
+      body: JSON.stringify({ nombre: nombre.trim() }),
+    }
+  );
+
+  if (!response.ok) {
+    await throwRoomResponseError(response, 'No pudimos renombrar la sala. Intenta de nuevo.');
+  }
+
+  const data = (await response.json()) as { sala?: BackendRoomPayload } & BackendRoomPayload;
+  return normalizeRoom(data.sala ?? data);
+}
+
+/** Elimina una sala propia vía DELETE /api/salas/:id. */
+export async function deleteRoom(idToken: string, roomId: string): Promise<void> {
+  if (isMocksEnabled()) {
+    return mockApi.mockDeleteRoom(roomId);
+  }
+
+  const response = await fetch(
+    `${getApiBaseUrl()}/api/salas/${encodeURIComponent(roomId)}`,
+    {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${idToken}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    await throwRoomResponseError(response, 'No pudimos eliminar la sala. Intenta de nuevo.');
+  }
+}

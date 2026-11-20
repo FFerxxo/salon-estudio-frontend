@@ -73,6 +73,12 @@ export const AMBIENTE_LIST: AmbienteDefinition[] = [
   AMBIENTES.green,
 ];
 
+export const ROOM_BACKGROUNDS: Record<AmbienteId, string | null> = {
+  green: '/ambientes/fondo-green.webp',
+  blue: '/ambientes/fondo-blue.webp',
+  ninguno: null,
+};
+
 /** Mezcla una lista de pistas con Fisher-Yates sin repetir primero `avoidFirstSrc` si hay más de una. */
 export function shuffleTracks(
   tracks: AmbienteTrack[],

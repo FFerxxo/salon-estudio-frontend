@@ -1,87 +1,95 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 
-describe('Frontend Base + Base Técnica (TS-00 · Paso 5)', () => {
+const mockStudent = {
+  uid: 'uid-est-1',
+  nombres: 'Andrés',
+  apellidos: 'Barbosa',
+  username: 'andres.uv',
+  avatar: '🚀',
+  correo: 'andres.barbosa@correounivalle.edu.co',
+};
+
+describe('Rutas base, redirección de /base-tecnica y separación de pies de página', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it('muestra el estado de carga inicialmente en /base-tecnica', () => {
-    vi.spyOn(globalThis, 'fetch').mockImplementation(
-      () => new Promise(() => {}) // Promesa pendiente
-    );
-
+  it('redirige /base-tecnica limpiamente a / (Inicio)', async () => {
     render(
       <MemoryRouter initialEntries={['/base-tecnica']}>
         <App />
       </MemoryRouter>
     );
 
-    expect(screen.getByText(/Cargando información desde la API/i)).toBeInTheDocument();
-  });
-
-  it('muestra el dato recibido cuando la API responde 200 en /base-tecnica', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        nombre: 'Salón de Estudio',
-        mensaje: 'Bienvenido',
-      }),
-    } as Response);
-
-    render(
-      <MemoryRouter initialEntries={['/base-tecnica']}>
-        <App />
-      </MemoryRouter>
+    expect(
+      await screen.findByRole('heading', { name: /Bienvenido a Tuga/i })
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Vamos a estudiar/i })).toHaveAttribute(
+      'href',
+      '/ingresar'
     );
-
     await waitFor(() => {
-      expect(screen.getByText('Bienvenido')).toBeInTheDocument();
+      expect(document.title).toBe('Inicio · Tuga - Salón de Estudio');
     });
-    expect(screen.getAllByText('Salón de Estudio').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('muestra el error cuando la API falla y el botón «Reintentar» vuelve a pedir el dato', async () => {
-    const fetchMock = vi
-      .spyOn(globalThis, 'fetch')
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 503,
-        json: async () => ({
-          error: 'No se pudo leer la base de datos. Intenta de nuevo.',
-        }),
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          nombre: 'Salón de Estudio',
-          mensaje: 'Bienvenido tras reintento',
-        }),
-      } as Response);
+  it('no muestra el enlace «Base técnica» en el pie de páginas públicas (/ayuda, /ingresar, /registro)', () => {
+    for (const path of ['/ayuda', '/ingresar', '/registro']) {
+      const { unmount } = render(
+        <MemoryRouter initialEntries={[path]}>
+          <App />
+        </MemoryRouter>
+      );
 
-    render(
-      <MemoryRouter initialEntries={['/base-tecnica']}>
-        <App />
-      </MemoryRouter>
-    );
+      const footerNav = screen.getByRole('navigation', { name: /Enlaces secundarios/i });
+      expect(within(footerNav).queryByRole('link', { name: /Base técnica/i })).not.toBeInTheDocument();
+      expect(within(footerNav).getByRole('link', { name: /^Inicio$/i })).toBeInTheDocument();
+      expect(within(footerNav).getByRole('link', { name: /^Ayuda$/i })).toBeInTheDocument();
+      unmount();
+    }
+  });
 
-    await waitFor(() => {
+  it.each(['/panel', '/salas', '/perfil'])(
+    'la ruta privada %s no muestra el enlace «Base técnica» ni el pie público',
+    async (privatePath) => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(JSON.stringify({ salas: [] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      );
+
+      render(
+        <MemoryRouter initialEntries={[privatePath]}>
+          <App
+            authOverrides={{
+              initialStatus: 'authenticated',
+              initialUser: mockStudent,
+            }}
+          />
+        </MemoryRouter>
+      );
+
+      const sidebarNav = await screen.findByRole('navigation', {
+        name: /Navegación principal/i,
+      });
+      expect(within(sidebarNav).queryByRole('link', { name: /Base técnica/i })).not.toBeInTheDocument();
+      expect(within(sidebarNav).getByRole('link', { name: /^Inicio$/i })).toBeInTheDocument();
+      expect(within(sidebarNav).getByRole('link', { name: /^Mis salas$/i })).toBeInTheDocument();
+      expect(within(sidebarNav).getByRole('link', { name: /^Perfil$/i })).toBeInTheDocument();
+
+      expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
       expect(
-        screen.getByText('No se pudo leer la base de datos. Intenta de nuevo.')
-      ).toBeInTheDocument();
-    });
-
-    const retryButton = screen.getByRole('button', { name: /Reintentar/i });
-    await userEvent.click(retryButton);
-
-    await waitFor(() => {
-      expect(screen.getByText('Bienvenido tras reintento')).toBeInTheDocument();
-    });
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-  });
+        screen.queryByText(/Salón de Estudio Colaborativo en Tiempo Real · Universidad del Valle/i)
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/Universidad del Valle · Proyecto Integrador I/i)
+      ).not.toBeInTheDocument();
+    }
+  );
 
   it('muestra la página 404 diseñada en una ruta desconocida', () => {
     render(

@@ -14,15 +14,15 @@ const publicRoutes: PublicRouteSpec[] = [
     path: '/',
     name: 'Inicio',
     isAccessRoute: true,
-    expectedFooterNav: ['Ayuda', 'Base técnica'],
+    expectedFooterNav: [],
     contentLinks: ['Vamos a estudiar'],
-    checkFooterAfterContent: true,
+    checkFooterAfterContent: false,
   },
   {
     path: '/ingresar',
     name: 'Ingresar',
     isAccessRoute: true,
-    expectedFooterNav: ['Inicio', 'Ayuda', 'Base técnica'],
+    expectedFooterNav: ['Inicio', 'Ayuda'],
     contentLinks: [],
     checkFooterAfterContent: false,
   },
@@ -30,7 +30,7 @@ const publicRoutes: PublicRouteSpec[] = [
     path: '/registro',
     name: 'Registro',
     isAccessRoute: true,
-    expectedFooterNav: ['Inicio', 'Ayuda', 'Base técnica'],
+    expectedFooterNav: ['Inicio', 'Ayuda'],
     contentLinks: [],
     checkFooterAfterContent: false,
   },
@@ -38,23 +38,15 @@ const publicRoutes: PublicRouteSpec[] = [
     path: '/ayuda',
     name: 'Ayuda',
     isAccessRoute: false,
-    expectedFooterNav: ['Inicio', 'Ayuda', 'Base técnica', 'Ingresar'],
+    expectedFooterNav: ['Inicio', 'Ayuda', 'Ingresar'],
     contentLinks: [],
-    checkFooterAfterContent: true,
-  },
-  {
-    path: '/base-tecnica',
-    name: 'Base técnica',
-    isAccessRoute: false,
-    expectedFooterNav: ['Inicio', 'Ayuda', 'Base técnica', 'Ingresar'],
-    contentLinks: ['Reintentar'],
     checkFooterAfterContent: true,
   },
   {
     path: '/ruta-desconocida-404',
     name: '404 · Página no encontrada',
     isAccessRoute: false,
-    expectedFooterNav: ['Inicio', 'Ayuda', 'Base técnica', 'Ingresar'],
+    expectedFooterNav: ['Inicio', 'Ayuda', 'Ingresar'],
     contentLinks: ['Volver al Inicio'],
     checkFooterAfterContent: true,
   },
@@ -78,19 +70,13 @@ test.describe('Navegación por Teclado (TS-04) y Rutas Privadas (US-03) en Chrom
     contentLinks,
     checkFooterAfterContent,
   } of publicRoutes) {
-    test(`Ruta pública ${path} (${name}) — Enlace de salto y orden Tab`, async ({ page }) => {
-      if (path === '/base-tecnica') {
-        await page.route('**/api/app-info', async (route) => {
-          await route.fulfill({
-            status: 503,
-            contentType: 'application/json',
-            body: JSON.stringify({ error: 'No se pudo leer la base de datos. Intenta de nuevo.' }),
-          });
-        });
-      }
-
+    test(`Ruta pública ${path} (${name}) — Enlace de salto, orden Tab y sin Base técnica`, async ({
+      page,
+    }) => {
       await page.goto(path);
       await page.waitForLoadState('domcontentloaded');
+
+      await expect(page.getByRole('link', { name: /Base técnica/i })).toHaveCount(0);
 
       // 1. Primer Tab enfoca «Saltar al contenido»
       await page.keyboard.press('Tab');
@@ -110,16 +96,13 @@ test.describe('Navegación por Teclado (TS-04) y Rutas Privadas (US-03) en Chrom
 
       // 3. Enlaces/botones principales dentro de <main>
       for (const linkText of contentLinks) {
-        if (path === '/base-tecnica') {
-          await expect(page.getByRole('button', { name: 'Reintentar' })).toBeVisible();
-        }
         await page.keyboard.press('Tab');
         const activeText = await page.evaluate(() => document.activeElement?.textContent?.trim());
         expect(activeText).toBe(linkText);
         expect(await activeHasVisibleOutline(page)).toBe(true);
       }
 
-      // 4. En rutas sin campos extra en <main>, los enlaces secundarios del pie siguen en orden exacto
+      // 4. En rutas con pie público y sin campos extra en <main>, los enlaces secundarios siguen en orden exacto
       if (checkFooterAfterContent) {
         for (const footerLabel of expectedFooterNav) {
           await page.keyboard.press('Tab');
@@ -131,7 +114,16 @@ test.describe('Navegación por Teclado (TS-04) y Rutas Privadas (US-03) en Chrom
     });
   }
 
-  for (const privatePath of ['/panel', '/perfil', '/salas/demo-1']) {
+  test('Ruta /base-tecnica redirige limpiamente a / (Inicio)', async ({ page }) => {
+    await page.goto('/base-tecnica');
+    await page.waitForURL('**/');
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveTitle('Inicio · Tuga - Salón de Estudio');
+    await expect(page.getByRole('link', { name: /Vamos a estudiar/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Base técnica/i })).toHaveCount(0);
+  });
+
+  for (const privatePath of ['/panel', '/salas', '/perfil', '/salas/demo-1']) {
     test(`Ruta privada ${privatePath} sin sesión redirige a /ingresar (US-03)`, async ({ page }) => {
       await page.goto(privatePath);
       await page.waitForURL('**/ingresar');
@@ -153,32 +145,36 @@ test.describe('Navegación por Teclado (TS-04) y Rutas Privadas (US-03) en Chrom
     await expect(page.getByRole('link', { name: 'Saltar al contenido' })).toBeFocused();
     await page.keyboard.press('Enter');
 
-    // Tab 1: Continuar con Google
+    // Tab 1: Volver a la página de inicio
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('link', { name: /Volver a la página de inicio/i })).toBeFocused();
+
+    // Tab 2: Continuar con Google
     await page.keyboard.press('Tab');
     await expect(page.getByRole('button', { name: 'Continuar con Google' })).toBeFocused();
 
-    // Tab 2: Correo
+    // Tab 3: Correo
     await page.keyboard.press('Tab');
     const emailInput = page.getByLabel(/^Correo$/i);
     await expect(emailInput).toBeFocused();
     await page.keyboard.type('andres.barbosa@correounivalle.edu.co');
 
-    // Tab 3: Contraseña
+    // Tab 4: Contraseña
     await page.keyboard.press('Tab');
     const pwInput = page.getByLabel(/^Contraseña$/i);
     await expect(pwInput).toBeFocused();
 
-    // Tab 4: Mostrar contraseña
+    // Tab 5: Mostrar contraseña
     await page.keyboard.press('Tab');
     await expect(page.getByRole('button', { name: /Mostrar contraseña/i })).toBeFocused();
 
-    // Tab 5: Recuperación de contraseña
+    // Tab 6: Recuperación de contraseña
     await page.keyboard.press('Tab');
     await expect(
       page.getByRole('button', { name: /¿Olvidaste tu contraseña\?/i })
     ).toBeFocused();
 
-    // Tab 6: Botón enviar «Ingresar con correo» y disparo con Enter
+    // Tab 7: Botón enviar «Ingresar con correo» y disparo con Enter
     await page.keyboard.press('Tab');
     const submitBtn = page.getByRole('button', { name: /Ingresar con correo/i });
     await expect(submitBtn).toBeFocused();

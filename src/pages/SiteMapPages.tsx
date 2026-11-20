@@ -142,6 +142,8 @@ export function HomePage() {
 
 export { DashboardPage } from './DashboardPage';
 
+export { MyRoomsPage } from './MyRoomsPage';
+
 export { ProfilePage } from './ProfilePage';
 
 export { RoomPage } from './RoomPage';
@@ -156,10 +158,10 @@ export function HelpPage() {
       aria-labelledby="ayuda-heading"
       className={`rounded-[20px] p-6 sm:p-8 space-y-4 ${getSolidSurfaceClasses(theme)}`}
     >
-      <h1 id="ayuda-heading" className="text-3xl font-bold">
+      <h1 id="ayuda-heading" className="text-3xl font-bold text-balance">
         Ayuda
       </h1>
-      <p className={isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}>
+      <p className={`text-pretty ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}>
         Guía de navegación por teclado (<kbd className="font-mono">Tab</kbd> y enlace «Saltar al
         contenido»), control para pausar la animación del mar y pegado habilitado en contraseñas.
       </p>
@@ -177,10 +179,10 @@ export function NotFoundPage() {
       aria-labelledby="notfound-heading"
       className={`rounded-[20px] p-6 sm:p-8 space-y-4 ${getSolidSurfaceClasses(theme)}`}
     >
-      <h1 id="notfound-heading" className="text-3xl font-bold">
+      <h1 id="notfound-heading" className="text-3xl font-bold text-balance">
         404 · Página no encontrada
       </h1>
-      <p className={isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}>
+      <p className={`text-pretty ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}>
         La ruta que intentas visitar no existe en el mapa del sitio del Salón de Estudio.
       </p>
       <div>

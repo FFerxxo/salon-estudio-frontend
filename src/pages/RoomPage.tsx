@@ -1,16 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  AlertCircle,
-  ArrowLeft,
-  Check,
-  Copy,
-  RotateCcw,
-  ShieldCheck,
-} from 'lucide-react';
+import { AlertCircle, ArrowLeft, RotateCcw } from 'lucide-react';
 import { Link, useLocation, useParams } from 'react-router-dom';
-import { AmbienteChip } from '../components/AmbienteChip';
-import { AmbientePlayer } from '../components/AmbientePlayer';
+import { MemberGrid } from '../components/MemberGrid';
+import { RoomBar } from '../components/RoomPopovers';
 import { StatusBanner } from '../components/StatusBanner';
+import { ROOM_BACKGROUNDS, type AmbienteId } from '../content/ambientes';
 import { useAuth } from '../context/AuthContext';
 import { useTheme, type ThemeMode } from '../context/ThemeContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
@@ -19,13 +13,29 @@ import { copyText, resolveAuthToken } from '../utils/roomHelpers';
 import {
   getErrorAlertClasses,
   getPrimaryCtaClasses,
+  getSecondaryBtnClasses,
   getSolidSurfaceClasses,
-  getSuccessAlertClasses,
 } from '../utils/themeStyles';
 
 interface RoomLocationState {
   room?: Room;
   justCreated?: boolean;
+}
+
+function getRoomScrimStyle(ambiente: AmbienteId, isDark: boolean): string {
+  if (ambiente === 'green') {
+    return isDark
+      ? 'linear-gradient(180deg, rgba(6, 16, 12, 0.72) 0%, rgba(6, 16, 12, 0.52) 50%, rgba(6, 16, 12, 0.78) 100%)'
+      : 'linear-gradient(180deg, rgba(8, 24, 18, 0.64) 0%, rgba(10, 26, 20, 0.48) 50%, rgba(8, 22, 16, 0.7) 100%)';
+  }
+  if (ambiente === 'blue') {
+    return isDark
+      ? 'linear-gradient(180deg, rgba(7, 15, 30, 0.72) 0%, rgba(7, 15, 30, 0.52) 50%, rgba(7, 15, 30, 0.78) 100%)'
+      : 'linear-gradient(180deg, rgba(8, 20, 38, 0.64) 0%, rgba(10, 24, 46, 0.46) 50%, rgba(8, 18, 34, 0.7) 100%)';
+  }
+  return isDark
+    ? 'linear-gradient(180deg, #0b1220 0%, #111c30 55%, #0f172a 100%)'
+    : 'linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 100%)';
 }
 
 function RoomSkeleton({ theme }: { theme: ThemeMode }) {
@@ -36,7 +46,7 @@ function RoomSkeleton({ theme }: { theme: ThemeMode }) {
     <section
       aria-busy="true"
       aria-labelledby="room-loading-heading"
-      className={`max-w-3xl mx-auto rounded-[20px] p-6 sm:p-8 space-y-5 ${getSolidSurfaceClasses(
+      className={`max-w-4xl mx-auto rounded-[20px] p-6 sm:p-8 space-y-5 ${getSolidSurfaceClasses(
         theme
       )}`}
     >
@@ -45,28 +55,24 @@ function RoomSkeleton({ theme }: { theme: ThemeMode }) {
       </h1>
       <div role="status" aria-live="polite" className="space-y-4">
         <span className="sr-only">Cargando sala</span>
-        <div aria-hidden="true" className="space-y-2.5">
-          <div
-            className={`h-8 w-3/5 rounded-lg animate-pulse motion-reduce:animate-none ${blockBg}`}
-          />
-          <div
-            className={`h-5 w-2/5 rounded-lg animate-pulse motion-reduce:animate-none ${blockBg}`}
-          />
-        </div>
-        <div
-          aria-hidden="true"
-          className={`h-28 w-full rounded-2xl animate-pulse motion-reduce:animate-none ${blockBg}`}
-        />
         <div
           aria-hidden="true"
           className={`h-16 w-full rounded-2xl animate-pulse motion-reduce:animate-none ${blockBg}`}
         />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5" aria-hidden="true">
+          {[1, 2, 3, 4].map((slot) => (
+            <div
+              key={slot}
+              className={`aspect-[16/10] w-full rounded-2xl animate-pulse motion-reduce:animate-none ${blockBg}`}
+            />
+          ))}
+        </div>
       </div>
     </section>
   );
 }
 
-/** Vista mínima de sala con datos del anfitrión, copia de ID y reproductor de ambiente sonoro. */
+/** Escenario de la sala colaborativa con fondo por ambiente, barra de audio y cuadrícula 2×2. */
 export function RoomPage() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
@@ -84,6 +90,7 @@ export function RoomPage() {
   const [errorKind, setErrorKind] = useState<'none' | 'not-found' | 'generic'>('none');
   const [reloadCount, setReloadCount] = useState(0);
   const [bannerDismissedForId, setBannerDismissedForId] = useState<string | null>(null);
+  const [participantsOpen, setParticipantsOpen] = useState(true);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState<string | null>(null);
   const [liveAnnouncement, setLiveAnnouncement] = useState('');
@@ -206,10 +213,8 @@ export function RoomPage() {
           <button
             type="button"
             onClick={() => setReloadCount((prev) => prev + 1)}
-            className={`min-h-[44px] px-4 py-2 rounded-lg border-[1.5px] text-sm font-semibold inline-flex items-center gap-1.5 active:scale-[0.96] transition-[transform,background-color] ${
-              isDark
-                ? 'border-[#94a3b8] bg-[#0f172a] text-[#f8fafc] hover:bg-white/10'
-                : 'border-[#64748b] bg-white text-[#0f172a] hover:bg-slate-50'
+            className={`${getSecondaryBtnClasses(theme)} ${
+              isDark ? '!bg-[#0f172a]' : '!bg-white'
             }`}
           >
             <RotateCcw className="w-4 h-4 shrink-0" aria-hidden="true" />
@@ -221,10 +226,10 @@ export function RoomPage() {
             to="/panel"
             className={`${getPrimaryCtaClasses(
               theme
-            )} !w-auto !min-h-[44px] !py-2.5 text-sm active:scale-[0.96] transition-[transform,background-color]`}
+            )} !w-auto !min-h-[44px] !py-2.5 text-sm`}
           >
             <ArrowLeft className="w-4 h-4 shrink-0" aria-hidden="true" />
-            <span>Volver al panel</span>
+            <span>Volver a Inicio</span>
           </Link>
         </div>
       </section>
@@ -256,10 +261,10 @@ export function RoomPage() {
             to="/panel"
             className={`${getPrimaryCtaClasses(
               theme
-            )} !w-auto !min-h-[44px] !py-2.5 text-sm active:scale-[0.96] transition-[transform,background-color]`}
+            )} !w-auto !min-h-[44px] !py-2.5 text-sm`}
           >
             <ArrowLeft className="w-4 h-4 shrink-0" aria-hidden="true" />
-            <span>Volver al panel</span>
+            <span>Volver a Inicio</span>
           </Link>
         </div>
       </section>
@@ -267,129 +272,78 @@ export function RoomPage() {
   }
 
   const isHost =
-    Boolean(locationState?.justCreated) ||
-    (Boolean(user?.uid) && room.anfitrionUid === user?.uid);
+    Boolean(user?.uid && room.anfitrionUid === user.uid) ||
+    Boolean(locationState?.justCreated);
   const showCreatedBanner = Boolean(
     locationState?.justCreated && id && bannerDismissedForId !== id
   );
+  const bgSrc = ROOM_BACKGROUNDS[room.ambiente];
+  const scrimStyle = getRoomScrimStyle(room.ambiente, isDark);
 
   return (
     <section
-      aria-labelledby="room-heading"
-      className={`max-w-3xl mx-auto rounded-[20px] p-6 sm:p-8 space-y-5 ${getSolidSurfaceClasses(
-        theme
-      )}`}
+      aria-labelledby="roomHeading"
+      className={`relative flex-1 min-h-full rounded-[16px] md:rounded-[18px] overflow-hidden border flex flex-col ${
+        isDark
+          ? 'border-white/15 bg-[#0b1220]'
+          : 'border-[#0f172a]/15 bg-[#f1f5f9]'
+      }`}
     >
-      <div role="status" aria-live="polite" className="sr-only">
-        {liveAnnouncement}
-      </div>
-
-      {showCreatedBanner && id && (
-        <StatusBanner
-          message="Sala creada"
-          onDismiss={() => setBannerDismissedForId(id)}
+      {bgSrc && (
+        <img
+          src={bgSrc}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
         />
       )}
 
       <div
-        className={`flex flex-wrap items-start justify-between gap-4 pb-4 border-b ${
-          isDark ? 'border-slate-400/25' : 'border-[#075985]/15'
-        }`}
-      >
-        <div className="space-y-2.5 min-w-0">
-          <h1
-            id="room-heading"
-            className="text-2xl sm:text-3xl font-bold tracking-tight text-balance break-words"
+        aria-hidden="true"
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: scrimStyle }}
+      />
+
+      <div className="relative z-10 flex-1 flex flex-col gap-3 sm:gap-4 p-4 sm:p-5">
+        <div role="status" aria-live="polite" className="sr-only">
+          {liveAnnouncement}
+        </div>
+
+        {showCreatedBanner && id && (
+          <StatusBanner
+            message="Sala creada"
+            onDismiss={() => setBannerDismissedForId(id)}
+          />
+        )}
+
+        {copyError && (
+          <div
+            role="alert"
+            className={`rounded-xl p-4 text-sm font-semibold flex items-center gap-2 ${getErrorAlertClasses(
+              theme
+            )}`}
           >
-            {room.nombre}
-          </h1>
-
-          <div className="flex flex-wrap items-center gap-2.5">
-            {isHost && (
-              <span
-                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ring-1 ${
-                  isDark
-                    ? 'bg-[#38bdf8]/15 text-[#7dd3fc] ring-[#38bdf8]/30'
-                    : 'bg-[#075985]/10 text-[#075985] ring-[#075985]/25'
-                }`}
-              >
-                <ShieldCheck className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                <span>Anfitrión</span>
-              </span>
-            )}
-
-            <AmbienteChip ambiente={room.ambiente} theme={theme} />
-
-            <span
-              className={`inline-flex items-center gap-1.5 text-xs ${
-                isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'
-              }`}
-            >
-              <span>ID:</span>
-              <code className="font-mono font-semibold tabular-nums">{room.id}</code>
-            </span>
-
-            <button
-              type="button"
-              onClick={() => void handleCopyId()}
-              className={`min-h-[44px] px-3 py-1.5 rounded-xl border-[1.5px] text-xs font-semibold inline-flex items-center gap-1.5 active:scale-[0.96] transition-[transform,background-color] ${
-                isDark
-                  ? 'border-[#94a3b8] text-[#f8fafc] hover:bg-white/10'
-                  : 'border-[#64748b] text-[#0f172a] hover:bg-slate-100'
-              }`}
-            >
-              <Copy className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-              <span>Copiar ID</span>
-            </button>
-
-            {copied && (
-              <span
-                className={`rounded-lg px-2.5 py-1 text-xs font-bold inline-flex items-center gap-1.5 ${getSuccessAlertClasses(
-                  theme
-                )}`}
-              >
-                <Check className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                <span>ID copiado</span>
-              </span>
-            )}
+            <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
+            <span className="text-pretty">{copyError}</span>
           </div>
+        )}
+
+        <RoomBar
+          room={room}
+          roomId={id ?? room.id}
+          copied={copied}
+          onCopyId={() => void handleCopyId()}
+          participantsOpen={participantsOpen}
+          onToggleParticipants={() => setParticipantsOpen((prev) => !prev)}
+        />
+
+        <div className="flex-1 flex items-center py-2">
+          <MemberGrid
+            currentUser={user}
+            isHost={isHost}
+            visible={participantsOpen}
+          />
         </div>
-
-        <Link
-          to="/panel"
-          className={`min-h-[44px] px-4 py-2 rounded-xl border-[1.5px] text-sm font-semibold inline-flex items-center gap-1.5 shrink-0 active:scale-[0.96] transition-[transform,background-color] ${
-            isDark
-              ? 'border-[#94a3b8] text-[#f8fafc] hover:bg-white/10'
-              : 'border-[#64748b] text-[#0f172a] hover:bg-slate-100'
-          }`}
-        >
-          <ArrowLeft className="w-4 h-4 shrink-0" aria-hidden="true" />
-          <span>Salir de la sala</span>
-        </Link>
-      </div>
-
-      {copyError && (
-        <div
-          role="alert"
-          className={`rounded-xl p-4 text-sm font-semibold flex items-center gap-2 ${getErrorAlertClasses(
-            theme
-          )}`}
-        >
-          <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
-          <span className="text-pretty">{copyError}</span>
-        </div>
-      )}
-
-      <AmbientePlayer key={room.id} ambiente={room.ambiente} />
-
-      <div
-        className={`rounded-2xl border border-dashed p-5 text-center text-sm font-medium text-pretty ${
-          isDark
-            ? 'border-[#64748b] text-[#cbd5e1]'
-            : 'border-[#64748b] text-[#334155]'
-        }`}
-      >
-        El chat y el video llegan pronto.
       </div>
     </section>
   );

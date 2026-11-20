@@ -1,236 +1,41 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertCircle, Check, Copy, Plus, RotateCcw } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { AmbienteChip } from '../components/AmbienteChip';
+import { useCallback, useEffect, useState } from 'react';
+import { AlertCircle, Plus, RotateCcw } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CreateRoomDialog } from '../components/CreateRoomDialog';
+import { RoomCard } from '../components/RoomCard';
+import { DeleteRoomDialog, RenameRoomDialog } from '../components/RoomDialogs';
+import { StatusBanner } from '../components/StatusBanner';
+import { type AmbienteId } from '../content/ambientes';
+import { selectTugaGreeting } from '../content/vozTuga';
 import { useAuth } from '../context/AuthContext';
-import { useTheme, type ThemeMode } from '../context/ThemeContext';
+import { useTheme } from '../context/ThemeContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { getMyRooms, type Room } from '../services/roomsApi';
-import { copyText, resolveAuthToken } from '../utils/roomHelpers';
+import { resolveAuthToken } from '../utils/roomHelpers';
 import {
   getErrorAlertClasses,
-  getPrimaryCtaClasses,
-  getSuccessAlertClasses,
+  getSecondaryBtnClasses,
 } from '../utils/themeStyles';
+import { MyRoomsPage } from './MyRoomsPage';
 
-function CompactTugaIllustration() {
-  return (
-    <svg width="118" height="80" viewBox="0 0 180 120" aria-hidden="true">
-      <ellipse cx="90" cy="108" rx="56" ry="7" fill="rgba(56, 189, 248, 0.2)" />
-      <ellipse cx="42" cy="86" rx="18" ry="10" fill="#0ea5e9" transform="rotate(-18 42 86)" />
-      <ellipse cx="116" cy="90" rx="16" ry="9" fill="#0ea5e9" transform="rotate(16 116 90)" />
-      <ellipse cx="76" cy="68" rx="44" ry="30" fill="#38bdf8" />
-      <path d="M76 44 l18 12 -7 20 h-22 l-7 -20 z" fill="#075985" />
-      <circle cx="128" cy="48" r="24" fill="#7dd3fc" />
-      <ellipse cx="121" cy="45" rx="7.5" ry="8" fill="#f8fafc" />
-      <ellipse cx="139" cy="45" rx="7.5" ry="8" fill="#f8fafc" />
-      <circle cx="122" cy="46" r="4.8" fill="#0f172a" />
-      <circle cx="140" cy="46" r="4.8" fill="#0f172a" />
-      <path
-        d="M123 59 q8 6 16 0"
-        fill="none"
-        stroke="#0f172a"
-        strokeWidth="2.6"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function DashboardSkeleton({ theme }: { theme: ThemeMode }) {
-  const isDark = theme === 'dark';
-  const blockBg = isDark ? 'bg-slate-700/60' : 'bg-slate-200';
-
-  return (
-    <section aria-labelledby="panel-heading" aria-busy="true" className="py-2 space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="space-y-1">
-          <h1 id="panel-heading" className="text-2xl font-bold tracking-tight text-balance">
-            Panel
-          </h1>
-          <p
-            role="status"
-            aria-live="polite"
-            className={`text-sm text-pretty ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}
-          >
-            Cargando tus salas
-          </p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" aria-hidden="true">
-        {[1, 2, 3].map((item) => (
-          <div
-            key={item}
-            className={`rounded-[20px] p-2.5 flex flex-col gap-2.5 border ${
-              isDark
-                ? 'bg-[#1f2e4a]/80 border-slate-400/20'
-                : 'bg-[#eef6fb] border-[#075985]/15'
-            }`}
-          >
-            <div
-              className={`rounded-[10px] p-4 space-y-3 ${
-                isDark ? 'bg-[#0f172a]' : 'bg-white'
-              }`}
-            >
-              <div
-                className={`h-5 w-3/4 rounded-lg animate-pulse motion-reduce:animate-none ${blockBg}`}
-              />
-              <div
-                className={`h-4 w-1/2 rounded-lg animate-pulse motion-reduce:animate-none ${blockBg}`}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div
-                className={`h-11 rounded-xl animate-pulse motion-reduce:animate-none ${blockBg}`}
-              />
-              <div
-                className={`h-11 rounded-xl animate-pulse motion-reduce:animate-none ${blockBg}`}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-interface RoomCardProps {
-  room: Room;
-  theme: ThemeMode;
-  isCopied: boolean;
-  copyErrorMessage: string | null;
-  onCopyId: (room: Room) => void;
-  onEnter: (room: Room) => void;
-}
-
-function RoomCard({
-  room,
-  theme,
-  isCopied,
-  copyErrorMessage,
-  onCopyId,
-  onEnter,
-}: RoomCardProps) {
-  const isDark = theme === 'dark';
-
-  return (
-    <article
-      className={`w-full rounded-[20px] p-2.5 flex flex-col justify-between gap-2.5 border ${
-        isDark
-          ? 'bg-[#1f2e4a]/80 border-slate-400/25 shadow-[0_10px_24px_rgba(2,6,23,0.32)]'
-          : 'bg-[#eef6fb] border-[#075985]/15 shadow-[0_6px_18px_rgba(15,23,42,0.08)]'
-      }`}
-    >
-      <div
-        className={`rounded-[10px] p-4 flex-1 flex flex-col justify-between gap-3 ${
-          isDark ? 'bg-[#0f172a]' : 'bg-white'
-        }`}
-      >
-        <div className="flex items-start justify-between gap-2">
-          <h2 className="text-base font-bold leading-snug text-balance break-words min-w-0">
-            {room.nombre}
-          </h2>
-          <AmbienteChip
-            ambiente={room.ambiente}
-            theme={theme}
-            className="shrink-0 whitespace-nowrap"
-          />
-        </div>
-
-        <div
-          className={`flex items-center gap-1.5 text-xs ${
-            isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'
-          }`}
-        >
-          <span>ID:</span>
-          <code className="font-mono font-semibold tabular-nums break-all">{room.id}</code>
-        </div>
-      </div>
-
-      {isCopied && !copyErrorMessage && (
-        <div
-          className={`rounded-lg px-2.5 py-1.5 text-xs font-bold inline-flex items-center justify-center gap-1.5 ${getSuccessAlertClasses(
-            theme
-          )}`}
-        >
-          <Check className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-          <span>ID copiado</span>
-        </div>
-      )}
-
-      {copyErrorMessage && (
-        <div
-          role="alert"
-          className={`rounded-lg px-2.5 py-1.5 text-xs font-bold inline-flex items-start gap-1.5 ${getErrorAlertClasses(
-            theme
-          )}`}
-        >
-          <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" aria-hidden="true" />
-          <span className="text-pretty break-all">{copyErrorMessage}</span>
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          onClick={() => onCopyId(room)}
-          aria-label={`Copiar ID de ${room.nombre}`}
-          className={`min-h-[44px] px-3 py-2 rounded-xl border-[1.5px] text-sm font-semibold inline-flex items-center justify-center gap-1.5 active:scale-[0.96] transition-[transform,background-color] ${
-            isDark
-              ? 'border-[#94a3b8] bg-[#0f172a] text-[#f8fafc] hover:bg-white/10'
-              : 'border-[#64748b] bg-white text-[#0f172a] hover:bg-slate-100'
-          }`}
-        >
-          <Copy className="w-4 h-4 shrink-0" aria-hidden="true" />
-          <span>Copiar ID</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onEnter(room)}
-          aria-label={`Entrar a ${room.nombre}`}
-          className={`${getPrimaryCtaClasses(
-            theme
-          )} !w-full !min-h-[44px] !py-2 text-sm active:scale-[0.96] transition-[transform,background-color]`}
-        >
-          Entrar
-        </button>
-      </div>
-    </article>
-  );
-}
-
-/** Panel principal con las salas creadas por el estudiante y acceso a crear una nueva. */
-export function DashboardPage() {
-  useDocumentTitle('Panel');
+function DashboardInicioView() {
+  useDocumentTitle('Inicio');
   const navigate = useNavigate();
   const { idToken } = useAuth();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
+  const [{ phrase: greeting }] = useState(() => selectTugaGreeting());
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reloadCount, setReloadCount] = useState(0);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [copiedRoomId, setCopiedRoomId] = useState<string | null>(null);
-  const [copyError, setCopyError] = useState<{ id: string; message: string } | null>(null);
-  const [liveAnnouncement, setLiveAnnouncement] = useState('');
-  const copyTimerRef = useRef<number | null>(null);
-  const announceTimerRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    return () => {
-      if (copyTimerRef.current !== null) {
-        window.clearTimeout(copyTimerRef.current);
-      }
-      if (announceTimerRef.current !== null) {
-        window.clearTimeout(announceTimerRef.current);
-      }
-    };
-  }, []);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [initialAmbiente, setInitialAmbiente] = useState<AmbienteId>('ninguno');
+  const [renamingRoom, setRenamingRoom] = useState<Room | null>(null);
+  const [deletingRoom, setDeletingRoom] = useState<Room | null>(null);
+  const [statusBanner, setStatusBanner] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -258,45 +63,10 @@ export function DashboardPage() {
     };
   }, [idToken, reloadCount]);
 
-  const handleCopyId = useCallback(async (room: Room) => {
-    if (copyTimerRef.current !== null) {
-      window.clearTimeout(copyTimerRef.current);
-      copyTimerRef.current = null;
-    }
-    if (announceTimerRef.current !== null) {
-      window.clearTimeout(announceTimerRef.current);
-      announceTimerRef.current = null;
-    }
-
-    const copiedOk = await copyText(room.id);
-    if (!copiedOk) {
-      setCopiedRoomId(null);
-      setLiveAnnouncement('');
-      setCopyError({
-        id: room.id,
-        message: `No pudimos copiar el ID. Cópialo a mano: ${room.id}`,
-      });
-      return;
-    }
-
-    setCopyError(null);
-    setCopiedRoomId(room.id);
-    setLiveAnnouncement('');
-    announceTimerRef.current = window.setTimeout(() => {
-      setLiveAnnouncement(`ID de ${room.nombre} copiado al portapapeles`);
-    }, 20);
-
-    copyTimerRef.current = window.setTimeout(() => {
-      setCopiedRoomId(null);
-    }, 3000);
-  }, []);
-
-  const handleEnterRoom = useCallback(
-    (room: Room) => {
-      navigate(`/salas/${room.id}`, { state: { room } });
-    },
-    [navigate]
-  );
+  const openCreateWithAmbiente = (ambiente: AmbienteId) => {
+    setInitialAmbiente(ambiente);
+    setCreateOpen(true);
+  };
 
   const handleRoomCreated = useCallback(
     (room: Room) => {
@@ -306,16 +76,135 @@ export function DashboardPage() {
     [navigate]
   );
 
-  if (loading) {
-    return <DashboardSkeleton theme={theme} />;
-  }
+  const handleRenamed = useCallback((updated: Room) => {
+    setRooms((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+    setRenamingRoom(null);
+    setStatusBanner('Nombre de sala actualizado');
+  }, []);
 
-  if (loadError) {
-    return (
-      <section aria-labelledby="panel-heading" className="py-2 space-y-5">
-        <h1 id="panel-heading" className="text-2xl font-bold tracking-tight text-balance">
-          Panel
+  const handleDeleted = useCallback((deletedId: string) => {
+    setRooms((prev) => prev.filter((item) => item.id !== deletedId));
+    setDeletingRoom(null);
+    setStatusBanner('Sala eliminada');
+  }, []);
+
+  const envCardBase =
+    'group relative min-h-[144px] sm:min-h-[210px] rounded-[18px] overflow-hidden p-5 flex flex-col text-left transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-0.5 active:scale-[0.96] motion-reduce:transform-none motion-reduce:transition-none';
+
+  const photoCardRing = isDark
+    ? 'border border-white/10 shadow-[0_12px_28px_rgba(2,6,23,0.45)]'
+    : 'border border-black/10 shadow-[0_8px_22px_rgba(15,23,42,0.12)]';
+
+  return (
+    <section aria-labelledby="panel-heading" className="pt-4 sm:pt-8 pb-4 space-y-8">
+      <header className="text-center space-y-2.5 max-w-2xl mx-auto">
+        <h1
+          id="panel-heading"
+          className="text-2xl sm:text-[30px] font-bold tracking-[-0.025em] leading-[1.24] text-balance max-w-[24ch] mx-auto"
+        >
+          {greeting.segments.map((seg, idx) =>
+            seg.lang ? (
+              <span key={idx} lang={seg.lang}>
+                {seg.text}
+              </span>
+            ) : (
+              <span key={idx}>{seg.text}</span>
+            )
+          )}
         </h1>
+        <p
+          className={`text-sm sm:text-base text-pretty ${
+            isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'
+          }`}
+        >
+          Puedes elegir entre dos ambientes o crear el tuyo
+        </p>
+      </header>
+
+      {statusBanner && (
+        <StatusBanner message={statusBanner} onDismiss={() => setStatusBanner(null)} />
+      )}
+
+      <div
+        role="group"
+        aria-label="Elegir ambiente para crear una sala"
+        className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+      >
+        <button
+          type="button"
+          onClick={() => openCreateWithAmbiente('green')}
+          aria-label="Crear sala con ambiente Green"
+          className={`${envCardBase} ${photoCardRing} justify-end items-start bg-[#06140e]`}
+        >
+          <img
+            src="/ambientes/fondo-green.webp"
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+          />
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                'linear-gradient(180deg, rgba(6, 20, 14, 0.08) 0%, rgba(6, 20, 14, 0.36) 54%, rgba(5, 16, 12, 0.84) 100%)',
+            }}
+          />
+          <span className="relative z-10 text-lg font-bold tracking-[-0.015em] text-[#f8fafc]">
+            Green
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => openCreateWithAmbiente('blue')}
+          aria-label="Crear sala con ambiente Blue"
+          className={`${envCardBase} ${photoCardRing} justify-end items-start bg-[#071122]`}
+        >
+          <img
+            src="/ambientes/fondo-blue.webp"
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+          />
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                'linear-gradient(180deg, rgba(7, 17, 34, 0.1) 0%, rgba(7, 17, 34, 0.36) 54%, rgba(6, 14, 28, 0.84) 100%)',
+            }}
+          />
+          <span className="relative z-10 text-lg font-bold tracking-[-0.015em] text-[#f8fafc]">
+            Blue
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => openCreateWithAmbiente('ninguno')}
+          aria-label="Crear sala personalizada sin sonido"
+          style={{
+            background: isDark
+              ? 'linear-gradient(180deg, rgba(30, 41, 59, 0.86) 0%, rgba(15, 23, 42, 0.94) 100%)'
+              : 'linear-gradient(180deg, rgba(248, 250, 252, 0.95) 0%, rgba(226, 232, 240, 0.9) 100%)',
+          }}
+          className={`${envCardBase} justify-between items-center text-center border-[1.5px] border-dashed border-[#64748b] ${
+            isDark
+              ? 'text-[#f8fafc] shadow-[0_12px_28px_rgba(2,6,23,0.35)]'
+              : 'text-[#0f172a] shadow-[0_8px_22px_rgba(15,23,42,0.08)]'
+          }`}
+        >
+          <span className="flex-1 flex items-center justify-center" aria-hidden="true">
+            <Plus className="w-11 h-11 stroke-[1.5] opacity-85" />
+          </span>
+          <span className="relative z-10 text-lg font-bold tracking-[-0.015em]">
+            Personalizado
+          </span>
+        </button>
+      </div>
+
+      {loadError && (
         <div
           role="alert"
           className={`rounded-xl p-4 text-sm font-semibold flex flex-wrap items-center justify-between gap-3 ${getErrorAlertClasses(
@@ -329,86 +218,26 @@ export function DashboardPage() {
           <button
             type="button"
             onClick={() => setReloadCount((prev) => prev + 1)}
-            className={`min-h-[44px] px-4 py-2 rounded-lg border-[1.5px] border-[#64748b] text-sm font-semibold inline-flex items-center gap-1.5 active:scale-[0.96] transition-[transform,background-color] ${
-              isDark
-                ? 'bg-[#0f172a] text-[#f8fafc] hover:bg-white/10'
-                : 'bg-white text-[#0f172a] hover:bg-slate-50'
+            className={`${getSecondaryBtnClasses(theme)} ${
+              isDark ? '!bg-[#0f172a]' : '!bg-white'
             }`}
           >
             <RotateCcw className="w-4 h-4 shrink-0" aria-hidden="true" />
             <span>Reintentar</span>
           </button>
         </div>
-      </section>
-    );
-  }
+      )}
 
-  return (
-    <section aria-labelledby="panel-heading" className="py-2 space-y-5">
-      <div role="status" aria-live="polite" className="sr-only">
-        {liveAnnouncement}
-      </div>
-
-      {rooms.length === 0 ? (
-        <>
-          <h1 id="panel-heading" className="sr-only">
-            Panel
-          </h1>
-          <div
-            className={`max-w-lg mx-auto mt-3 rounded-[20px] border p-8 sm:p-10 text-center flex flex-col items-center gap-4 ${
-              isDark
-                ? 'bg-[#1f2e4a]/80 border-slate-400/25 shadow-[0_10px_24px_rgba(2,6,23,0.32)]'
-                : 'bg-[#eef6fb] border-[#075985]/15 shadow-[0_6px_18px_rgba(15,23,42,0.08)]'
-            }`}
+      {!loading && !loadError && rooms.length > 0 && (
+        <section aria-labelledby="tus-salas-heading" className="pt-2 space-y-4">
+          <h2
+            id="tus-salas-heading"
+            className="text-lg font-bold tracking-tight text-balance"
           >
-            <CompactTugaIllustration />
-            <p className="text-base font-semibold max-w-sm text-pretty">
-              Aún no tienes salas. Crea una para estudiar con tu grupo.
-            </p>
-            <button
-              type="button"
-              onClick={() => setCreateOpen(true)}
-              className={`${getPrimaryCtaClasses(
-                theme
-              )} !w-auto min-h-[44px] px-5 py-2.5 text-sm active:scale-[0.96] transition-[transform,background-color]`}
-            >
-              <Plus className="w-4 h-4 shrink-0" aria-hidden="true" />
-              <span>Crear sala</span>
-            </button>
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="space-y-1">
-              <h1
-                id="panel-heading"
-                className="text-2xl font-bold tracking-tight text-balance"
-              >
-                Panel
-              </h1>
-              <p
-                className={`text-sm text-pretty ${
-                  isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'
-                }`}
-              >
-                Entra a una sala o comparte su ID con tu grupo.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setCreateOpen(true)}
-              className={`${getPrimaryCtaClasses(
-                theme
-              )} !w-auto min-h-[44px] px-5 py-2.5 text-sm active:scale-[0.96] transition-[transform,background-color]`}
-            >
-              <Plus className="w-4 h-4 shrink-0" aria-hidden="true" />
-              <span>Crear sala</span>
-            </button>
-          </div>
-
+            Tus salas
+          </h2>
           <ul
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 list-none p-0 m-0"
+            className="grid grid-cols-[repeat(auto-fill,minmax(min(280px,100%),1fr))] gap-4 list-none p-0 m-0"
             aria-label="Tus salas creadas"
           >
             {rooms.map((room) => (
@@ -416,22 +245,44 @@ export function DashboardPage() {
                 <RoomCard
                   room={room}
                   theme={theme}
-                  isCopied={copiedRoomId === room.id}
-                  copyErrorMessage={copyError?.id === room.id ? copyError.message : null}
-                  onCopyId={(selected) => void handleCopyId(selected)}
-                  onEnter={handleEnterRoom}
+                  onRename={setRenamingRoom}
+                  onDelete={setDeletingRoom}
                 />
               </li>
             ))}
           </ul>
-        </>
+        </section>
       )}
 
       <CreateRoomDialog
         open={createOpen}
+        initialAmbiente={initialAmbiente}
         onClose={() => setCreateOpen(false)}
         onCreated={handleRoomCreated}
       />
+
+      <RenameRoomDialog
+        open={Boolean(renamingRoom)}
+        room={renamingRoom}
+        onClose={() => setRenamingRoom(null)}
+        onRenamed={handleRenamed}
+      />
+
+      <DeleteRoomDialog
+        open={Boolean(deletingRoom)}
+        room={deletingRoom}
+        onClose={() => setDeletingRoom(null)}
+        onDeleted={handleDeleted}
+      />
     </section>
   );
+}
+
+/** Inicio del espacio de trabajo con ambientes rápidos y acceso a salas propias. */
+export function DashboardPage() {
+  const [searchParams] = useSearchParams();
+  if (searchParams.get('vista') === 'mis-salas') {
+    return <MyRoomsPage />;
+  }
+  return <DashboardInicioView />;
 }
