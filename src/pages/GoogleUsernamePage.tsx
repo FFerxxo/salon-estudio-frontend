@@ -8,11 +8,11 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { AuthApiError } from '../services/authApi';
 import { validateUsername } from '../utils/authValidation';
 import {
+  getCancelActionClasses,
   getErrorAlertClasses,
   getFormActionGroupClasses,
   getGlassCardClasses,
   getPrimaryCtaClasses,
-  getSecondaryBtnClasses,
 } from '../utils/themeStyles';
 
 function toTitleCase(raw: string): string {
@@ -173,7 +173,7 @@ export function GoogleUsernamePage() {
             type="button"
             onClick={() => void handleSwitchAccount()}
             disabled={submitting}
-            className={`${getSecondaryBtnClasses(theme)} w-full sm:w-auto sm:min-w-[150px]`}
+            className={getCancelActionClasses(theme)}
           >
             Usar otra cuenta
           </button>
@@ -181,7 +181,7 @@ export function GoogleUsernamePage() {
           <button
             type="submit"
             disabled={submitting}
-            className={`${getPrimaryCtaClasses(theme)} !w-full sm:!w-auto sm:min-w-[160px] !min-h-[44px] !py-2.5 text-sm`}
+            className={getPrimaryCtaClasses(theme)}
           >
             {submitting ? 'Entrando...' : 'Entrar al Salón'}
           </button>

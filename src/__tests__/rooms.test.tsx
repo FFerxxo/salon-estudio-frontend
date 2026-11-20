@@ -19,6 +19,7 @@ import {
   getRoomById,
   renameRoom,
   RoomsApiError,
+  validateRoomName,
   type Room,
 } from '../services/roomsApi';
 
@@ -278,6 +279,106 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
       expect(within(roomsList).getByText('Lectura silenciosa')).toBeInTheDocument();
       expect(within(roomsList).getByText('Taller de Física')).toBeInTheDocument();
     });
+
+    it('mantiene la caché SWR de salas entre /panel y /salas sin mostrar el esqueleto tras la primera carga y actualiza en segundo plano', async () => {
+      const user = userEvent.setup();
+      const firstDeferred = createDeferred<Response>();
+      const secondDeferred = createDeferred<Response>();
+      const thirdDeferred = createDeferred<Response>();
+      const fourthDeferred = createDeferred<Response>();
+
+      const fetchMock = vi
+        .fn()
+        .mockImplementationOnce(() => firstDeferred.promise)
+        .mockImplementationOnce(() => secondDeferred.promise)
+        .mockImplementationOnce(() => thirdDeferred.promise)
+        .mockImplementationOnce(() => fourthDeferred.promise);
+      vi.stubGlobal('fetch', fetchMock);
+
+      const { container, getPathname } = renderAuthenticatedApp('/panel');
+
+      const nav = await screen.findByRole('navigation', { name: /Navegación principal/i });
+
+      // Primera visita a /salas con hasLoaded === false: muestra esqueleto mientras la carga inicial sigue pendiente
+      await user.click(within(nav).getByRole('link', { name: /^Mis salas$/i }));
+      await waitFor(() => {
+        expect(getPathname()).toBe('/salas');
+      });
+      expect(screen.getByText('Cargando tus salas')).toBeInTheDocument();
+      expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument();
+
+      firstDeferred.resolve(jsonResponse({ salas: [sampleRooms[0]] }, 200));
+
+      expect(await screen.findByText('Cálculo II')).toBeInTheDocument();
+      expect(screen.queryByText('Cargando tus salas')).not.toBeInTheDocument();
+
+      // Navega a /panel (Inicio): pinta la caché al instante mientras refresca en segundo plano
+      await user.click(within(nav).getByRole('link', { name: /^Inicio$/i }));
+      await waitFor(() => {
+        expect(getPathname()).toBe('/panel');
+      });
+      expect(screen.getByRole('heading', { name: 'Tus salas' })).toBeInTheDocument();
+      expect(screen.getByText('Cálculo II')).toBeInTheDocument();
+      expect(screen.queryByText('Cargando tus salas')).not.toBeInTheDocument();
+
+      secondDeferred.resolve(jsonResponse({ salas: [sampleRooms[0], sampleRooms[1]] }, 200));
+      expect(await screen.findByText('Lectura silenciosa')).toBeInTheDocument();
+
+      // Vuelve a /salas: nunca parpadea «Cargando tus salas» aunque el fetch en segundo plano esté pendiente
+      await user.click(within(nav).getByRole('link', { name: /^Mis salas$/i }));
+      await waitFor(() => {
+        expect(getPathname()).toBe('/salas');
+      });
+      expect(screen.queryByText('Cargando tus salas')).not.toBeInTheDocument();
+      expect(container.querySelector('[aria-busy="true"]')).not.toBeInTheDocument();
+      expect(screen.getByText('Cálculo II')).toBeInTheDocument();
+      expect(screen.getByText('Lectura silenciosa')).toBeInTheDocument();
+
+      thirdDeferred.resolve(jsonResponse({ salas: sampleRooms }, 200));
+      expect(await screen.findByText('Taller de Física')).toBeInTheDocument();
+
+      // Regresa a /panel: conserva la lista actualizada al instante y refresca en segundo plano
+      await user.click(within(nav).getByRole('link', { name: /^Inicio$/i }));
+      await waitFor(() => {
+        expect(getPathname()).toBe('/panel');
+      });
+      expect(screen.getByText('Taller de Física')).toBeInTheDocument();
+      fourthDeferred.resolve(jsonResponse({ salas: sampleRooms }, 200));
+
+      await waitFor(() => {
+        expect(fetchMock).toHaveBeenCalledTimes(4);
+      });
+    });
+
+    it('conserva las salas cargadas en el primer montaje aunque la sesión resuelva de null a uid durante la petición', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ salas: [sampleRooms[0]] }, 200));
+      vi.stubGlobal('fetch', fetchMock);
+
+      const { rerender } = render(
+        <MemoryRouter initialEntries={['/panel']}>
+          <App
+            authOverrides={{
+              initialStatus: 'authenticated',
+              initialUser: null,
+            }}
+          />
+        </MemoryRouter>
+      );
+
+      rerender(
+        <MemoryRouter initialEntries={['/panel']}>
+          <App
+            authOverrides={{
+              initialStatus: 'authenticated',
+              initialUser: mockStudent,
+            }}
+          />
+        </MemoryRouter>
+      );
+
+      expect(await screen.findByRole('heading', { name: 'Tus salas' })).toBeInTheDocument();
+      expect(screen.getByText('Cálculo II')).toBeInTheDocument();
+    });
   });
 
   describe('Mis salas (/salas): carga, vacío, error con Reintentar, tarjetas y Copiar ID', () => {
@@ -418,7 +519,7 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
   });
 
   describe('Ventana Crear sala desde tarjetas de ambiente (CreateRoomDialog)', () => {
-    it('pre-siembra cada tarjeta (Green, Blue, Personalizado) en «¿Cómo se llama tu sala?» y devuelve el foco al cerrar con Cancelar o Escape', async () => {
+    it('abre «¿Cómo se llama tu sala?» desde Green, Blue y Personalizado sin chip/ruido de ambiente, con maxLength=50, botones apilados y foco restaurado', async () => {
       const user = userEvent.setup();
       vi.stubGlobal(
         'fetch',
@@ -431,19 +532,31 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
       await user.click(greenBtn);
 
       let dialog = await screen.findByRole('dialog');
-      expect(
-        within(dialog).getByRole('heading', { name: '¿Cómo se llama tu sala?' })
-      ).toBeInTheDocument();
-      expect(within(dialog).getByText('Green')).toBeInTheDocument();
+      const heading = within(dialog).getByRole('heading', { name: '¿Cómo se llama tu sala?' });
+      expect(heading).toBeInTheDocument();
+      expect(heading).toHaveClass('text-center');
+      expect(within(dialog).queryByText('Green')).not.toBeInTheDocument();
+      expect(within(dialog).queryByText('Personalizado · sin sonido')).not.toBeInTheDocument();
+      expect(within(dialog).queryByRole('radiogroup', { name: 'Ambiente' })).not.toBeInTheDocument();
       expect(within(dialog).queryByText(/bosque, vals/i)).not.toBeInTheDocument();
       expect(within(dialog).getByText('0/50')).toBeInTheDocument();
       expect(playStub).not.toHaveBeenCalled();
 
       const nameInput = within(dialog).getByLabelText(/Nombre de la sala/i);
+      expect(nameInput).toHaveAttribute('maxlength', '50');
       await user.type(nameInput, 'Cálculo');
       expect(within(dialog).getByText('7/50')).toBeInTheDocument();
 
-      await user.click(within(dialog).getByRole('button', { name: /^Cancelar$/i }));
+      const cancelBtn = within(dialog).getByRole('button', { name: /^Cancelar$/i });
+      const submitBtn = within(dialog).getByRole('button', { name: /^Entrar$/i });
+      expect(submitBtn.className).toContain('w-full');
+      expect(cancelBtn.className).not.toContain('w-full');
+      expect(cancelBtn.parentElement?.className).toContain('flex-col-reverse');
+      expect(
+        cancelBtn.compareDocumentPosition(submitBtn) & Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+
+      await user.click(cancelBtn);
       await waitFor(() => {
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
       });
@@ -454,7 +567,11 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
       const blueBtn = screen.getByRole('button', { name: /ambiente Blue/i });
       await user.click(blueBtn);
       dialog = await screen.findByRole('dialog');
-      expect(within(dialog).getByText('Blue')).toBeInTheDocument();
+      expect(
+        within(dialog).getByRole('heading', { name: '¿Cómo se llama tu sala?' })
+      ).toBeInTheDocument();
+      expect(within(dialog).queryByText('Blue')).not.toBeInTheDocument();
+      expect(within(dialog).queryByRole('radiogroup', { name: 'Ambiente' })).not.toBeInTheDocument();
       expect(within(dialog).queryByText(/mar, olas, chill/i)).not.toBeInTheDocument();
 
       await user.keyboard('{Escape}');
@@ -468,10 +585,15 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
       const customBtn = screen.getByRole('button', { name: /personalizada sin sonido/i });
       await user.click(customBtn);
       dialog = await screen.findByRole('dialog');
-      expect(within(dialog).getByText('Personalizado · sin sonido')).toBeInTheDocument();
+      expect(
+        within(dialog).getByRole('heading', { name: '¿Cómo se llama tu sala?' })
+      ).toBeInTheDocument();
+      expect(within(dialog).queryByText('Personalizado · sin sonido')).not.toBeInTheDocument();
+      expect(within(dialog).queryByText('Personalizado')).not.toBeInTheDocument();
+      expect(within(dialog).queryByRole('radiogroup', { name: 'Ambiente' })).not.toBeInTheDocument();
     });
 
-    it('valida el nombre (vacío, corto «ab» o >50 caracteres) sin borrar el texto ni llamar a POST /api/salas', async () => {
+    it('valida el nombre (vacío, corto «ab», tope maxLength=50 al escribir 55 caracteres y validateRoomName >50) sin llamar a POST /api/salas', async () => {
       const user = userEvent.setup();
       const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ salas: [] }, 200));
       vi.stubGlobal('fetch', fetchMock);
@@ -482,6 +604,8 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
       const dialog = await screen.findByRole('dialog');
       const nameInput = within(dialog).getByLabelText(/Nombre de la sala/i) as HTMLInputElement;
       const submitBtn = within(dialog).getByRole('button', { name: /^Entrar$/i });
+
+      expect(nameInput).toHaveAttribute('maxlength', '50');
 
       await user.click(submitBtn);
       expect(
@@ -496,15 +620,14 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
       expect(nameInput).toHaveValue('ab');
 
       await user.clear(nameInput);
-      const tooLong = 'a'.repeat(51);
-      await user.type(nameInput, tooLong);
-      if (nameInput.value.length > 50) {
-        await user.click(submitBtn);
-        expect(
-          await within(dialog).findByText('El nombre debe tener entre 3 y 50 caracteres.')
-        ).toBeInTheDocument();
-        expect(nameInput).toHaveValue(tooLong);
-      }
+      await user.type(nameInput, 'a'.repeat(55));
+      expect(nameInput).toHaveValue('a'.repeat(50));
+      expect(within(dialog).getByText('50/50')).toBeInTheDocument();
+
+      expect(validateRoomName('a'.repeat(50))).toBeNull();
+      expect(validateRoomName('a'.repeat(51))).toBe(
+        'El nombre debe tener entre 3 y 50 caracteres.'
+      );
 
       const postCalls = fetchMock.mock.calls.filter(
         ([url, init]) =>
@@ -611,6 +734,64 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
       expect(screen.getByText('Sala creada')).toBeInTheDocument();
       expect(screen.getByText('Anfitrión')).toBeInTheDocument();
     });
+
+    it('envía ambiente green y ninguno limpiamente en POST /api/salas según la tarjeta elegida', async () => {
+      const user = userEvent.setup();
+      const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.endsWith('/api/salas/mias')) {
+          return jsonResponse({ salas: [] }, 200);
+        }
+        if (url.endsWith('/api/salas') && init?.method === 'POST') {
+          const body = JSON.parse(String(init.body)) as { nombre: string; ambiente: 'green' | 'ninguno' };
+          return jsonResponse(
+            {
+              sala: {
+                id: `sala-${body.ambiente}`,
+                nombre: body.nombre,
+                ambiente: body.ambiente,
+                anfitrionUid: 'u-123',
+                creadaEn: '2026-11-20T13:00:00.000Z',
+              },
+            },
+            201
+          );
+        }
+        if (url.includes('/api/salas/sala-')) {
+          return jsonResponse({ sala: sampleRooms[2] }, 200);
+        }
+        return jsonResponse({ error: 'No encontrada' }, 404);
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const { unmount } = renderAuthenticatedApp('/panel');
+      await user.click(await screen.findByRole('button', { name: /ambiente Green/i }));
+      let dialog = await screen.findByRole('dialog');
+      await user.type(within(dialog).getByLabelText(/Nombre de la sala/i), 'Bosque tranquilo');
+      await user.click(within(dialog).getByRole('button', { name: /^Entrar$/i }));
+      await screen.findByRole('heading', { name: 'Bosque tranquilo' });
+      unmount();
+
+      renderAuthenticatedApp('/panel');
+      await user.click(await screen.findByRole('button', { name: /personalizada sin sonido/i }));
+      dialog = await screen.findByRole('dialog');
+      await user.type(within(dialog).getByLabelText(/Nombre de la sala/i), 'Lectura pura');
+      await user.click(within(dialog).getByRole('button', { name: /^Entrar$/i }));
+      await screen.findByRole('heading', { name: 'Lectura pura' });
+
+      const postBodies = fetchMock.mock.calls
+        .filter(
+          ([url, init]) =>
+            String(url).endsWith('/api/salas') &&
+            (init as RequestInit | undefined)?.method === 'POST'
+        )
+        .map(([, init]) => JSON.parse(String((init as RequestInit).body)));
+
+      expect(postBodies).toEqual([
+        { nombre: 'Bosque tranquilo', ambiente: 'green' },
+        { nombre: 'Lectura pura', ambiente: 'ninguno' },
+      ]);
+    });
   });
 
   describe('US-07 · Renombrar y eliminar sala propia', () => {
@@ -653,10 +834,25 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
       expect(within(dialog).getByRole('heading', { name: 'Renombrar sala' })).toBeInTheDocument();
       const nameInput = within(dialog).getByLabelText(/Nuevo nombre de la sala/i);
       expect(nameInput).toHaveValue('Cálculo II');
+      expect(nameInput).toHaveAttribute('maxlength', '50');
+
+      const cancelBtn = within(dialog).getByRole('button', { name: /^Cancelar$/i });
+      const saveBtn = within(dialog).getByRole('button', { name: /^Guardar$/i });
+      expect(saveBtn.className).toContain('w-full');
+      expect(cancelBtn.className).not.toContain('w-full');
+      expect(cancelBtn.parentElement?.className).toContain('flex-col-reverse');
+      expect(
+        cancelBtn.compareDocumentPosition(saveBtn) & Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+
+      await user.clear(nameInput);
+      await user.type(nameInput, 'b'.repeat(55));
+      expect(nameInput).toHaveValue('b'.repeat(50));
+      expect(within(dialog).getByText('50/50')).toBeInTheDocument();
 
       await user.clear(nameInput);
       await user.type(nameInput, 'ab');
-      await user.click(within(dialog).getByRole('button', { name: /^Guardar$/i }));
+      await user.click(saveBtn);
       expect(
         await within(dialog).findByText('El nombre debe tener entre 3 y 50 caracteres.')
       ).toBeInTheDocument();
@@ -719,6 +915,14 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
       expect(within(alertDialog).getByText('sala-alpha')).toBeInTheDocument();
 
       const cancelBtn = within(alertDialog).getByRole('button', { name: /^Cancelar$/i });
+      const confirmDeleteBtn = within(alertDialog).getByRole('button', { name: /^Eliminar sala$/i });
+      expect(confirmDeleteBtn.className).toContain('w-full');
+      expect(confirmDeleteBtn.className).toMatch(/bg-\[#b91c1c\]/);
+      expect(cancelBtn.className).not.toContain('w-full');
+      expect(cancelBtn.parentElement?.className).toContain('flex-col-reverse');
+      expect(
+        cancelBtn.compareDocumentPosition(confirmDeleteBtn) & Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
       await waitFor(() => {
         expect(cancelBtn).toHaveFocus();
       });
@@ -775,6 +979,9 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
       const { container, getPathname } = renderAuthenticatedApp('/salas/sala-alpha');
 
       expect(await screen.findByRole('heading', { name: 'Cálculo II' })).toBeInTheDocument();
+      const topbar = screen.getByRole('banner');
+      expect(within(topbar).getByText('Mi salón')).toBeInTheDocument();
+      expect(screen.queryByText('Sala colaborativa')).not.toBeInTheDocument();
       expect(screen.getByText('sala-alpha')).toBeInTheDocument();
 
       // Audio pausado al entrar (cero autoplay)

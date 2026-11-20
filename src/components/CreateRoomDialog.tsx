@@ -11,12 +11,12 @@ import {
 } from '../services/roomsApi';
 import { resolveAuthToken } from '../utils/roomHelpers';
 import {
+  getCancelActionClasses,
   getErrorAlertClasses,
   getFormActionGroupClasses,
   getInlineErrorClasses,
   getInputClasses,
   getPrimaryCtaClasses,
-  getSecondaryBtnClasses,
 } from '../utils/themeStyles';
 import { AppDialog } from './AppDialog';
 
@@ -57,7 +57,6 @@ export function CreateRoomDialog({
   const nameInputId = useId();
   const nameErrorId = useId();
   const nameCounterId = useId();
-  const envSubtitleId = useId();
   const nameInputRef = useRef<HTMLInputElement | null>(null);
 
   const [prevOpen, setPrevOpen] = useState(open);
@@ -145,37 +144,14 @@ export function CreateRoomDialog({
   const describedBy = nombreError ? `${nameErrorId} ${nameCounterId}` : nameCounterId;
   const hasLockedPreset = initialAmbiente !== undefined;
 
-  const pillClasses =
-    ambiente === 'blue'
-      ? isDark
-        ? 'bg-[#38bdf8]/15 text-[#7dd3fc] ring-1 ring-[#38bdf8]/35'
-        : 'bg-[#075985]/10 text-[#075985] ring-1 ring-[#075985]/25'
-      : ambiente === 'green'
-        ? isDark
-          ? 'bg-emerald-500/15 text-[#6ee7b7] ring-1 ring-[#6ee7b7]/35'
-          : 'bg-[#ecfdf5] text-[#047857] ring-1 ring-[#047857]/30'
-        : isDark
-          ? 'bg-slate-400/15 text-[#cbd5e1] ring-1 ring-slate-400/30'
-          : 'bg-slate-100 text-[#334155] ring-1 ring-slate-400/40';
-
   return (
     <AppDialog
       open={open}
       title="¿Cómo se llama tu sala?"
-      descriptionId={envSubtitleId}
       initialFocusRef={nameInputRef}
       disableClose={submitting}
       onClose={handleClose}
     >
-      <div id={envSubtitleId} className="mb-4 flex flex-wrap items-center gap-2">
-        <span
-          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${pillClasses}`}
-        >
-          <AmbientePillIcon ambiente={ambiente} />
-          <span>{getAmbientePillLabel(ambiente)}</span>
-        </span>
-      </div>
-
       <form noValidate onSubmit={(event) => void handleSubmit(event)} className="space-y-4">
         {serverError && (
           <div
@@ -197,7 +173,7 @@ export function CreateRoomDialog({
             id={nameInputId}
             ref={nameInputRef}
             type="text"
-            maxLength={60}
+            maxLength={50}
             value={nombre}
             placeholder="Ej. Cálculo II · parcial"
             onChange={(event) => {
@@ -280,16 +256,14 @@ export function CreateRoomDialog({
             type="button"
             disabled={submitting}
             onClick={handleClose}
-            className={`${getSecondaryBtnClasses(theme)} w-full sm:w-auto sm:min-w-[120px]`}
+            className={getCancelActionClasses(theme)}
           >
             Cancelar
           </button>
           <button
             type="submit"
             disabled={submitting}
-            className={`${getPrimaryCtaClasses(
-              theme
-            )} !w-full sm:!w-auto sm:min-w-[160px] !min-h-[44px] !py-2.5 text-sm`}
+            className={getPrimaryCtaClasses(theme)}
           >
             {submitting ? 'Entrando…' : 'Entrar'}
           </button>

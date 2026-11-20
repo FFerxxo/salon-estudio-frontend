@@ -148,8 +148,8 @@ export function AppDialog({
             : 'bg-white text-[#0f172a] border border-[#64748b]'
         }`}
       >
-        <div className="flex items-start justify-between gap-3 mb-4">
-          <h2 id={titleId} className="text-xl font-bold tracking-tight text-balance pt-1.5">
+        <div className="relative flex items-center justify-center min-h-[44px] mb-4">
+          <h2 id={titleId} className="text-xl font-bold tracking-tight text-balance text-center px-11">
             {title}
           </h2>
           <button
@@ -157,7 +157,7 @@ export function AppDialog({
             onClick={onClose}
             disabled={disableClose}
             aria-label="Cerrar ventana"
-            className={`size-11 shrink-0 inline-flex items-center justify-center rounded-xl active:scale-[0.96] transition-[transform,background-color] disabled:opacity-50 disabled:cursor-not-allowed ${
+            className={`absolute right-0 top-1/2 -translate-y-1/2 size-11 inline-flex items-center justify-center rounded-xl active:scale-[0.96] transition-[transform,background-color] disabled:opacity-50 disabled:cursor-not-allowed ${
               isDark
                 ? 'text-[#cbd5e1] hover:bg-white/10 hover:text-[#f8fafc]'
                 : 'text-[#334155] hover:bg-slate-100 hover:text-[#0f172a]'

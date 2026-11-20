@@ -166,7 +166,7 @@
   right: calc(555px * var(--k) + 10px);
   bottom: calc(190px * var(--k) + 40px);
   width: max-content;
-  max-width: 290px;
+  max-width: min(290px, calc(100vw - 32px));
   opacity: 0;
   filter: drop-shadow(0 8px 18px rgba(2, 6, 23, 0.32));
   view-transition-name: marea-globo;
@@ -342,7 +342,7 @@ img.tuga-parte {
     align-self: flex-start;
     margin: 0 0 -6px 4px;
     width: auto;
-    max-width: min(300px, 88%);
+    max-width: min(290px, calc(100vw - 32px));
   }
 
   .tuga-caja {
@@ -366,7 +366,7 @@ img.tuga-parte {
 }
 
 ::view-transition-group(marea-auth-card) {
-  animation-duration: 500ms;
+  animation-duration: 240ms;
   animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
   border-radius: 24px;
   overflow: clip;

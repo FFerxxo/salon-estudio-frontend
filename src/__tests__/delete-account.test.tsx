@@ -336,6 +336,10 @@ describe('Eliminar cuenta de Estudiante', () => {
     const cancelBtn = within(dialog).getByRole('button', { name: /^Cancelar$/i });
     const confirmBtn = within(dialog).getByRole('button', { name: /^Eliminar definitivamente$/i });
 
+    expect(confirmBtn.className).toContain('w-full');
+    expect(confirmBtn.className).toMatch(/bg-\[#b91c1c\]/);
+    expect(cancelBtn.className).not.toContain('w-full');
+    expect(cancelBtn.parentElement?.className).toContain('flex-col-reverse');
     expect(
       cancelBtn.compareDocumentPosition(confirmBtn) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();

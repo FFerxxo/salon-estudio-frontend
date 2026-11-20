@@ -168,7 +168,16 @@ describe('Perfil de Estudiante: ver y editar', () => {
     }
     await user.click(screen.getByRole('radio', { name: /Audífonos/i }));
 
-    await user.click(screen.getByRole('button', { name: /Guardar cambios/i }));
+    const cancelBtn = screen.getByRole('button', { name: /Cancelar/i });
+    const saveBtn = screen.getByRole('button', { name: /Guardar cambios/i });
+    expect(saveBtn.className).toContain('w-full');
+    expect(cancelBtn.className).not.toContain('w-full');
+    expect(cancelBtn.parentElement?.className).toContain('flex-col-reverse');
+    expect(
+      cancelBtn.compareDocumentPosition(saveBtn) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+
+    await user.click(saveBtn);
 
     expect(updateProfile).toHaveBeenCalledTimes(1);
     const sentPayload = updateProfile.mock.calls[0]?.[0] as UpdateProfilePayload;

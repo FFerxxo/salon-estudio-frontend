@@ -5,15 +5,11 @@ export type ThemeMode = 'dark' | 'light';
 export interface MareaBackdropMedia {
   posterUrl: string;
   video1080Url: string;
-  video1440Url: string;
-  video2160Url: string;
 }
 
 export const MAREA_MEDIA: MareaBackdropMedia = {
   posterUrl: '/assets/marea/marea-poster.jpg',
   video1080Url: '/assets/marea/marea-loop-1080p.mp4',
-  video1440Url: '/assets/marea/marea-loop-1440p.mp4',
-  video2160Url: '/assets/marea/marea-loop-2160p.mp4',
 };
 
 interface ThemeContextValue {

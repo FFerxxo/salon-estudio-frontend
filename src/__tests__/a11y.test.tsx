@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import { Layout } from '../components/Layout';
+import { MAREA_MEDIA } from '../context/ThemeContext';
 
 const mockStudent = {
   uid: 'uid-est-1',
@@ -51,8 +52,65 @@ describe('Accesibilidad Base TS-04 y Navegación Sprint 2 (Tema Marea)', () => {
       );
       expect(screen.getByRole('button', { name: /Cambiar a modo claro/i })).toBeInTheDocument();
 
+      const tugaAnclada = container.querySelector('.tuga-anclada');
+      expect(tugaAnclada).toBeInTheDocument();
+      expect(tugaAnclada).not.toHaveClass('overflow-x-clip');
+      expect(container.firstElementChild).toHaveClass('overflow-x-clip');
+
       const results = await axe(container);
       expect(results).toHaveNoViolations();
+    });
+
+    it('el fondo ambiental Marea expone solo el loop 1080p en MAREA_MEDIA y renderiza un único <source> en <video>', async () => {
+      expect(Object.keys(MAREA_MEDIA)).toEqual(['posterUrl', 'video1080Url']);
+      expect(Object.keys(MAREA_MEDIA)).not.toContain('video1440Url');
+      expect(Object.keys(MAREA_MEDIA)).not.toContain('video2160Url');
+      expect(MAREA_MEDIA.video1080Url).toBe('/assets/marea/marea-loop-1080p.mp4');
+
+      const originalUaDescriptor = Object.getOwnPropertyDescriptor(navigator, 'userAgent');
+      Object.defineProperty(navigator, 'userAgent', {
+        value: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
+        configurable: true,
+      });
+      const playSpy = vi
+        .spyOn(HTMLMediaElement.prototype, 'play')
+        .mockResolvedValue(undefined);
+      const pauseSpy = vi
+        .spyOn(HTMLMediaElement.prototype, 'pause')
+        .mockImplementation(() => {});
+
+      try {
+        vi.resetModules();
+        const [{ ThemeProvider }, { AmbientMotionBackdrop }] = await Promise.all([
+          import('../context/ThemeContext'),
+          import('../components/AmbientMotionBackdrop'),
+        ]);
+
+        const { container } = render(
+          <ThemeProvider>
+            <AmbientMotionBackdrop />
+          </ThemeProvider>
+        );
+
+        const video = container.querySelector('video');
+        expect(video).toBeInTheDocument();
+        expect(video).toHaveAttribute('poster', '/assets/marea/marea-poster.jpg');
+
+        const sources = Array.from(container.querySelectorAll('video source'));
+        expect(sources).toHaveLength(1);
+        expect(sources[0]).toHaveAttribute('src', '/assets/marea/marea-loop-1080p.mp4');
+        expect(sources[0]).toHaveAttribute('type', 'video/mp4');
+        expect(
+          container.querySelector('source[src*="1440p"], source[src*="2160p"]')
+        ).not.toBeInTheDocument();
+      } finally {
+        playSpy.mockRestore();
+        pauseSpy.mockRestore();
+        if (originalUaDescriptor) {
+          Object.defineProperty(navigator, 'userAgent', originalUaDescriptor);
+        }
+        vi.resetModules();
+      }
     });
 
     it('la página de Registro (/registro) con barra role="progressbar" (Paso 1 de 2) no tiene violaciones axe', async () => {
