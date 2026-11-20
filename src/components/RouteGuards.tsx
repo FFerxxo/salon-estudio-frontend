@@ -30,7 +30,8 @@ export function ProtectedRoute() {
 
   if (status !== 'authenticated') {
     if (pendingDeleteRedirect) {
-      return <Navigate to="/ingresar" replace state={{ accountDeleted: true }} />;
+      // Tras eliminar la cuenta se vuelve al inicio (rúbrica US-05) con el aviso.
+      return <Navigate to="/" replace state={{ accountDeleted: true }} />;
     }
     return <Navigate to="/ingresar" state={{ from: location.pathname }} replace />;
   }

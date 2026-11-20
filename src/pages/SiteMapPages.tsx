@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { ArrowRight, Music, Sparkles, Waves } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { StatusBanner } from '../components/StatusBanner';
 import { TugaStage } from '../components/TugaStage';
 import { selectTugaGreeting } from '../content/vozTuga';
+import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import {
@@ -24,10 +26,30 @@ export function HomePage() {
   const isDark = theme === 'dark';
 
   const [{ phrase }] = useState(() => selectTugaGreeting());
+  const location = useLocation();
+  const { pendingDeleteRedirect, clearPendingDeleteRedirect } = useAuth();
+  const accountDeleted = Boolean(
+    (location.state as { accountDeleted?: boolean } | null)?.accountDeleted || pendingDeleteRedirect
+  );
+  const [deletedBannerVisible, setDeletedBannerVisible] = useState(accountDeleted);
   const [isButtonHovered, setIsButtonHovered] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
   const ctaRef = useRef<HTMLAnchorElement | null>(null);
   const leaveTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!accountDeleted) return;
+    if (pendingDeleteRedirect) clearPendingDeleteRedirect();
+    // Borra la marca del historial del navegador (sin navegar) para que el aviso no vuelva al recargar.
+    try {
+      const current = window.history.state as { usr?: { accountDeleted?: boolean } } | null;
+      if (current?.usr?.accountDeleted) {
+        window.history.replaceState({ ...current, usr: null }, '');
+      }
+    } catch {
+      // Sin acceso al historial: el aviso solo podría repetirse al recargar.
+    }
+  }, [accountDeleted, pendingDeleteRedirect, clearPendingDeleteRedirect]);
 
   useEffect(() => {
     return () => {
@@ -92,6 +114,13 @@ export function HomePage() {
           isDark ? 'ring-[#38bdf8]/25' : 'ring-[#075985]/15'
         } ${getGlassCardClasses(theme)}`}
       >
+        {deletedBannerVisible && (
+          <StatusBanner
+            message="Tu cuenta fue eliminada"
+            onDismiss={() => setDeletedBannerVisible(false)}
+          />
+        )}
+
         <div className="space-y-1">
           <h1 id="inicio-heading" className="text-xl sm:text-2xl font-bold tracking-tight text-balance">
             Bienvenido a <span className={isDark ? 'text-[#38bdf8]' : 'text-[#075985]'}>Tuga</span>
