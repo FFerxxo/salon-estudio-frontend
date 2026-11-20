@@ -455,9 +455,21 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
       expect(within(roomsList).getByText('sala-beta')).toBeInTheDocument();
       expect(within(roomsList).getByText('sala-gamma')).toBeInTheDocument();
 
-      expect(within(roomsList).getByText('Blue')).toBeInTheDocument();
-      expect(within(roomsList).getByText('Sin sonido')).toBeInTheDocument();
-      expect(within(roomsList).getByText('Green')).toBeInTheDocument();
+      expect(within(roomsList).queryByText('Blue')).not.toBeInTheDocument();
+      expect(within(roomsList).queryByText('Sin sonido')).not.toBeInTheDocument();
+      expect(within(roomsList).queryByText('Green')).not.toBeInTheDocument();
+
+      const blueBannerImg = roomsList.querySelector('img[src="/ambientes/fondo-blue.webp"]');
+      const greenBannerImg = roomsList.querySelector('img[src="/ambientes/fondo-green.webp"]');
+      expect(blueBannerImg).toHaveAttribute('alt', '');
+      expect(blueBannerImg).toHaveAttribute('aria-hidden', 'true');
+      expect(blueBannerImg).toHaveAttribute('loading', 'lazy');
+      expect(blueBannerImg).toHaveAttribute('decoding', 'async');
+      expect(greenBannerImg).toHaveAttribute('alt', '');
+      expect(greenBannerImg).toHaveAttribute('aria-hidden', 'true');
+      expect(greenBannerImg).toHaveAttribute('loading', 'lazy');
+      expect(greenBannerImg).toHaveAttribute('decoding', 'async');
+      expect(roomsList.querySelector('[data-room-banner="custom"]')).toBeInTheDocument();
 
       for (const room of sampleRooms) {
         expect(
