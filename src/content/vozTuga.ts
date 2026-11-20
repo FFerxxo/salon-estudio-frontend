@@ -62,8 +62,8 @@ export const TUGA_SLOTS: TugaTimeSlot[] = [
         segments: [{ text: 'Buenos días. El tinto ya hizo su parte, ahora te toca a vos.' }],
       },
       {
-        fullText: 'Pilas pues, que la mañana no se estudia sola.',
-        segments: [{ text: 'Pilas pues, que la mañana no se estudia sola.' }],
+        fullText: 'Pilas pues: café en mano y a darle.',
+        segments: [{ text: 'Pilas pues: café en mano y a darle.' }],
       },
       {
         fullText: 'Arranquemos, que el parcial no se va a presentar solo.',
@@ -82,8 +82,8 @@ export const TUGA_SLOTS: TugaTimeSlot[] = [
         segments: [{ text: '¿Estudiando a la hora del almuerzo? Ambicioso… o atrasado.' }],
       },
       {
-        fullText: 'Primero el almuercito, ¿no? Bueno, vos sabrás.',
-        segments: [{ text: 'Primero el almuercito, ¿no? Bueno, vos sabrás.' }],
+        fullText: 'Barriga llena, cerebro contento. O eso dicen.',
+        segments: [{ text: 'Barriga llena, cerebro contento. O eso dicen.' }],
       },
       {
         fullText: 'Lunch break is for the weak, ¿cierto?',
@@ -106,12 +106,12 @@ export const TUGA_SLOTS: TugaTimeSlot[] = [
         segments: [{ text: 'La siesta te estaba llamando y elegiste estudiar. Respeto.' }],
       },
       {
-        fullText: 'Buenas tardes. Un bloque más y te lo ganaste.',
-        segments: [{ text: 'Buenas tardes. Un bloque más y te lo ganaste.' }],
+        fullText: 'Buenas tardes. El parche puede esperar, el parcial no.',
+        segments: [{ text: 'Buenas tardes. El parche puede esperar, el parcial no.' }],
       },
       {
-        fullText: 'Ya casi es de noche y vos con esa lista de pendientes… dale.',
-        segments: [{ text: 'Ya casi es de noche y vos con esa lista de pendientes… dale.' }],
+        fullText: '¿Otra vez “mañana empiezo”? Mejor hoy, que ya estás acá.',
+        segments: [{ text: '¿Otra vez “mañana empiezo”? Mejor hoy, que ya estás acá.' }],
       },
     ],
   },
