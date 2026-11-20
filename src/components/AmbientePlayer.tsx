@@ -1,43 +1,17 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { Leaf, Pause, Play, Volume2, VolumeX, Waves } from 'lucide-react';
+import { Pause, Play, Volume2 } from 'lucide-react';
 import {
   AMBIENTES,
   shuffleTracks,
   type AmbienteId,
   type AmbienteTrack,
 } from '../content/ambientes';
-import { useTheme, type ThemeMode } from '../context/ThemeContext';
+import { useTheme } from '../context/ThemeContext';
 import { getPrimaryCtaClasses } from '../utils/themeStyles';
+import { AmbienteChip } from './AmbienteChip';
 
 export interface AmbientePlayerProps {
   ambiente: AmbienteId;
-}
-
-function getChipClasses(ambiente: AmbienteId, theme: ThemeMode): string {
-  const isDark = theme === 'dark';
-  if (ambiente === 'blue') {
-    return isDark
-      ? 'bg-[#38bdf8]/15 text-[#7dd3fc] ring-1 ring-[#38bdf8]/30'
-      : 'bg-[#075985]/10 text-[#075985] ring-1 ring-[#075985]/25';
-  }
-  if (ambiente === 'green') {
-    return isDark
-      ? 'bg-emerald-500/15 text-[#6ee7b7] ring-1 ring-[#6ee7b7]/35'
-      : 'bg-[#ecfdf5] text-[#047857] ring-1 ring-[#047857]/30';
-  }
-  return isDark
-    ? 'bg-slate-400/15 text-[#cbd5e1] ring-1 ring-slate-400/30'
-    : 'bg-slate-200 text-[#334155] ring-1 ring-slate-400/40';
-}
-
-function AmbienteIcon({ ambiente }: { ambiente: AmbienteId }) {
-  if (ambiente === 'blue') {
-    return <Waves className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />;
-  }
-  if (ambiente === 'green') {
-    return <Leaf className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />;
-  }
-  return <VolumeX className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />;
 }
 
 /** Reproductor de ambiente sonoro apagado al entrar, con orden mezclado y control de volumen. */
@@ -118,15 +92,7 @@ export function AmbientePlayer({ ambiente }: AmbientePlayerProps) {
             : 'bg-[#eef6fb] border-[#075985]/15 text-[#334155]'
         }`}
       >
-        <span
-          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold shrink-0 ${getChipClasses(
-            'ninguno',
-            theme
-          )}`}
-        >
-          <AmbienteIcon ambiente="ninguno" />
-          <span>{definition.label}</span>
-        </span>
+        <AmbienteChip ambiente="ninguno" theme={theme} className="gap-1.5 py-1 shrink-0" />
         <p className="text-sm font-medium text-pretty">
           Sin sonido ambiental · Estudio en silencio
         </p>
@@ -162,7 +128,7 @@ export function AmbientePlayer({ ambiente }: AmbientePlayerProps) {
     const nextIndex = (trackIndex + 1) % playlist.length;
     autoAdvanceRef.current = true;
     if (nextIndex === 0) {
-      setPlaylist(shuffleTracks(definition.tracks));
+      setPlaylist(shuffleTracks(definition.tracks, currentTrack?.src));
     }
     setTrackIndex(nextIndex);
     setIsPlaying(true);
@@ -187,15 +153,7 @@ export function AmbientePlayer({ ambiente }: AmbientePlayerProps) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold ${getChipClasses(
-                ambiente,
-                theme
-              )}`}
-            >
-              <AmbienteIcon ambiente={ambiente} />
-              <span>{definition.label}</span>
-            </span>
+            <AmbienteChip ambiente={ambiente} theme={theme} className="gap-1.5" />
             <span
               className={`text-xs font-medium ${
                 isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'

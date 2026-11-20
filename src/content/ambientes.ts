@@ -24,10 +24,22 @@ export const AMBIENTES: Record<AmbienteId, AmbienteDefinition> = {
     label: 'Blue',
     description: 'mar, olas, chill',
     tracks: [
-      { title: 'Ocean Waves Chill', src: '/ambientes/blue/01-ocean-waves-chill.mp3' },
-      { title: 'Golden Sea', src: '/ambientes/blue/02-golden-sea.mp3' },
-      { title: 'Silent Waves', src: '/ambientes/blue/03-silent-waves.mp3' },
-      { title: 'Beach', src: '/ambientes/blue/04-beach.mp3' },
+      {
+        title: 'Ocean Waves Chill',
+        src: 'https://yvx9fxuqgfxsztrd.public.blob.vercel-storage.com/ambientes/blue/01-ocean-waves-chill.mp3',
+      },
+      {
+        title: 'Golden Sea',
+        src: 'https://yvx9fxuqgfxsztrd.public.blob.vercel-storage.com/ambientes/blue/02-golden-sea.mp3',
+      },
+      {
+        title: 'Silent Waves',
+        src: 'https://yvx9fxuqgfxsztrd.public.blob.vercel-storage.com/ambientes/blue/03-silent-waves.mp3',
+      },
+      {
+        title: 'Beach',
+        src: 'https://yvx9fxuqgfxsztrd.public.blob.vercel-storage.com/ambientes/blue/04-beach.mp3',
+      },
     ],
   },
   green: {
@@ -35,15 +47,21 @@ export const AMBIENTES: Record<AmbienteId, AmbienteDefinition> = {
     label: 'Green',
     description: 'bosque, vals, clásica suave',
     tracks: [
-      { title: 'A Playful Adventure', src: '/ambientes/green/01-a-playful-adventure.mp3' },
+      {
+        title: 'A Playful Adventure',
+        src: 'https://yvx9fxuqgfxsztrd.public.blob.vercel-storage.com/ambientes/green/01-a-playful-adventure.mp3',
+      },
       {
         title: 'The Floating Garden of Stars',
-        src: '/ambientes/green/02-the-floating-garden-of-stars.mp3',
+        src: 'https://yvx9fxuqgfxsztrd.public.blob.vercel-storage.com/ambientes/green/02-the-floating-garden-of-stars.mp3',
       },
-      { title: 'The Wind Awakening', src: '/ambientes/green/03-the-wind-awakening.mp3' },
+      {
+        title: 'The Wind Awakening',
+        src: 'https://yvx9fxuqgfxsztrd.public.blob.vercel-storage.com/ambientes/green/03-the-wind-awakening.mp3',
+      },
       {
         title: 'Waltz of the Enchanted Sky',
-        src: '/ambientes/green/04-waltz-of-the-enchanted-sky.mp3',
+        src: 'https://yvx9fxuqgfxsztrd.public.blob.vercel-storage.com/ambientes/green/04-waltz-of-the-enchanted-sky.mp3',
       },
     ],
   },
@@ -55,14 +73,23 @@ export const AMBIENTE_LIST: AmbienteDefinition[] = [
   AMBIENTES.green,
 ];
 
-/** Mezcla una lista de pistas con Fisher-Yates sin mutar el arreglo original. */
-export function shuffleTracks(tracks: AmbienteTrack[]): AmbienteTrack[] {
+/** Mezcla una lista de pistas con Fisher-Yates sin repetir primero `avoidFirstSrc` si hay más de una. */
+export function shuffleTracks(
+  tracks: AmbienteTrack[],
+  avoidFirstSrc?: string
+): AmbienteTrack[] {
   const copy = [...tracks];
   for (let i = copy.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
     const temp = copy[i];
     copy[i] = copy[j];
     copy[j] = temp;
+  }
+  if (avoidFirstSrc && copy.length > 1 && copy[0]?.src === avoidFirstSrc) {
+    const swapIndex = 1 + Math.floor(Math.random() * (copy.length - 1));
+    const first = copy[0];
+    copy[0] = copy[swapIndex];
+    copy[swapIndex] = first;
   }
   return copy;
 }

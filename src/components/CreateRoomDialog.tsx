@@ -3,14 +3,13 @@ import { AlertCircle, Pause, Play } from 'lucide-react';
 import { AMBIENTE_LIST, AMBIENTES, type AmbienteId } from '../content/ambientes';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { firebaseAuth } from '../services/firebase';
-import { isMocksEnabled } from '../services/mockConfig';
 import {
   createRoom,
   RoomsApiError,
   validateRoomName,
   type Room,
 } from '../services/roomsApi';
+import { resolveAuthToken } from '../utils/roomHelpers';
 import {
   getErrorAlertClasses,
   getInlineErrorClasses,
@@ -23,14 +22,6 @@ export interface CreateRoomDialogProps {
   open: boolean;
   onClose: () => void;
   onCreated: (room: Room) => void;
-}
-
-async function resolveAuthToken(idToken: string | null): Promise<string> {
-  if (isMocksEnabled()) {
-    return idToken ?? 'mock-token';
-  }
-  const fbToken = await firebaseAuth?.currentUser?.getIdToken().catch(() => null);
-  return fbToken ?? idToken ?? '';
 }
 
 /** Ventana modal para crear una sala nueva con nombre validado y ambiente sonoro opcional. */

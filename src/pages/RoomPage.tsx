@@ -4,22 +4,18 @@ import {
   ArrowLeft,
   Check,
   Copy,
-  Leaf,
   RotateCcw,
   ShieldCheck,
-  VolumeX,
-  Waves,
 } from 'lucide-react';
 import { Link, useLocation, useParams } from 'react-router-dom';
+import { AmbienteChip } from '../components/AmbienteChip';
 import { AmbientePlayer } from '../components/AmbientePlayer';
 import { StatusBanner } from '../components/StatusBanner';
-import { getAmbienteLabel, type AmbienteId } from '../content/ambientes';
 import { useAuth } from '../context/AuthContext';
 import { useTheme, type ThemeMode } from '../context/ThemeContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
-import { firebaseAuth } from '../services/firebase';
-import { isMocksEnabled } from '../services/mockConfig';
 import { getRoomById, RoomsApiError, type Room } from '../services/roomsApi';
+import { copyText, resolveAuthToken } from '../utils/roomHelpers';
 import {
   getErrorAlertClasses,
   getPrimaryCtaClasses,
@@ -30,66 +26,6 @@ import {
 interface RoomLocationState {
   room?: Room;
   justCreated?: boolean;
-}
-
-async function resolveAuthToken(idToken: string | null): Promise<string> {
-  if (isMocksEnabled()) {
-    return idToken ?? 'mock-token';
-  }
-  const fbToken = await firebaseAuth?.currentUser?.getIdToken().catch(() => null);
-  return fbToken ?? idToken ?? '';
-}
-
-async function copyTextSafe(text: string): Promise<void> {
-  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-    try {
-      await navigator.clipboard.writeText(text);
-      return;
-    } catch {
-      // Continúa al respaldo con textarea temporal
-    }
-  }
-  if (typeof document === 'undefined') return;
-  try {
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.setAttribute('readonly', '');
-    textarea.style.position = 'fixed';
-    textarea.style.opacity = '0';
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand?.('copy');
-    document.body.removeChild(textarea);
-  } catch {
-    // Entorno sin acceso al portapapeles
-  }
-}
-
-function getChipClasses(ambiente: AmbienteId, theme: ThemeMode): string {
-  const isDark = theme === 'dark';
-  if (ambiente === 'blue') {
-    return isDark
-      ? 'bg-[#38bdf8]/15 text-[#7dd3fc] ring-1 ring-[#38bdf8]/30'
-      : 'bg-[#075985]/10 text-[#075985] ring-1 ring-[#075985]/25';
-  }
-  if (ambiente === 'green') {
-    return isDark
-      ? 'bg-emerald-500/15 text-[#6ee7b7] ring-1 ring-[#6ee7b7]/35'
-      : 'bg-[#ecfdf5] text-[#047857] ring-1 ring-[#047857]/30';
-  }
-  return isDark
-    ? 'bg-slate-400/15 text-[#cbd5e1] ring-1 ring-slate-400/30'
-    : 'bg-slate-200 text-[#334155] ring-1 ring-slate-400/40';
-}
-
-function AmbienteChipIcon({ ambiente }: { ambiente: AmbienteId }) {
-  if (ambiente === 'blue') {
-    return <Waves className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />;
-  }
-  if (ambiente === 'green') {
-    return <Leaf className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />;
-  }
-  return <VolumeX className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />;
 }
 
 function RoomSkeleton({ theme }: { theme: ThemeMode }) {
@@ -149,8 +85,10 @@ export function RoomPage() {
   const [reloadCount, setReloadCount] = useState(0);
   const [bannerDismissedForId, setBannerDismissedForId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
   const [liveAnnouncement, setLiveAnnouncement] = useState('');
   const copyTimerRef = useRef<number | null>(null);
+  const announceTimerRef = useRef<number | null>(null);
 
   const room = stateRoom ?? (fetchedRoom && fetchedRoom.id === id ? fetchedRoom : null);
 
@@ -160,6 +98,9 @@ export function RoomPage() {
     return () => {
       if (copyTimerRef.current !== null) {
         window.clearTimeout(copyTimerRef.current);
+      }
+      if (announceTimerRef.current !== null) {
+        window.clearTimeout(announceTimerRef.current);
       }
     };
   }, []);
@@ -208,13 +149,30 @@ export function RoomPage() {
 
   const handleCopyId = useCallback(async () => {
     if (!room) return;
-    await copyTextSafe(room.id);
-    setCopied(true);
-    setLiveAnnouncement(`ID de ${room.nombre} copiado al portapapeles`);
-
     if (copyTimerRef.current !== null) {
       window.clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = null;
     }
+    if (announceTimerRef.current !== null) {
+      window.clearTimeout(announceTimerRef.current);
+      announceTimerRef.current = null;
+    }
+
+    const copiedOk = await copyText(room.id);
+    if (!copiedOk) {
+      setCopied(false);
+      setLiveAnnouncement('');
+      setCopyError(`No pudimos copiar el ID. Cópialo a mano: ${room.id}`);
+      return;
+    }
+
+    setCopyError(null);
+    setCopied(true);
+    setLiveAnnouncement('');
+    announceTimerRef.current = window.setTimeout(() => {
+      setLiveAnnouncement(`ID de ${room.nombre} copiado al portapapeles`);
+    }, 20);
+
     copyTimerRef.current = window.setTimeout(() => {
       setCopied(false);
     }, 3000);
@@ -222,41 +180,6 @@ export function RoomPage() {
 
   if (loading) {
     return <RoomSkeleton theme={theme} />;
-  }
-
-  if (errorKind === 'not-found' || !room) {
-    return (
-      <section
-        aria-labelledby="room-not-found-heading"
-        className={`max-w-3xl mx-auto rounded-[20px] p-6 sm:p-8 space-y-5 ${getSolidSurfaceClasses(
-          theme
-        )}`}
-      >
-        <h1 id="room-not-found-heading" className="sr-only">
-          Sala no encontrada
-        </h1>
-        <div
-          role="alert"
-          className={`rounded-xl p-4 text-sm font-semibold flex items-center gap-2 ${getErrorAlertClasses(
-            theme
-          )}`}
-        >
-          <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
-          <span className="text-pretty">Esta sala no existe o fue eliminada.</span>
-        </div>
-        <div>
-          <Link
-            to="/panel"
-            className={`${getPrimaryCtaClasses(
-              theme
-            )} !w-auto !min-h-[44px] !py-2.5 text-sm active:scale-[0.96] transition-[transform,background-color]`}
-          >
-            <ArrowLeft className="w-4 h-4 shrink-0" aria-hidden="true" />
-            <span>Volver al panel</span>
-          </Link>
-        </div>
-      </section>
-    );
   }
 
   if (errorKind === 'generic') {
@@ -283,15 +206,50 @@ export function RoomPage() {
           <button
             type="button"
             onClick={() => setReloadCount((prev) => prev + 1)}
-            className={`min-h-[44px] px-4 py-2 rounded-lg border-[1.5px] border-[#64748b] text-sm font-semibold inline-flex items-center gap-1.5 active:scale-[0.96] transition-[transform,background-color] ${
+            className={`min-h-[44px] px-4 py-2 rounded-lg border-[1.5px] text-sm font-semibold inline-flex items-center gap-1.5 active:scale-[0.96] transition-[transform,background-color] ${
               isDark
-                ? 'bg-[#0f172a] text-[#f8fafc] hover:bg-white/10'
-                : 'bg-white text-[#0f172a] hover:bg-slate-50'
+                ? 'border-[#94a3b8] bg-[#0f172a] text-[#f8fafc] hover:bg-white/10'
+                : 'border-[#64748b] bg-white text-[#0f172a] hover:bg-slate-50'
             }`}
           >
             <RotateCcw className="w-4 h-4 shrink-0" aria-hidden="true" />
             <span>Reintentar</span>
           </button>
+        </div>
+        <div>
+          <Link
+            to="/panel"
+            className={`${getPrimaryCtaClasses(
+              theme
+            )} !w-auto !min-h-[44px] !py-2.5 text-sm active:scale-[0.96] transition-[transform,background-color]`}
+          >
+            <ArrowLeft className="w-4 h-4 shrink-0" aria-hidden="true" />
+            <span>Volver al panel</span>
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
+  if (errorKind === 'not-found' || !room) {
+    return (
+      <section
+        aria-labelledby="room-not-found-heading"
+        className={`max-w-3xl mx-auto rounded-[20px] p-6 sm:p-8 space-y-5 ${getSolidSurfaceClasses(
+          theme
+        )}`}
+      >
+        <h1 id="room-not-found-heading" className="sr-only">
+          Sala no encontrada
+        </h1>
+        <div
+          role="alert"
+          className={`rounded-xl p-4 text-sm font-semibold flex items-center gap-2 ${getErrorAlertClasses(
+            theme
+          )}`}
+        >
+          <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <span className="text-pretty">Esta sala no existe o fue eliminada.</span>
         </div>
         <div>
           <Link
@@ -360,15 +318,7 @@ export function RoomPage() {
               </span>
             )}
 
-            <span
-              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${getChipClasses(
-                room.ambiente,
-                theme
-              )}`}
-            >
-              <AmbienteChipIcon ambiente={room.ambiente} />
-              <span>{getAmbienteLabel(room.ambiente)}</span>
-            </span>
+            <AmbienteChip ambiente={room.ambiente} theme={theme} />
 
             <span
               className={`inline-flex items-center gap-1.5 text-xs ${
@@ -382,10 +332,10 @@ export function RoomPage() {
             <button
               type="button"
               onClick={() => void handleCopyId()}
-              className={`min-h-[44px] px-3 py-1.5 rounded-xl border-[1.5px] border-[#64748b] text-xs font-semibold inline-flex items-center gap-1.5 active:scale-[0.96] transition-[transform,background-color] ${
+              className={`min-h-[44px] px-3 py-1.5 rounded-xl border-[1.5px] text-xs font-semibold inline-flex items-center gap-1.5 active:scale-[0.96] transition-[transform,background-color] ${
                 isDark
-                  ? 'text-[#f8fafc] hover:bg-white/10'
-                  : 'text-[#0f172a] hover:bg-slate-100'
+                  ? 'border-[#94a3b8] text-[#f8fafc] hover:bg-white/10'
+                  : 'border-[#64748b] text-[#0f172a] hover:bg-slate-100'
               }`}
             >
               <Copy className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
@@ -394,8 +344,6 @@ export function RoomPage() {
 
             {copied && (
               <span
-                role="status"
-                aria-live="polite"
                 className={`rounded-lg px-2.5 py-1 text-xs font-bold inline-flex items-center gap-1.5 ${getSuccessAlertClasses(
                   theme
                 )}`}
@@ -409,16 +357,28 @@ export function RoomPage() {
 
         <Link
           to="/panel"
-          className={`min-h-[44px] px-4 py-2 rounded-xl border-[1.5px] border-[#64748b] text-sm font-semibold inline-flex items-center gap-1.5 shrink-0 active:scale-[0.96] transition-[transform,background-color] ${
+          className={`min-h-[44px] px-4 py-2 rounded-xl border-[1.5px] text-sm font-semibold inline-flex items-center gap-1.5 shrink-0 active:scale-[0.96] transition-[transform,background-color] ${
             isDark
-              ? 'text-[#f8fafc] hover:bg-white/10'
-              : 'text-[#0f172a] hover:bg-slate-100'
+              ? 'border-[#94a3b8] text-[#f8fafc] hover:bg-white/10'
+              : 'border-[#64748b] text-[#0f172a] hover:bg-slate-100'
           }`}
         >
           <ArrowLeft className="w-4 h-4 shrink-0" aria-hidden="true" />
           <span>Salir de la sala</span>
         </Link>
       </div>
+
+      {copyError && (
+        <div
+          role="alert"
+          className={`rounded-xl p-4 text-sm font-semibold flex items-center gap-2 ${getErrorAlertClasses(
+            theme
+          )}`}
+        >
+          <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <span className="text-pretty">{copyError}</span>
+        </div>
+      )}
 
       <AmbientePlayer key={room.id} ambiente={room.ambiente} />
 

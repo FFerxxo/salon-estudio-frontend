@@ -1,10 +1,13 @@
 import { useEffect } from 'react';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'vitest-axe';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
+import { AmbientePlayer } from '../components/AmbientePlayer';
+import { AMBIENTES, shuffleTracks } from '../content/ambientes';
+import { ThemeProvider } from '../context/ThemeContext';
 import type { StudentProfile } from '../services/authApi';
 import { resetMockState } from '../services/mockApi';
 import { setMockDelayForTests } from '../services/mockConfig';
@@ -109,6 +112,36 @@ function setupUserWithClipboard() {
     .spyOn(navigator.clipboard, 'writeText')
     .mockResolvedValue(undefined);
   return { user, writeTextSpy };
+}
+
+function setupUserWithFailingClipboard() {
+  const user = userEvent.setup();
+  if (!navigator.clipboard) {
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn() },
+      configurable: true,
+    });
+  }
+  const writeTextSpy = vi
+    .spyOn(navigator.clipboard, 'writeText')
+    .mockRejectedValue(new Error('Clipboard unavailable'));
+
+  const origExecCommand = Object.getOwnPropertyDescriptor(document, 'execCommand');
+  Object.defineProperty(document, 'execCommand', {
+    value: undefined,
+    configurable: true,
+    writable: true,
+  });
+
+  const restoreExecCommand = () => {
+    if (origExecCommand) {
+      Object.defineProperty(document, 'execCommand', origExecCommand);
+    } else {
+      delete (document as unknown as Record<string, unknown>).execCommand;
+    }
+  };
+
+  return { user, writeTextSpy, restoreExecCommand };
 }
 
 function LocationProbe({ onChange }: { onChange: (pathname: string) => void }) {
@@ -254,6 +287,10 @@ describe('Salas propias y ambiente sonoro', () => {
       const { getPathname } = renderAuthenticatedApp('/panel');
 
       expect(await screen.findByText('Cálculo II')).toBeInTheDocument();
+      const roomsList = screen.getByRole('list', { name: /Tus salas creadas/i });
+      const listItems = within(roomsList).getAllByRole('listitem');
+      expect(listItems).toHaveLength(sampleRooms.length);
+
       expect(screen.getByText('Lectura silenciosa')).toBeInTheDocument();
       expect(screen.getByText('Taller de Física')).toBeInTheDocument();
 
@@ -265,26 +302,88 @@ describe('Salas propias y ambiente sonoro', () => {
       expect(screen.getByText('Sin sonido')).toBeInTheDocument();
       expect(screen.getByText('Green')).toBeInTheDocument();
 
-      const copyButtons = screen.getAllByRole('button', { name: /Copiar ID/i });
+      const copyButtons = within(roomsList).getAllByRole('button', { name: /Copiar ID/i });
       expect(copyButtons).toHaveLength(3);
 
-      const enterLinks = screen.queryAllByRole('link', { name: /Entrar/i });
-      const enterButtons = screen.queryAllByRole('button', { name: /Entrar/i });
+      for (const room of sampleRooms) {
+        expect(
+          within(roomsList).getByRole('button', { name: `Copiar ID de ${room.nombre}` })
+        ).toBeInTheDocument();
+        expect(
+          within(roomsList).getByRole('button', { name: `Entrar a ${room.nombre}` })
+        ).toBeInTheDocument();
+      }
+
+      const enterLinks = within(roomsList).queryAllByRole('link', { name: /Entrar/i });
+      const enterButtons = within(roomsList).queryAllByRole('button', { name: /Entrar/i });
       const enterControls = [...enterLinks, ...enterButtons];
       expect(enterControls).toHaveLength(3);
 
       await user.click(copyButtons[0]);
 
       expect(writeTextSpy).toHaveBeenCalledWith('sala-alpha');
-      const statusEl = await screen.findByText('ID copiado');
-      expect(statusEl.closest('[role="status"]')).toBeInTheDocument();
+      expect(await screen.findByText('ID copiado')).toBeInTheDocument();
+      expect(screen.getAllByRole('status')).toHaveLength(1);
+      await waitFor(() => {
+        expect(screen.getByRole('status')).toHaveTextContent(
+          'ID de Cálculo II copiado al portapapeles'
+        );
+      });
 
-      await user.click(enterControls[0]);
+      vi.useFakeTimers();
+      try {
+        await act(async () => {
+          fireEvent.click(copyButtons[0]);
+          await Promise.resolve();
+        });
+        expect(writeTextSpy).toHaveBeenCalledTimes(2);
+        expect(screen.getByRole('status')).toHaveTextContent('');
+        act(() => {
+          vi.advanceTimersByTime(25);
+        });
+        expect(screen.getAllByRole('status')).toHaveLength(1);
+        expect(screen.getByRole('status')).toHaveTextContent(
+          'ID de Cálculo II copiado al portapapeles'
+        );
+      } finally {
+        vi.useRealTimers();
+      }
+
+      const firstEnterBtn = within(roomsList).getByRole('button', {
+        name: 'Entrar a Cálculo II',
+      });
+      await user.click(firstEnterBtn);
 
       await waitFor(() => {
         expect(getPathname()).toBe('/salas/sala-alpha');
       });
       expect(await screen.findByRole('heading', { name: 'Cálculo II' })).toBeInTheDocument();
+    });
+
+    it('muestra alerta con instrucción manual si falla copiar el ID en el panel', async () => {
+      const { user, writeTextSpy, restoreExecCommand } = setupUserWithFailingClipboard();
+      try {
+        vi.stubGlobal(
+          'fetch',
+          vi.fn().mockResolvedValue(jsonResponse({ salas: [sampleRooms[0]] }, 200))
+        );
+
+        renderAuthenticatedApp('/panel');
+
+        const copyBtn = await screen.findByRole('button', {
+          name: 'Copiar ID de Cálculo II',
+        });
+        await user.click(copyBtn);
+
+        expect(writeTextSpy).toHaveBeenCalledWith('sala-alpha');
+        const alertEl = await screen.findByRole('alert');
+        expect(alertEl).toHaveTextContent(
+          'No pudimos copiar el ID. Cópialo a mano: sala-alpha'
+        );
+        expect(screen.queryByText('ID copiado')).not.toBeInTheDocument();
+      } finally {
+        restoreExecCommand();
+      }
     });
   });
 
@@ -561,8 +660,13 @@ describe('Salas propias y ambiente sonoro', () => {
 
       await user.click(screen.getByRole('button', { name: /Copiar ID/i }));
       expect(writeTextSpy).toHaveBeenCalledWith('sala-alpha');
-      const statusEl = await screen.findByText('ID copiado');
-      expect(statusEl.closest('[role="status"]')).toBeInTheDocument();
+      expect(await screen.findByText('ID copiado')).toBeInTheDocument();
+      expect(screen.getAllByRole('status')).toHaveLength(1);
+      await waitFor(() => {
+        expect(screen.getByRole('status')).toHaveTextContent(
+          'ID de Cálculo II copiado al portapapeles'
+        );
+      });
 
       const leaveLink = screen.getByRole('link', { name: /Salir de la sala/i });
       expect(leaveLink).toHaveAttribute('href', '/panel');
@@ -571,6 +675,59 @@ describe('Salas propias y ambiente sonoro', () => {
       await waitFor(() => {
         expect(getPathname()).toBe('/panel');
       });
+    });
+
+    it('muestra error «No pudimos cargar la sala.» ante 500 y recarga la sala con AmbientePlayer al pulsar «Reintentar»', async () => {
+      const user = userEvent.setup();
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(
+          jsonResponse({ error: 'Fallo temporal del servidor.' }, 500)
+        )
+        .mockResolvedValueOnce(jsonResponse({ sala: sampleRooms[0] }, 200));
+      vi.stubGlobal('fetch', fetchMock);
+
+      renderAuthenticatedApp('/salas/sala-alpha');
+
+      expect(await screen.findByText('No pudimos cargar la sala.')).toBeInTheDocument();
+      expect(
+        screen.queryByText('Esta sala no existe o fue eliminada.')
+      ).not.toBeInTheDocument();
+
+      const retryBtn = screen.getByRole('button', { name: /Reintentar/i });
+      await user.click(retryBtn);
+
+      expect(
+        await screen.findByRole('heading', { name: 'Cálculo II' })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('region', { name: /Reproductor de ambiente sonoro/i })
+      ).toBeInTheDocument();
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('muestra alerta con instrucción manual si falla copiar el ID en /salas/:id', async () => {
+      const { user, writeTextSpy, restoreExecCommand } = setupUserWithFailingClipboard();
+      try {
+        vi.stubGlobal(
+          'fetch',
+          vi.fn().mockResolvedValue(jsonResponse({ sala: sampleRooms[0] }, 200))
+        );
+
+        renderAuthenticatedApp('/salas/sala-alpha');
+
+        await screen.findByRole('heading', { name: 'Cálculo II' });
+        await user.click(screen.getByRole('button', { name: /Copiar ID/i }));
+
+        expect(writeTextSpy).toHaveBeenCalledWith('sala-alpha');
+        const alertEl = await screen.findByRole('alert');
+        expect(alertEl).toHaveTextContent(
+          'No pudimos copiar el ID. Cópialo a mano: sala-alpha'
+        );
+        expect(screen.queryByText('ID copiado')).not.toBeInTheDocument();
+      } finally {
+        restoreExecCommand();
+      }
     });
 
     it('muestra estado 404 «Esta sala no existe o fue eliminada.» con «Volver al panel» en /salas/no-existe', async () => {
@@ -600,6 +757,62 @@ describe('Salas propias y ambiente sonoro', () => {
       await user.click(backControl);
       await waitFor(() => {
         expect(getPathname()).toBe('/panel');
+      });
+    });
+  });
+
+  describe('Ambiente sonoro (shuffleTracks y AmbientePlayer)', () => {
+    it('shuffleTracks(AMBIENTES.blue.tracks, avoidSrc) nunca devuelve avoidSrc en el índice 0 en 50 ejecuciones', () => {
+      const avoidSrc = AMBIENTES.blue.tracks[0].src;
+      for (let run = 0; run < 50; run += 1) {
+        const shuffled = shuffleTracks(AMBIENTES.blue.tracks, avoidSrc);
+        expect(shuffled).toHaveLength(AMBIENTES.blue.tracks.length);
+        expect(shuffled[0]?.src).not.toBe(avoidSrc);
+      }
+    });
+
+    it('AmbientePlayer remezcla al terminar la última pista sin repetir la pista que acaba de sonar', async () => {
+      const user = userEvent.setup();
+      const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
+
+      const { container } = render(
+        <ThemeProvider>
+          <AmbientePlayer ambiente="blue" />
+        </ThemeProvider>
+      );
+
+      await user.click(screen.getByRole('button', { name: /Reproducir/i }));
+      await waitFor(() => {
+        expect(playStub).toHaveBeenCalledTimes(1);
+      });
+
+      const audioEl = container.querySelector('audio');
+      expect(audioEl).not.toBeNull();
+      if (!audioEl) return;
+
+      for (let step = 0; step < AMBIENTES.blue.tracks.length - 1; step += 1) {
+        fireEvent.ended(audioEl);
+      }
+
+      expect(
+        screen.getByText(
+          `Reproduciendo pista ${AMBIENTES.blue.tracks.length} de ${AMBIENTES.blue.tracks.length}`
+        )
+      ).toBeInTheDocument();
+      const lastTrackSrc = audioEl.getAttribute('src');
+      expect(lastTrackSrc).toBeTruthy();
+
+      randomSpy.mockReturnValue(0.99);
+      fireEvent.ended(audioEl);
+
+      expect(
+        screen.getByText(`Reproduciendo pista 1 de ${AMBIENTES.blue.tracks.length}`)
+      ).toBeInTheDocument();
+      const nextCycleFirstSrc = audioEl.getAttribute('src');
+      expect(nextCycleFirstSrc).toBeTruthy();
+      expect(nextCycleFirstSrc).not.toBe(lastTrackSrc);
+      await waitFor(() => {
+        expect(playStub.mock.calls.length).toBeGreaterThanOrEqual(2);
       });
     });
   });

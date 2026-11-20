@@ -1,88 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  AlertCircle,
-  Check,
-  Copy,
-  Leaf,
-  Plus,
-  RotateCcw,
-  VolumeX,
-  Waves,
-} from 'lucide-react';
+import { AlertCircle, Check, Copy, Plus, RotateCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { AmbienteChip } from '../components/AmbienteChip';
 import { CreateRoomDialog } from '../components/CreateRoomDialog';
-import { getAmbienteLabel, type AmbienteId } from '../content/ambientes';
 import { useAuth } from '../context/AuthContext';
 import { useTheme, type ThemeMode } from '../context/ThemeContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
-import { firebaseAuth } from '../services/firebase';
-import { isMocksEnabled } from '../services/mockConfig';
 import { getMyRooms, type Room } from '../services/roomsApi';
+import { copyText, resolveAuthToken } from '../utils/roomHelpers';
 import {
   getErrorAlertClasses,
   getPrimaryCtaClasses,
   getSuccessAlertClasses,
 } from '../utils/themeStyles';
-
-async function resolveAuthToken(idToken: string | null): Promise<string> {
-  if (isMocksEnabled()) {
-    return idToken ?? 'mock-token';
-  }
-  const fbToken = await firebaseAuth?.currentUser?.getIdToken().catch(() => null);
-  return fbToken ?? idToken ?? '';
-}
-
-async function copyTextSafe(text: string): Promise<void> {
-  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-    try {
-      await navigator.clipboard.writeText(text);
-      return;
-    } catch {
-      // Continúa al respaldo con textarea temporal
-    }
-  }
-  if (typeof document === 'undefined') return;
-  try {
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.setAttribute('readonly', '');
-    textarea.style.position = 'fixed';
-    textarea.style.opacity = '0';
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand?.('copy');
-    document.body.removeChild(textarea);
-  } catch {
-    // Entorno sin acceso al portapapeles
-  }
-}
-
-function getChipClasses(ambiente: AmbienteId, theme: ThemeMode): string {
-  const isDark = theme === 'dark';
-  if (ambiente === 'blue') {
-    return isDark
-      ? 'bg-[#38bdf8]/15 text-[#7dd3fc] ring-1 ring-[#38bdf8]/30'
-      : 'bg-[#075985]/10 text-[#075985] ring-1 ring-[#075985]/25';
-  }
-  if (ambiente === 'green') {
-    return isDark
-      ? 'bg-emerald-500/15 text-[#6ee7b7] ring-1 ring-[#6ee7b7]/35'
-      : 'bg-[#ecfdf5] text-[#047857] ring-1 ring-[#047857]/30';
-  }
-  return isDark
-    ? 'bg-slate-400/15 text-[#cbd5e1] ring-1 ring-slate-400/30'
-    : 'bg-slate-200 text-[#334155] ring-1 ring-slate-400/40';
-}
-
-function AmbienteChipIcon({ ambiente }: { ambiente: AmbienteId }) {
-  if (ambiente === 'blue') {
-    return <Waves className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />;
-  }
-  if (ambiente === 'green') {
-    return <Leaf className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />;
-  }
-  return <VolumeX className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />;
-}
 
 function CompactTugaIllustration() {
   return (
@@ -170,16 +100,24 @@ interface RoomCardProps {
   room: Room;
   theme: ThemeMode;
   isCopied: boolean;
+  copyErrorMessage: string | null;
   onCopyId: (room: Room) => void;
   onEnter: (room: Room) => void;
 }
 
-function RoomCard({ room, theme, isCopied, onCopyId, onEnter }: RoomCardProps) {
+function RoomCard({
+  room,
+  theme,
+  isCopied,
+  copyErrorMessage,
+  onCopyId,
+  onEnter,
+}: RoomCardProps) {
   const isDark = theme === 'dark';
 
   return (
     <article
-      className={`rounded-[20px] p-2.5 flex flex-col justify-between gap-2.5 border ${
+      className={`w-full rounded-[20px] p-2.5 flex flex-col justify-between gap-2.5 border ${
         isDark
           ? 'bg-[#1f2e4a]/80 border-slate-400/25 shadow-[0_10px_24px_rgba(2,6,23,0.32)]'
           : 'bg-[#eef6fb] border-[#075985]/15 shadow-[0_6px_18px_rgba(15,23,42,0.08)]'
@@ -194,15 +132,11 @@ function RoomCard({ room, theme, isCopied, onCopyId, onEnter }: RoomCardProps) {
           <h2 className="text-base font-bold leading-snug text-balance break-words min-w-0">
             {room.nombre}
           </h2>
-          <span
-            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold shrink-0 whitespace-nowrap ${getChipClasses(
-              room.ambiente,
-              theme
-            )}`}
-          >
-            <AmbienteChipIcon ambiente={room.ambiente} />
-            <span>{getAmbienteLabel(room.ambiente)}</span>
-          </span>
+          <AmbienteChip
+            ambiente={room.ambiente}
+            theme={theme}
+            className="shrink-0 whitespace-nowrap"
+          />
         </div>
 
         <div
@@ -215,16 +149,26 @@ function RoomCard({ room, theme, isCopied, onCopyId, onEnter }: RoomCardProps) {
         </div>
       </div>
 
-      {isCopied && (
+      {isCopied && !copyErrorMessage && (
         <div
-          role="status"
-          aria-live="polite"
           className={`rounded-lg px-2.5 py-1.5 text-xs font-bold inline-flex items-center justify-center gap-1.5 ${getSuccessAlertClasses(
             theme
           )}`}
         >
           <Check className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
           <span>ID copiado</span>
+        </div>
+      )}
+
+      {copyErrorMessage && (
+        <div
+          role="alert"
+          className={`rounded-lg px-2.5 py-1.5 text-xs font-bold inline-flex items-start gap-1.5 ${getErrorAlertClasses(
+            theme
+          )}`}
+        >
+          <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" aria-hidden="true" />
+          <span className="text-pretty break-all">{copyErrorMessage}</span>
         </div>
       )}
 
@@ -246,6 +190,7 @@ function RoomCard({ room, theme, isCopied, onCopyId, onEnter }: RoomCardProps) {
         <button
           type="button"
           onClick={() => onEnter(room)}
+          aria-label={`Entrar a ${room.nombre}`}
           className={`${getPrimaryCtaClasses(
             theme
           )} !w-full !min-h-[44px] !py-2 text-sm active:scale-[0.96] transition-[transform,background-color]`}
@@ -271,13 +216,18 @@ export function DashboardPage() {
   const [reloadCount, setReloadCount] = useState(0);
   const [createOpen, setCreateOpen] = useState(false);
   const [copiedRoomId, setCopiedRoomId] = useState<string | null>(null);
+  const [copyError, setCopyError] = useState<{ id: string; message: string } | null>(null);
   const [liveAnnouncement, setLiveAnnouncement] = useState('');
   const copyTimerRef = useRef<number | null>(null);
+  const announceTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     return () => {
       if (copyTimerRef.current !== null) {
         window.clearTimeout(copyTimerRef.current);
+      }
+      if (announceTimerRef.current !== null) {
+        window.clearTimeout(announceTimerRef.current);
       }
     };
   }, []);
@@ -309,13 +259,33 @@ export function DashboardPage() {
   }, [idToken, reloadCount]);
 
   const handleCopyId = useCallback(async (room: Room) => {
-    await copyTextSafe(room.id);
-    setCopiedRoomId(room.id);
-    setLiveAnnouncement(`ID de ${room.nombre} copiado al portapapeles`);
-
     if (copyTimerRef.current !== null) {
       window.clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = null;
     }
+    if (announceTimerRef.current !== null) {
+      window.clearTimeout(announceTimerRef.current);
+      announceTimerRef.current = null;
+    }
+
+    const copiedOk = await copyText(room.id);
+    if (!copiedOk) {
+      setCopiedRoomId(null);
+      setLiveAnnouncement('');
+      setCopyError({
+        id: room.id,
+        message: `No pudimos copiar el ID. Cópialo a mano: ${room.id}`,
+      });
+      return;
+    }
+
+    setCopyError(null);
+    setCopiedRoomId(room.id);
+    setLiveAnnouncement('');
+    announceTimerRef.current = window.setTimeout(() => {
+      setLiveAnnouncement(`ID de ${room.nombre} copiado al portapapeles`);
+    }, 20);
+
     copyTimerRef.current = window.setTimeout(() => {
       setCopiedRoomId(null);
     }, 3000);
@@ -437,21 +407,23 @@ export function DashboardPage() {
             </button>
           </div>
 
-          <div
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
+          <ul
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 list-none p-0 m-0"
             aria-label="Tus salas creadas"
           >
             {rooms.map((room) => (
-              <RoomCard
-                key={room.id}
-                room={room}
-                theme={theme}
-                isCopied={copiedRoomId === room.id}
-                onCopyId={(selected) => void handleCopyId(selected)}
-                onEnter={handleEnterRoom}
-              />
+              <li key={room.id} className="flex">
+                <RoomCard
+                  room={room}
+                  theme={theme}
+                  isCopied={copiedRoomId === room.id}
+                  copyErrorMessage={copyError?.id === room.id ? copyError.message : null}
+                  onCopyId={(selected) => void handleCopyId(selected)}
+                  onEnter={handleEnterRoom}
+                />
+              </li>
             ))}
-          </div>
+          </ul>
         </>
       )}
 
