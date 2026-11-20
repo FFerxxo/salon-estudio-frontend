@@ -10,6 +10,7 @@ import {
   checkUsernameAvailability,
   createStudentProfile,
   getMyProfile,
+  updateMyProfile,
   type StudentProfile,
 } from '../services/authApi';
 
@@ -541,7 +542,7 @@ describe('Sprint 1 Autenticación y Rutas Privadas (US-01, US-02, US-03)', () =>
       }
     });
 
-    it('envía POST /api/usuarios sin correo ni provider, mapea avatar→avatarUrl null/https y adapta 201 + ambos 409', async () => {
+    it('envía POST /api/usuarios sin correo ni provider, manda el emoji del avatar en avatarUrl y adapta 201 + ambos 409', async () => {
       const fetchMock = vi
         .fn()
         .mockResolvedValueOnce(
@@ -595,7 +596,7 @@ describe('Sprint 1 Autenticación y Rutas Privadas (US-01, US-02, US-03)', () =>
           nombres: 'Andrés',
           apellidos: 'Barbosa',
           username: 'andres_uv',
-          avatarUrl: null,
+          avatarUrl: '🚀',
         });
         expect(sentBody).not.toHaveProperty('correo');
         expect(sentBody).not.toHaveProperty('provider');
@@ -633,6 +634,48 @@ describe('Sprint 1 Autenticación y Rutas Privadas (US-01, US-02, US-03)', () =>
           status: 409,
           code: 'PROFILE_ALREADY_EXISTS',
           field: 'general',
+        });
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    });
+
+    it('PATCH /api/usuarios/me manda el correo como email y el emoji del avatar en avatarUrl (contrato del back)', async () => {
+      const fetchMock = vi.fn().mockImplementation(async () =>
+        new Response(
+          JSON.stringify({
+            uid: 'u-1',
+            nombres: 'Andrés',
+            apellidos: 'Barbosa',
+            username: 'andres_uv',
+            email: 'nuevo@correo.com',
+            avatarUrl: '🦉',
+            proveedor: 'password',
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      );
+      vi.stubGlobal('fetch', fetchMock);
+
+      try {
+        const updated = await updateMyProfile('tok-123', { correo: ' nuevo@correo.com ', avatar: '🦉' });
+        const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+        expect(url).toMatch(/\/api\/usuarios\/me$/);
+        expect(init.method).toBe('PATCH');
+        const sentBody = JSON.parse(String(init.body));
+        expect(sentBody).toEqual({ email: 'nuevo@correo.com', avatarUrl: '🦉' });
+        expect(sentBody).not.toHaveProperty('correo');
+        expect(sentBody).not.toHaveProperty('avatar');
+        expect(updated).toMatchObject({ correo: 'nuevo@correo.com', avatar: '🦉' });
+
+        await updateMyProfile('tok-123', { correo: 'solo@correo.com' });
+        expect(JSON.parse(String((fetchMock.mock.calls[1] as [string, RequestInit])[1].body))).toEqual({
+          email: 'solo@correo.com',
+        });
+
+        await updateMyProfile('tok-123', { avatar: 'https://example.com/foto.png' });
+        expect(JSON.parse(String((fetchMock.mock.calls[2] as [string, RequestInit])[1].body))).toEqual({
+          avatarUrl: 'https://example.com/foto.png',
         });
       } finally {
         vi.unstubAllGlobals();

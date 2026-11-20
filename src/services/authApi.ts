@@ -1,5 +1,6 @@
 import { isMocksEnabled } from './mockConfig';
 import * as mockApi from './mockApi';
+import { resolveAvatarEmoji } from '../components/AvatarPicker';
 
 export interface StudentProfile {
   uid: string;
@@ -79,6 +80,11 @@ export class AuthApiError extends Error {
 
 function getApiBaseUrl(): string {
   return (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/$/, '');
+}
+
+/** Avatar que acepta el back: emoji del selector o enlace https; si no, null. */
+function toAvatarForApi(raw?: string | null): string | null {
+  return toValidHttpsAvatarUrl(raw) ?? resolveAvatarEmoji(raw);
 }
 
 function toValidHttpsAvatarUrl(raw?: string | null): string | null {
@@ -236,7 +242,7 @@ export async function createStudentProfile(
     nombres: payload.nombres,
     apellidos: payload.apellidos,
     username: payload.username,
-    avatarUrl: toValidHttpsAvatarUrl(payload.avatarUrl ?? payload.avatar),
+    avatarUrl: toAvatarForApi(payload.avatarUrl ?? payload.avatar),
   };
 
   const response = await fetch(`${getApiBaseUrl()}/api/usuarios`, {
@@ -320,29 +326,24 @@ export async function updateMyProfile(
   if (payload.username !== undefined) {
     requestBody.username = payload.username.trim().toLowerCase();
   }
+  // El back recibe el correo como `email` (validation/usuario.ts).
   if (payload.correo !== undefined) {
-    requestBody.correo = payload.correo.trim();
+    requestBody.email = payload.correo.trim();
   }
 
+  // El back guarda el avatar en `avatarUrl`: un emoji del selector o un enlace https.
   if (payload.avatar !== undefined) {
-    const validAvatarHttps = toValidHttpsAvatarUrl(payload.avatar);
-    if (validAvatarHttps) {
-      requestBody.avatarUrl = validAvatarHttps;
-    } else if (payload.avatar.trim()) {
-      requestBody.avatar = payload.avatar.trim();
-    }
+    const avatar = toAvatarForApi(payload.avatar);
+    if (avatar) requestBody.avatarUrl = avatar;
   }
 
-  if (payload.avatarUrl !== undefined) {
+  if (payload.avatarUrl !== undefined && requestBody.avatarUrl === undefined) {
     if (payload.avatarUrl === null) {
       requestBody.avatarUrl = null;
     } else {
-      const validHttps = toValidHttpsAvatarUrl(payload.avatarUrl);
-      if (validHttps) {
-        requestBody.avatarUrl = validHttps;
-      } else if (payload.avatarUrl.trim() && requestBody.avatar === undefined) {
-        requestBody.avatar = payload.avatarUrl.trim();
-      }
+      // Un valor que no es emoji del selector ni https se omite: no borra el avatar guardado.
+      const avatar = toAvatarForApi(payload.avatarUrl);
+      if (avatar) requestBody.avatarUrl = avatar;
     }
   }
 
