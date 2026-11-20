@@ -10,7 +10,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { AppDialog } from '../components/AppDialog';
-import { AvatarPicker } from '../components/AvatarPicker';
+import { AvatarPicker, resolveAvatarEmoji } from '../components/AvatarPicker';
 import { StatusBanner } from '../components/StatusBanner';
 import { UsernameField } from '../components/UsernameField';
 import { useAuth } from '../context/AuthContext';
@@ -121,11 +121,9 @@ function mapSaveError(err: unknown): ProfileErrors {
 
 function ProfileAvatar({ user, isDark }: { user: StudentProfile; isDark: boolean }) {
   const initial = (user.nombres || user.username || 'E').trim().charAt(0).toUpperCase();
-  const hasPhoto =
-    Boolean(user.avatarUrl?.startsWith('https://')) &&
-    (!user.avatar || user.avatar.startsWith('https://'));
+  const resolvedEmoji = resolveAvatarEmoji(user.avatar);
 
-  if (hasPhoto && user.avatarUrl) {
+  if (!resolvedEmoji && user.avatarUrl?.startsWith('https://')) {
     return (
       <img
         src={user.avatarUrl}
@@ -142,7 +140,7 @@ function ProfileAvatar({ user, isDark }: { user: StudentProfile; isDark: boolean
       aria-hidden="true"
       className="h-20 w-20 rounded-full bg-[#0f766e] text-white text-3xl font-bold inline-flex items-center justify-center select-none"
     >
-      {user.avatar || initial}
+      {resolvedEmoji ?? initial}
     </span>
   );
 }

@@ -441,6 +441,24 @@ describe('Perfil de Estudiante: ver y editar', () => {
     expect(screen.getByText('andres.barbosa@correounivalle.edu.co')).toBeInTheDocument();
   });
 
+  it('mapea id de avatar a emoji en la barra superior y cae a la inicial si recibe un valor inválido como tYk', async () => {
+    const { unmount } = renderProfile({
+      user: buildStudentProfile({ nombres: 'Camila', avatar: 'audifonos', avatarUrl: null }),
+    });
+
+    const chipById = await screen.findByRole('link', { name: /Cuenta de Camila/i });
+    expect(chipById).toHaveTextContent('🎧');
+    unmount();
+
+    renderProfile({
+      user: buildStudentProfile({ nombres: 'Camila', avatar: 'tYk', avatarUrl: null }),
+    });
+
+    const chipFallback = await screen.findByRole('link', { name: /Cuenta de Camila/i });
+    expect(chipFallback).not.toHaveTextContent('tYk');
+    expect(chipFallback).toHaveTextContent('C');
+  });
+
   it(
     'integra el servicio mock con VITE_USE_MOCKS=true: colisiones 409 y persistencia en el estado en memoria',
     async () => {

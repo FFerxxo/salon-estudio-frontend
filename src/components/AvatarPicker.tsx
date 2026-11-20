@@ -14,6 +14,14 @@ export const AVATAR_OPTIONS: AvatarOption[] = [
   { id: 'buho', emoji: '🦉', label: 'Búho' },
 ];
 
+/** Resuelve un id o emoji de avatar a su emoji válido; devuelve null si no coincide con ninguno. */
+export function resolveAvatarEmoji(raw?: string | null): string | null {
+  const clean = raw?.trim();
+  if (!clean) return null;
+  const matched = AVATAR_OPTIONS.find((option) => option.id === clean || option.emoji === clean);
+  return matched ? matched.emoji : null;
+}
+
 interface AvatarPickerProps {
   value: string;
   onChange: (emoji: string) => void;
@@ -39,7 +47,7 @@ export function AvatarPicker({ value, onChange }: AvatarPickerProps) {
         className="grid grid-cols-2 sm:grid-cols-4 gap-2.5"
       >
         {AVATAR_OPTIONS.map((option) => {
-          const selected = option.emoji === value;
+          const selected = option.emoji === value || option.id === value;
           return (
             <button
               key={option.id}
