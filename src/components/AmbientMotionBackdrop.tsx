@@ -12,7 +12,7 @@ function isDataSaverActive(): boolean {
 
 /**
  * Capa ambiental única del Tema Marea (Guía visual v3 §3):
- * - En pantallas de acceso (subtle = false): loop de mar nítido (1080p por defecto, 1440p y 2160p 4K en pantallas retina/≥2560px, sin 4K en ahorro de datos), sin velo que lave el video (solo viñeta leve ≤ 25% en bordes). Día y Noche muestran el mismo mar nítido; solo cambia la tarjeta.
+ * - En pantallas de acceso (subtle = false): loop único de mar nítido en 1080p comprimido (< 5 MB, con póster mostrado primero y respaldo estático en ahorro de datos o prefers-reduced-motion), sin velo que lave el video (solo viñeta leve ≤ 25% en bordes). Día y Noche muestran el mismo mar nítido; solo cambia la tarjeta.
  * - En pantallas de lectura larga / interior de la app (subtle = true): lienzo sólido estático sin movimiento detrás.
  */
 export function AmbientMotionBackdrop({ subtle = false }: { subtle?: boolean }) {
@@ -21,7 +21,7 @@ export function AmbientMotionBackdrop({ subtle = false }: { subtle?: boolean }) 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const isDark = theme === 'dark';
   const saveData = isDataSaverActive();
-  const useStaticFallback = subtle || prefersReducedMotion || videoFailed || IS_JSDOM;
+  const useStaticFallback = subtle || prefersReducedMotion || saveData || videoFailed || IS_JSDOM;
 
   useEffect(() => {
     const video = videoRef.current;
@@ -64,13 +64,6 @@ export function AmbientMotionBackdrop({ subtle = false }: { subtle?: boolean }) 
             onError={() => setVideoFailed(true)}
             className="h-full w-full object-cover object-center"
           >
-            {!saveData && (
-              <source
-                src={MAREA_MEDIA.video1440Url}
-                type="video/mp4"
-                media="(min-width: 1440px), (min-width: 960px) and (-webkit-min-device-pixel-ratio: 2), (min-width: 960px) and (min-resolution: 192dpi)"
-              />
-            )}
             <source src={MAREA_MEDIA.video1080Url} type="video/mp4" />
           </video>
         ) : (
