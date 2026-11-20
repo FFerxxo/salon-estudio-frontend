@@ -18,6 +18,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme, type ThemeMode } from '../context/ThemeContext';
 import type { StudentProfile } from '../services/authApi';
 import { AmbientMotionBackdrop } from './AmbientMotionBackdrop';
+import { resolveAvatarEmoji } from './AvatarPicker';
 
 const ACCESS_ROUTES = new Set(['/', '/ingresar', '/registro', '/registro/google-username']);
 
@@ -51,7 +52,7 @@ function WorkspaceLayout({ theme, toggleTheme, user, onLogout }: WorkspaceLayout
       ? 'Sala colaborativa'
       : workspaceTitleMap[location.pathname] ?? 'Salón de Estudio';
 
-  const showTopbarTitle = location.pathname !== '/panel' || isMisSalasView;
+  const showTopbarTitle = location.pathname !== '/panel' && location.pathname !== '/salas';
 
   const sidebarItems = [
     {
@@ -75,7 +76,7 @@ function WorkspaceLayout({ theme, toggleTheme, user, onLogout }: WorkspaceLayout
   ];
 
   const userInitial = (user?.nombres || user?.username || 'E').trim().charAt(0).toUpperCase();
-  const userAvatarEmoji = user?.avatar?.trim() || '';
+  const userAvatarEmoji = resolveAvatarEmoji(user?.avatar);
 
   const navItemBaseClass = `min-h-[46px] px-3.5 rounded-[12px] text-sm font-semibold flex items-center gap-3.5 transition-[background-color,color,transform] duration-150 active:scale-[0.98] motion-reduce:active:scale-100 motion-reduce:transition-none ${
     sidebarCollapsed ? 'md:justify-center md:px-0 md:gap-0' : ''

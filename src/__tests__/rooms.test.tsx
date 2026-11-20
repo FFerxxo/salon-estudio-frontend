@@ -341,6 +341,8 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
       const { getPathname } = renderAuthenticatedApp('/salas');
 
       expect(await screen.findByText('Cálculo II')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Mis salas', level: 1 })).toBeInTheDocument();
+      expect(screen.getAllByText('Mis salas')).toHaveLength(2);
       expect(screen.getByRole('link', { name: /^Mis salas$/i })).toHaveAttribute(
         'aria-current',
         'page'
@@ -433,6 +435,7 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
         within(dialog).getByRole('heading', { name: '¿Cómo se llama tu sala?' })
       ).toBeInTheDocument();
       expect(within(dialog).getByText('Green')).toBeInTheDocument();
+      expect(within(dialog).queryByText(/bosque, vals/i)).not.toBeInTheDocument();
       expect(within(dialog).getByText('0/50')).toBeInTheDocument();
       expect(playStub).not.toHaveBeenCalled();
 
@@ -452,6 +455,7 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
       await user.click(blueBtn);
       dialog = await screen.findByRole('dialog');
       expect(within(dialog).getByText('Blue')).toBeInTheDocument();
+      expect(within(dialog).queryByText(/mar, olas, chill/i)).not.toBeInTheDocument();
 
       await user.keyboard('{Escape}');
       await waitFor(() => {

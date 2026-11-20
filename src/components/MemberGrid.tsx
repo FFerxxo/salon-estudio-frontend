@@ -1,5 +1,6 @@
 import { User } from 'lucide-react';
 import { type StudentProfile } from '../services/authApi';
+import { resolveAvatarEmoji } from './AvatarPicker';
 
 export interface MemberGridProps {
   currentUser: StudentProfile | null;
@@ -10,11 +11,10 @@ export interface MemberGridProps {
 const EMPTY_SLOTS = [1, 2, 3] as const;
 
 function SelfAvatar({ user }: { user: StudentProfile | null }) {
-  const hasPhoto =
-    Boolean(user?.avatarUrl?.startsWith('https://')) &&
-    (!user?.avatar || user.avatar.startsWith('https://'));
+  const resolvedEmoji = resolveAvatarEmoji(user?.avatar);
+  const initial = (user?.nombres || user?.username || 'E').trim().charAt(0).toUpperCase();
 
-  if (hasPhoto && user?.avatarUrl) {
+  if (!resolvedEmoji && user?.avatarUrl?.startsWith('https://')) {
     return (
       <img
         src={user.avatarUrl}
@@ -27,9 +27,9 @@ function SelfAvatar({ user }: { user: StudentProfile | null }) {
   return (
     <span
       aria-hidden="true"
-      className="size-[72px] rounded-full bg-[#0f766e] border-2 border-white/25 text-[34px] text-white inline-flex items-center justify-center shadow-[0_8px_20px_rgba(2,6,23,0.4)] select-none"
+      className="size-[72px] rounded-full bg-[#0f766e] border-2 border-white/25 text-[34px] font-bold text-white inline-flex items-center justify-center shadow-[0_8px_20px_rgba(2,6,23,0.4)] select-none"
     >
-      {user?.avatar || '🚀'}
+      {resolvedEmoji ?? initial}
     </span>
   );
 }
