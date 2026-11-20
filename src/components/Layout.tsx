@@ -49,7 +49,7 @@ function WorkspaceLayout({ theme, toggleTheme, user, onLogout }: WorkspaceLayout
   const currentWorkspaceTitle = isMisSalasView
     ? 'Mis salas'
     : isRoomRoute
-      ? 'Sala colaborativa'
+      ? 'Mi salón'
       : workspaceTitleMap[location.pathname] ?? 'Salón de Estudio';
 
   const showTopbarTitle = location.pathname !== '/panel' && location.pathname !== '/salas';
@@ -366,7 +366,7 @@ function PublicLayout({
 
   return (
     <div
-      className={`relative min-h-[100svh] flex flex-col transition-colors duration-300 motion-reduce:transition-none ${
+      className={`relative min-h-[100svh] overflow-x-clip flex flex-col transition-colors duration-300 motion-reduce:transition-none ${
         isDark ? 'bg-[#0b1220] text-[#f8fafc]' : 'bg-[#e0f2fe] text-[#0f172a]'
       }`}
     >

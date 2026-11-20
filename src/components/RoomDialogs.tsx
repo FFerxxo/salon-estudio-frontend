@@ -11,12 +11,13 @@ import {
 } from '../services/roomsApi';
 import { resolveAuthToken } from '../utils/roomHelpers';
 import {
+  getCancelActionClasses,
+  getDangerCtaClasses,
   getErrorAlertClasses,
   getFormActionGroupClasses,
   getInlineErrorClasses,
   getInputClasses,
   getPrimaryCtaClasses,
-  getSecondaryBtnClasses,
 } from '../utils/themeStyles';
 import { AppDialog } from './AppDialog';
 
@@ -148,7 +149,7 @@ export function RenameRoomDialog({
             id={inputId}
             ref={inputRef}
             type="text"
-            maxLength={60}
+            maxLength={50}
             value={nombre}
             placeholder="Ej. Cálculo II · parcial"
             onChange={(event) => {
@@ -192,16 +193,14 @@ export function RenameRoomDialog({
             type="button"
             disabled={submitting}
             onClick={handleClose}
-            className={`${getSecondaryBtnClasses(theme)} w-full sm:w-auto sm:min-w-[120px]`}
+            className={getCancelActionClasses(theme)}
           >
             Cancelar
           </button>
           <button
             type="submit"
             disabled={submitting}
-            className={`${getPrimaryCtaClasses(
-              theme
-            )} !w-full sm:!w-auto sm:min-w-[140px] !min-h-[44px] !py-2.5 text-sm`}
+            className={getPrimaryCtaClasses(theme)}
           >
             {submitting ? 'Guardando…' : 'Guardar'}
           </button>
@@ -327,7 +326,7 @@ export function DeleteRoomDialog({
             type="button"
             disabled={deleting}
             onClick={handleClose}
-            className={`${getSecondaryBtnClasses(theme)} w-full sm:w-auto sm:min-w-[120px]`}
+            className={getCancelActionClasses(theme)}
           >
             Cancelar
           </button>
@@ -335,7 +334,7 @@ export function DeleteRoomDialog({
             type="button"
             disabled={deleting}
             onClick={() => void handleConfirm()}
-            className="w-full sm:w-auto sm:min-w-[150px] min-h-[44px] px-4 py-2.5 rounded-xl bg-[#b91c1c] hover:bg-[#991b1b] text-white text-sm font-bold active:scale-[0.98] motion-reduce:active:scale-100 motion-reduce:transition-none transition-[transform,background-color] duration-150 disabled:opacity-60 disabled:cursor-not-allowed"
+            className={getDangerCtaClasses(theme)}
           >
             {deleting ? 'Eliminando…' : 'Eliminar sala'}
           </button>

@@ -4,11 +4,10 @@ import { Link } from 'react-router-dom';
 import { RoomCard } from '../components/RoomCard';
 import { DeleteRoomDialog, RenameRoomDialog } from '../components/RoomDialogs';
 import { StatusBanner } from '../components/StatusBanner';
-import { useAuth } from '../context/AuthContext';
+import { useRooms } from '../context/RoomsContext';
 import { useTheme, type ThemeMode } from '../context/ThemeContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
-import { getMyRooms, type Room } from '../services/roomsApi';
-import { resolveAuthToken } from '../utils/roomHelpers';
+import { type Room } from '../services/roomsApi';
 import {
   getErrorAlertClasses,
   getPrimaryCtaClasses,
@@ -80,57 +79,45 @@ function MyRoomsSkeleton({ theme }: { theme: ThemeMode }) {
 /** Vista de administración de salas propias (renombrar, eliminar, copiar ID y entrar). */
 export function MyRoomsPage() {
   useDocumentTitle('Mis salas');
-  const { idToken } = useAuth();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [reloadCount, setReloadCount] = useState(0);
+  const {
+    rooms,
+    hasLoaded,
+    loadingInitial,
+    loadError,
+    refreshRooms,
+    updateRoom,
+    removeRoom,
+  } = useRooms();
   const [renamingRoom, setRenamingRoom] = useState<Room | null>(null);
   const [deletingRoom, setDeletingRoom] = useState<Room | null>(null);
   const [statusBanner, setStatusBanner] = useState<string | null>(null);
 
   useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setLoadError(null);
+    void refreshRooms();
+  }, [refreshRooms]);
 
-    void (async () => {
-      try {
-        const token = await resolveAuthToken(idToken);
-        const list = await getMyRooms(token);
-        if (!active) return;
-        setRooms(list);
-      } catch {
-        if (!active) return;
-        setLoadError('No pudimos cargar tus salas.');
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    })();
+  const handleRenamed = useCallback(
+    (updated: Room) => {
+      updateRoom(updated);
+      setRenamingRoom(null);
+      setStatusBanner('Nombre de sala actualizado');
+    },
+    [updateRoom]
+  );
 
-    return () => {
-      active = false;
-    };
-  }, [idToken, reloadCount]);
+  const handleDeleted = useCallback(
+    (deletedId: string) => {
+      removeRoom(deletedId);
+      setDeletingRoom(null);
+      setStatusBanner('Sala eliminada');
+    },
+    [removeRoom]
+  );
 
-  const handleRenamed = useCallback((updated: Room) => {
-    setRooms((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
-    setRenamingRoom(null);
-    setStatusBanner('Nombre de sala actualizado');
-  }, []);
-
-  const handleDeleted = useCallback((deletedId: string) => {
-    setRooms((prev) => prev.filter((item) => item.id !== deletedId));
-    setDeletingRoom(null);
-    setStatusBanner('Sala eliminada');
-  }, []);
-
-  if (loading) {
+  if ((loadingInitial || !hasLoaded) && !loadError) {
     return <MyRoomsSkeleton theme={theme} />;
   }
 
@@ -155,7 +142,7 @@ export function MyRoomsPage() {
           </span>
           <button
             type="button"
-            onClick={() => setReloadCount((prev) => prev + 1)}
+            onClick={() => void refreshRooms({ showSkeletonIfEmpty: true })}
             className={`${getSecondaryBtnClasses(theme)} ${
               isDark ? '!bg-[#0f172a]' : '!bg-white'
             }`}

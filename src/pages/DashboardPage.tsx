@@ -7,11 +7,10 @@ import { DeleteRoomDialog, RenameRoomDialog } from '../components/RoomDialogs';
 import { StatusBanner } from '../components/StatusBanner';
 import { type AmbienteId } from '../content/ambientes';
 import { selectTugaGreeting } from '../content/vozTuga';
-import { useAuth } from '../context/AuthContext';
+import { useRooms } from '../context/RoomsContext';
 import { useTheme } from '../context/ThemeContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
-import { getMyRooms, type Room } from '../services/roomsApi';
-import { resolveAuthToken } from '../utils/roomHelpers';
+import { type Room } from '../services/roomsApi';
 import {
   getErrorAlertClasses,
   getSecondaryBtnClasses,
@@ -21,15 +20,20 @@ import { MyRoomsPage } from './MyRoomsPage';
 function DashboardInicioView() {
   useDocumentTitle('Inicio');
   const navigate = useNavigate();
-  const { idToken } = useAuth();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
   const [{ phrase: greeting }] = useState(() => selectTugaGreeting());
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [reloadCount, setReloadCount] = useState(0);
+  const {
+    rooms,
+    hasLoaded,
+    loadingInitial,
+    loadError,
+    refreshRooms,
+    addRoom,
+    updateRoom,
+    removeRoom,
+  } = useRooms();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [initialAmbiente, setInitialAmbiente] = useState<AmbienteId>('ninguno');
@@ -38,30 +42,8 @@ function DashboardInicioView() {
   const [statusBanner, setStatusBanner] = useState<string | null>(null);
 
   useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setLoadError(null);
-
-    void (async () => {
-      try {
-        const token = await resolveAuthToken(idToken);
-        const list = await getMyRooms(token);
-        if (!active) return;
-        setRooms(list);
-      } catch {
-        if (!active) return;
-        setLoadError('No pudimos cargar tus salas.');
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, [idToken, reloadCount]);
+    void refreshRooms();
+  }, [refreshRooms]);
 
   const openCreateWithAmbiente = (ambiente: AmbienteId) => {
     setInitialAmbiente(ambiente);
@@ -70,23 +52,30 @@ function DashboardInicioView() {
 
   const handleRoomCreated = useCallback(
     (room: Room) => {
+      addRoom(room);
       setCreateOpen(false);
       navigate(`/salas/${room.id}`, { state: { room, justCreated: true } });
     },
-    [navigate]
+    [addRoom, navigate]
   );
 
-  const handleRenamed = useCallback((updated: Room) => {
-    setRooms((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
-    setRenamingRoom(null);
-    setStatusBanner('Nombre de sala actualizado');
-  }, []);
+  const handleRenamed = useCallback(
+    (updated: Room) => {
+      updateRoom(updated);
+      setRenamingRoom(null);
+      setStatusBanner('Nombre de sala actualizado');
+    },
+    [updateRoom]
+  );
 
-  const handleDeleted = useCallback((deletedId: string) => {
-    setRooms((prev) => prev.filter((item) => item.id !== deletedId));
-    setDeletingRoom(null);
-    setStatusBanner('Sala eliminada');
-  }, []);
+  const handleDeleted = useCallback(
+    (deletedId: string) => {
+      removeRoom(deletedId);
+      setDeletingRoom(null);
+      setStatusBanner('Sala eliminada');
+    },
+    [removeRoom]
+  );
 
   const envCardBase =
     'group relative min-h-[144px] sm:min-h-[210px] rounded-[18px] overflow-hidden p-5 flex flex-col text-left transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-0.5 active:scale-[0.96] motion-reduce:transform-none motion-reduce:transition-none';
@@ -217,7 +206,7 @@ function DashboardInicioView() {
           </span>
           <button
             type="button"
-            onClick={() => setReloadCount((prev) => prev + 1)}
+            onClick={() => void refreshRooms({ showSkeletonIfEmpty: true })}
             className={`${getSecondaryBtnClasses(theme)} ${
               isDark ? '!bg-[#0f172a]' : '!bg-white'
             }`}
@@ -228,7 +217,7 @@ function DashboardInicioView() {
         </div>
       )}
 
-      {!loading && !loadError && rooms.length > 0 && (
+      {hasLoaded && !loadingInitial && !loadError && rooms.length > 0 && (
         <section aria-labelledby="tus-salas-heading" className="pt-2 space-y-4">
           <h2
             id="tus-salas-heading"
