@@ -296,7 +296,7 @@ describe('Eliminar cuenta de Estudiante', () => {
     ).toBeEnabled();
   });
 
-  it('al confirmar exitosamente redirige a Ingresar (/ingresar) con «Tu cuenta fue eliminada» en role="status" y limpia la sesión', async () => {
+  it('al confirmar exitosamente vuelve al inicio (/) con «Tu cuenta fue eliminada» en role="status" y limpia la sesión', async () => {
     const user = userEvent.setup();
     const deleteAccount = vi.fn(async () => {});
     const adapter = createMockAdapter({ deleteAccount });
@@ -310,8 +310,8 @@ describe('Eliminar cuenta de Estudiante', () => {
     await user.click(within(dialog).getByRole('button', { name: /^Eliminar definitivamente$/i }));
 
     expect(deleteAccount).toHaveBeenCalledTimes(1);
-    expect(await screen.findByRole('heading', { name: /^Ingresar$/i })).toBeInTheDocument();
-    expect(getPathname()).toBe('/ingresar');
+    expect(await screen.findByRole('heading', { name: /Bienvenido a Tuga/i })).toBeInTheDocument();
+    expect(getPathname()).toBe('/');
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
 
     const deletedNotice = await screen.findByText(/Tu cuenta fue eliminada/i);
@@ -431,7 +431,17 @@ describe('Eliminar cuenta de Estudiante', () => {
       }
     });
 
-    it('no reporta violaciones en Ingresar (/ingresar) mostrando «Tu cuenta fue eliminada»', async () => {
+    it('un visitante sin cuenta eliminada no ve el aviso en el inicio (/)', async () => {
+      render(
+        <MemoryRouter initialEntries={['/']}>
+          <App authOverrides={{ initialStatus: 'unauthenticated', initialUser: null }} />
+        </MemoryRouter>
+      );
+      expect(await screen.findByRole('heading', { name: /Bienvenido a Tuga/i })).toBeInTheDocument();
+      expect(screen.queryByText(/Tu cuenta fue eliminada/i)).not.toBeInTheDocument();
+    });
+
+    it('no reporta violaciones en el inicio (/) mostrando «Tu cuenta fue eliminada»', async () => {
       const user = userEvent.setup();
       const { container } = renderProfile();
 
@@ -439,7 +449,7 @@ describe('Eliminar cuenta de Estudiante', () => {
       const dialog = await screen.findByRole('alertdialog');
       await user.click(within(dialog).getByRole('button', { name: /^Eliminar definitivamente$/i }));
 
-      expect(await screen.findByRole('heading', { name: /^Ingresar$/i })).toBeInTheDocument();
+      expect(await screen.findByRole('heading', { name: /Bienvenido a Tuga/i })).toBeInTheDocument();
       expect(await screen.findByText(/Tu cuenta fue eliminada/i)).toBeInTheDocument();
       expect(await axe(container)).toHaveNoViolations();
     });
