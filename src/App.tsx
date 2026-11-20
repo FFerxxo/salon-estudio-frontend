@@ -4,16 +4,16 @@ import { ProtectedRoute, PublicAuthRoute } from './components/RouteGuards';
 import { AuthProvider, type AuthProviderProps } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { BaseTecnicaPage } from './pages/BaseTecnicaPage';
+import { DashboardPage } from './pages/DashboardPage';
 import { GoogleUsernamePage } from './pages/GoogleUsernamePage';
 import { LoginPage } from './pages/LoginPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { RegisterPage } from './pages/RegisterPage';
+import { RoomPage } from './pages/RoomPage';
 import {
-  DashboardPage,
   HelpPage,
   HomePage,
   NotFoundPage,
-  RoomPage,
 } from './pages/SiteMapPages';
 
 interface AppProps {

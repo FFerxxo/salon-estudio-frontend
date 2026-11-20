@@ -4,6 +4,13 @@ import {
   type StudentProfile,
   type UpdateProfilePayload,
 } from './authApi';
+import {
+  RoomsApiError,
+  validateRoomName,
+  type CreateRoomPayload,
+  type Room,
+} from './roomsApi';
+import type { AmbienteId } from '../content/ambientes';
 import { waitMockDelay } from './mockConfig';
 import {
   normalizeUsername,
@@ -13,7 +20,9 @@ import {
 
 const MOCK_PROFILE_STORAGE_KEY = 'salon_estudio_mock_profile_v1';
 const MOCK_SESSION_STORAGE_KEY = 'salon_estudio_mock_session_v1';
+const MOCK_ROOMS_STORAGE_KEY = 'salon_estudio_mock_rooms_v1';
 const USERNAME_PATTERN = /^[a-z0-9][a-z0-9._]{1,22}[a-z0-9]$/;
+const ROOM_ID_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789';
 
 const DEFAULT_MOCK_PROFILE: StudentProfile = {
   uid: 'mock-est-1',
@@ -38,6 +47,7 @@ export interface MockRegisterInput {
 
 let inMemoryProfile: StudentProfile | null = { ...DEFAULT_MOCK_PROFILE };
 let inMemorySessionActive: boolean | null = null;
+let inMemoryRooms: Room[] = [];
 
 function isValidHttpsUrl(raw?: string | null): string | null {
   if (!raw) return null;
@@ -144,11 +154,91 @@ function clearStoredMockAuth(): void {
   }
 }
 
-/** Restaura el perfil y la sesión mock a su estado inicial por defecto. */
+function parseStoredAmbiente(raw?: string): AmbienteId {
+  if (raw === 'blue' || raw === 'green' || raw === 'ninguno') {
+    return raw;
+  }
+  return 'ninguno';
+}
+
+function readStoredRooms(): Room[] {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const raw = window.localStorage.getItem(MOCK_ROOMS_STORAGE_KEY);
+      if (raw !== null) {
+        const parsed = JSON.parse(raw) as unknown;
+        if (Array.isArray(parsed)) {
+          return parsed
+            .filter(
+              (item): item is Partial<Room> =>
+                Boolean(item) &&
+                typeof item === 'object' &&
+                typeof (item as Partial<Room>).id === 'string' &&
+                typeof (item as Partial<Room>).nombre === 'string'
+            )
+            .map((item) => ({
+              id: item.id as string,
+              nombre: item.nombre as string,
+              ambiente: parseStoredAmbiente(item.ambiente),
+              anfitrionUid:
+                typeof item.anfitrionUid === 'string'
+                  ? item.anfitrionUid
+                  : DEFAULT_MOCK_PROFILE.uid,
+              creadaEn:
+                typeof item.creadaEn === 'string'
+                  ? item.creadaEn
+                  : new Date().toISOString(),
+            }));
+        }
+      }
+    }
+  } catch {
+    // Ignora errores de acceso o parseo en localStorage
+  }
+
+  return inMemoryRooms.map((room) => ({ ...room }));
+}
+
+function writeStoredRooms(rooms: Room[]): void {
+  inMemoryRooms = rooms.map((room) => ({ ...room }));
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(MOCK_ROOMS_STORAGE_KEY, JSON.stringify(rooms));
+    }
+  } catch {
+    // Mantiene respaldo en memoria cuando localStorage no está disponible
+  }
+}
+
+function clearStoredMockRooms(): void {
+  inMemoryRooms = [];
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.removeItem(MOCK_ROOMS_STORAGE_KEY);
+    }
+  } catch {
+    // Ignora cuando localStorage no está disponible
+  }
+}
+
+function generateMockRoomId(existingRooms: Room[]): string {
+  let candidate = '';
+  do {
+    let suffix = '';
+    for (let i = 0; i < 4; i += 1) {
+      suffix += ROOM_ID_CHARS[Math.floor(Math.random() * ROOM_ID_CHARS.length)];
+    }
+    candidate = `sala-${suffix}`;
+  } while (existingRooms.some((room) => room.id === candidate));
+  return candidate;
+}
+
+/** Restaura el perfil, la sesión y las salas mock a su estado inicial por defecto. */
 export function resetMockState(): void {
   inMemoryProfile = { ...DEFAULT_MOCK_PROFILE };
   inMemorySessionActive = false;
   clearStoredMockAuth();
+  clearStoredMockRooms();
 }
 
 /** Simula verificación de disponibilidad de @username con demora de red. */
@@ -442,6 +532,59 @@ export async function mockLogout(): Promise<void> {
 export async function mockDeleteMyAccount(): Promise<void> {
   await waitMockDelay();
   clearStoredMockAuth();
+  clearStoredMockRooms();
   inMemoryProfile = null;
   inMemorySessionActive = false;
+}
+
+/** Simula la consulta de salas propias ordenadas de la más nueva a la más antigua. */
+export async function mockGetMyRooms(): Promise<Room[]> {
+  await waitMockDelay();
+  return readStoredRooms().map((room) => ({ ...room }));
+}
+
+/** Simula la creación de una sala validando el nombre y persistiendo en almacenamiento local. */
+export async function mockCreateRoom(payload: CreateRoomPayload): Promise<Room> {
+  await waitMockDelay();
+  const nombreError = validateRoomName(payload.nombre);
+  if (nombreError) {
+    throw new RoomsApiError(nombreError, 400, 'VALIDATION_ERROR', {
+      nombre: nombreError,
+    });
+  }
+
+  const existing = readStoredRooms();
+  const created: Room = {
+    id: generateMockRoomId(existing),
+    nombre: payload.nombre.trim(),
+    ambiente: parseStoredAmbiente(payload.ambiente),
+    anfitrionUid: readStoredProfile().uid,
+    creadaEn: new Date().toISOString(),
+  };
+
+  writeStoredRooms([created, ...existing]);
+  return { ...created };
+}
+
+/** Simula la consulta de una sala por su identificador. */
+export async function mockGetRoomById(roomId: string): Promise<Room> {
+  await waitMockDelay();
+  if (roomId === 'no-existe') {
+    throw new RoomsApiError(
+      'Esta sala no existe o fue eliminada.',
+      404,
+      'ROOM_NOT_FOUND'
+    );
+  }
+
+  const found = readStoredRooms().find((room) => room.id === roomId);
+  if (!found) {
+    throw new RoomsApiError(
+      'Esta sala no existe o fue eliminada.',
+      404,
+      'ROOM_NOT_FOUND'
+    );
+  }
+
+  return { ...found };
 }
