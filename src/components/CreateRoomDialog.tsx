@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 'react';
-import { AlertCircle, Pause, Play } from 'lucide-react';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { AlertCircle, Leaf, VolumeX, Waves } from 'lucide-react';
 import { AMBIENTE_LIST, AMBIENTES, type AmbienteId } from '../content/ambientes';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -12,9 +12,11 @@ import {
 import { resolveAuthToken } from '../utils/roomHelpers';
 import {
   getErrorAlertClasses,
+  getFormActionGroupClasses,
   getInlineErrorClasses,
   getInputClasses,
   getPrimaryCtaClasses,
+  getSecondaryBtnClasses,
 } from '../utils/themeStyles';
 import { AppDialog } from './AppDialog';
 
@@ -22,10 +24,32 @@ export interface CreateRoomDialogProps {
   open: boolean;
   onClose: () => void;
   onCreated: (room: Room) => void;
+  initialAmbiente?: AmbienteId;
 }
 
-/** Ventana modal para crear una sala nueva con nombre validado y ambiente sonoro opcional. */
-export function CreateRoomDialog({ open, onClose, onCreated }: CreateRoomDialogProps) {
+function getAmbientePillLabel(ambiente: AmbienteId): string {
+  if (ambiente === 'blue') return 'Blue';
+  if (ambiente === 'green') return 'Green';
+  return 'Personalizado · sin sonido';
+}
+
+function AmbientePillIcon({ ambiente }: { ambiente: AmbienteId }) {
+  if (ambiente === 'blue') {
+    return <Waves className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />;
+  }
+  if (ambiente === 'green') {
+    return <Leaf className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />;
+  }
+  return <VolumeX className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />;
+}
+
+/** Ventana modal rápida para nombrar y crear una sala de estudio. */
+export function CreateRoomDialog({
+  open,
+  onClose,
+  onCreated,
+  initialAmbiente,
+}: CreateRoomDialogProps) {
   const { idToken } = useAuth();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -33,86 +57,48 @@ export function CreateRoomDialog({ open, onClose, onCreated }: CreateRoomDialogP
   const nameInputId = useId();
   const nameErrorId = useId();
   const nameCounterId = useId();
+  const envSubtitleId = useId();
   const nameInputRef = useRef<HTMLInputElement | null>(null);
-  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
 
+  const [prevOpen, setPrevOpen] = useState(open);
+  const [prevInitialAmbiente, setPrevInitialAmbiente] = useState(initialAmbiente);
   const [nombre, setNombre] = useState('');
-  const [ambiente, setAmbiente] = useState<AmbienteId>('ninguno');
+  const [ambiente, setAmbiente] = useState<AmbienteId>(initialAmbiente ?? 'ninguno');
   const [nombreError, setNombreError] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [previewing, setPreviewing] = useState<Exclude<AmbienteId, 'ninguno'> | null>(null);
 
-  const stopPreview = useCallback(() => {
-    const audio = previewAudioRef.current;
-    if (audio) {
-      try {
-        audio.pause();
-      } catch {
-        // Entorno sin implementación de medios
-      }
-      try {
-        audio.currentTime = 0;
-      } catch {
-        // Ignorar si no hay pista cargada
-      }
+  if (open !== prevOpen || initialAmbiente !== prevInitialAmbiente) {
+    setPrevOpen(open);
+    setPrevInitialAmbiente(initialAmbiente);
+    if (open) {
+      setAmbiente(initialAmbiente ?? 'ninguno');
+      setNombre('');
+      setNombreError(null);
+      setServerError(null);
     }
-    setPreviewing(null);
-  }, []);
+  }
 
   useEffect(() => {
-    if (!open) {
-      stopPreview();
+    if (open) {
+      const frame = requestAnimationFrame(() => {
+        nameInputRef.current?.focus();
+      });
+      return () => cancelAnimationFrame(frame);
     }
-  }, [open, stopPreview]);
-
-  useEffect(() => {
-    return () => {
-      stopPreview();
-    };
-  }, [stopPreview]);
+  }, [open]);
 
   const resetForm = () => {
     setNombre('');
-    setAmbiente('ninguno');
+    setAmbiente(initialAmbiente ?? 'ninguno');
     setNombreError(null);
     setServerError(null);
   };
 
   const handleClose = () => {
     if (submitting) return;
-    stopPreview();
     resetForm();
     onClose();
-  };
-
-  const handleTogglePreview = (ambId: Exclude<AmbienteId, 'ninguno'>) => {
-    if (previewing === ambId) {
-      stopPreview();
-      return;
-    }
-
-    stopPreview();
-    const firstTrack = AMBIENTES[ambId].tracks[0];
-    if (!firstTrack) return;
-
-    setPreviewing(ambId);
-    const audio = previewAudioRef.current;
-    if (audio) {
-      audio.src = firstTrack.src;
-      audio.volume = 0.5;
-      const playPromise = audio.play();
-      if (playPromise && typeof playPromise.catch === 'function') {
-        playPromise.catch(() => {});
-      }
-    }
-  };
-
-  const handleSelectAmbiente = (nextAmbiente: AmbienteId) => {
-    setAmbiente(nextAmbiente);
-    if (previewing && previewing !== nextAmbiente) {
-      stopPreview();
-    }
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -127,7 +113,6 @@ export function CreateRoomDialog({ open, onClose, onCreated }: CreateRoomDialogP
       return;
     }
 
-    stopPreview();
     setNombreError(null);
     setServerError(null);
     setSubmitting(true);
@@ -158,30 +143,43 @@ export function CreateRoomDialog({ open, onClose, onCreated }: CreateRoomDialogP
 
   const counterExceeds = nombre.length > 50;
   const describedBy = nombreError ? `${nameErrorId} ${nameCounterId}` : nameCounterId;
+  const hasLockedPreset = initialAmbiente !== undefined;
+
+  const pillClasses =
+    ambiente === 'blue'
+      ? isDark
+        ? 'bg-[#38bdf8]/15 text-[#7dd3fc] ring-1 ring-[#38bdf8]/35'
+        : 'bg-[#075985]/10 text-[#075985] ring-1 ring-[#075985]/25'
+      : ambiente === 'green'
+        ? isDark
+          ? 'bg-emerald-500/15 text-[#6ee7b7] ring-1 ring-[#6ee7b7]/35'
+          : 'bg-[#ecfdf5] text-[#047857] ring-1 ring-[#047857]/30'
+        : isDark
+          ? 'bg-slate-400/15 text-[#cbd5e1] ring-1 ring-slate-400/30'
+          : 'bg-slate-100 text-[#334155] ring-1 ring-slate-400/40';
 
   return (
     <AppDialog
       open={open}
-      title="Crear sala"
-      descriptionId="create-room-desc"
+      title="¿Cómo se llama tu sala?"
+      descriptionId={envSubtitleId}
       initialFocusRef={nameInputRef}
       disableClose={submitting}
       onClose={handleClose}
     >
-      <audio
-        ref={previewAudioRef}
-        preload="none"
-        onEnded={() => setPreviewing(null)}
-      />
-
-      <p
-        id="create-room-desc"
-        className={`text-sm mb-4 text-pretty ${
-          isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'
-        }`}
-      >
-        Elige un nombre y, si quieres, un ambiente sonoro para estudiar.
-      </p>
+      <div id={envSubtitleId} className="mb-4 flex flex-wrap items-center gap-2">
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${pillClasses}`}
+        >
+          <AmbientePillIcon ambiente={ambiente} />
+          <span>{getAmbientePillLabel(ambiente)}</span>
+        </span>
+        {ambiente !== 'ninguno' && (
+          <span className={`text-xs ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}>
+            {AMBIENTES[ambiente].description}
+          </span>
+        )}
+      </div>
 
       <form noValidate onSubmit={(event) => void handleSubmit(event)} className="space-y-4">
         {serverError && (
@@ -197,18 +195,14 @@ export function CreateRoomDialog({ open, onClose, onCreated }: CreateRoomDialogP
         )}
 
         <div>
-          <label
-            htmlFor={nameInputId}
-            className={`block text-sm font-semibold mb-1.5 ${
-              isDark ? 'text-[#f8fafc]' : 'text-[#0f172a]'
-            }`}
-          >
+          <label htmlFor={nameInputId} className="sr-only">
             Nombre de la sala
           </label>
           <input
             id={nameInputId}
             ref={nameInputRef}
             type="text"
+            maxLength={60}
             value={nombre}
             placeholder="Ej. Cálculo II · parcial"
             onChange={(event) => {
@@ -247,104 +241,51 @@ export function CreateRoomDialog({ open, onClose, onCreated }: CreateRoomDialogP
           </div>
         </div>
 
-        <fieldset className="space-y-2">
-          <legend
-            className={`text-sm font-semibold mb-1.5 ${
-              isDark ? 'text-[#f8fafc]' : 'text-[#0f172a]'
-            }`}
-          >
-            Ambiente sonoro
-          </legend>
+        {!hasLockedPreset && (
+          <fieldset className="space-y-1.5">
+            <legend
+              className={`text-xs font-semibold ${
+                isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'
+              }`}
+            >
+              Ambiente
+            </legend>
+            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Ambiente">
+              {AMBIENTE_LIST.map((amb) => {
+                const selected = ambiente === amb.id;
+                return (
+                  <button
+                    key={amb.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    disabled={submitting}
+                    onClick={() => setAmbiente(amb.id)}
+                    className={`min-h-[40px] px-3 py-1.5 rounded-full border-[1.5px] text-xs font-bold inline-flex items-center gap-1.5 active:scale-[0.96] transition-[transform,background-color,border-color] disabled:opacity-60 ${
+                      selected
+                        ? isDark
+                          ? 'border-[#38bdf8] bg-[#38bdf8]/20 text-[#bae6fd]'
+                          : 'border-[#075985] bg-[#075985]/10 text-[#075985]'
+                        : isDark
+                          ? 'border-[#64748b] bg-[#0b1220] text-[#cbd5e1] hover:bg-white/10'
+                          : 'border-[#64748b] bg-white text-[#334155] hover:bg-slate-100'
+                    }`}
+                  >
+                    <AmbientePillIcon ambiente={amb.id} />
+                    <span>{getAmbientePillLabel(amb.id)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+        )}
 
-          <div role="radiogroup" aria-label="Ambiente sonoro" className="space-y-2">
-            {AMBIENTE_LIST.map((amb) => {
-              const checked = ambiente === amb.id;
-              const isPreviewActive = previewing === amb.id;
-              const hasPreview = amb.id === 'blue' || amb.id === 'green';
-
-              return (
-                <div
-                  key={amb.id}
-                  className={`flex items-center justify-between gap-2.5 rounded-xl border-[1.5px] px-3 py-2.5 transition-colors ${
-                    checked
-                      ? isDark
-                        ? 'border-[#38bdf8] bg-[#38bdf8]/15'
-                        : 'border-[#075985] bg-[#075985]/10'
-                      : isDark
-                        ? 'border-[#64748b] bg-[#0b1220]'
-                        : 'border-[#64748b] bg-white'
-                  }`}
-                >
-                  <label className="flex flex-1 items-center gap-2.5 min-h-[44px] cursor-pointer">
-                    <input
-                      type="radio"
-                      name="ambiente"
-                      value={amb.id}
-                      checked={checked}
-                      onChange={() => handleSelectAmbiente(amb.id)}
-                      className={`size-4 shrink-0 ${
-                        isDark ? 'accent-[#38bdf8]' : 'accent-[#075985]'
-                      }`}
-                    />
-                    <span className="min-w-0">
-                      <span className="block text-sm font-bold">{amb.label}</span>
-                      <span
-                        className={`block text-xs text-pretty ${
-                          isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'
-                        }`}
-                      >
-                        {amb.description}
-                      </span>
-                    </span>
-                  </label>
-
-                  {hasPreview && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleTogglePreview(amb.id as Exclude<AmbienteId, 'ninguno'>)
-                      }
-                      aria-pressed={isPreviewActive}
-                      aria-label={
-                        isPreviewActive
-                          ? `Detener muestra de ${amb.label}`
-                          : `Escuchar muestra de ${amb.label}`
-                      }
-                      className={`min-h-[44px] px-3 py-2 rounded-xl border-[1.5px] border-[#64748b] text-xs font-semibold inline-flex items-center gap-1.5 shrink-0 active:scale-[0.96] transition-[transform,background-color] ${
-                        isDark
-                          ? 'text-[#f8fafc] hover:bg-white/10'
-                          : 'text-[#0f172a] hover:bg-slate-100'
-                      }`}
-                    >
-                      {isPreviewActive ? (
-                        <>
-                          <Pause className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                          <span>Detener</span>
-                        </>
-                      ) : (
-                        <>
-                          <Play className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                          <span>Escuchar</span>
-                        </>
-                      )}
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </fieldset>
-
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2.5 pt-2">
+        <div className={getFormActionGroupClasses()}>
           <button
             type="button"
             disabled={submitting}
             onClick={handleClose}
-            className={`min-h-[44px] px-4 py-2 rounded-xl border-[1.5px] border-[#64748b] text-sm font-semibold active:scale-[0.96] transition-[transform,background-color] disabled:opacity-60 disabled:cursor-not-allowed ${
-              isDark
-                ? 'text-[#f8fafc] hover:bg-white/10'
-                : 'text-[#0f172a] hover:bg-slate-100'
-            }`}
+            className={`${getSecondaryBtnClasses(theme)} w-full sm:w-auto sm:min-w-[120px]`}
           >
             Cancelar
           </button>
@@ -353,9 +294,9 @@ export function CreateRoomDialog({ open, onClose, onCreated }: CreateRoomDialogP
             disabled={submitting}
             className={`${getPrimaryCtaClasses(
               theme
-            )} !w-auto !min-h-[44px] !py-2.5 text-sm active:scale-[0.96] transition-[transform,background-color]`}
+            )} !w-full sm:!w-auto sm:min-w-[160px] !min-h-[44px] !py-2.5 text-sm`}
           >
-            {submitting ? 'Creando…' : 'Crear sala'}
+            {submitting ? 'Entrando…' : 'Entrar'}
           </button>
         </div>
       </form>
