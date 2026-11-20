@@ -588,3 +588,48 @@ export async function mockGetRoomById(roomId: string): Promise<Room> {
 
   return { ...found };
 }
+
+/** Simula renombrar una sala existente validando el nuevo nombre y actualizando el almacenamiento local. */
+export async function mockRenameRoom(roomId: string, nombre: string): Promise<Room> {
+  await waitMockDelay();
+  const nombreError = validateRoomName(nombre);
+  if (nombreError) {
+    throw new RoomsApiError(nombreError, 400, 'VALIDATION_ERROR', {
+      nombre: nombreError,
+    });
+  }
+
+  const rooms = readStoredRooms();
+  const index = rooms.findIndex((room) => room.id === roomId);
+  if (index === -1) {
+    throw new RoomsApiError(
+      'Esta sala no existe o fue eliminada.',
+      404,
+      'ROOM_NOT_FOUND'
+    );
+  }
+
+  const updated: Room = {
+    ...rooms[index],
+    nombre: nombre.trim(),
+  };
+  const next = [...rooms];
+  next[index] = updated;
+  writeStoredRooms(next);
+  return { ...updated };
+}
+
+/** Simula eliminar una sala propia existente en el almacenamiento local. */
+export async function mockDeleteRoom(roomId: string): Promise<void> {
+  await waitMockDelay();
+  const rooms = readStoredRooms();
+  const next = rooms.filter((room) => room.id !== roomId);
+  if (next.length === rooms.length) {
+    throw new RoomsApiError(
+      'Esta sala no existe o fue eliminada.',
+      404,
+      'ROOM_NOT_FOUND'
+    );
+  }
+  writeStoredRooms(next);
+}

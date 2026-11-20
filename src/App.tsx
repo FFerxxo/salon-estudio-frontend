@@ -1,12 +1,12 @@
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { ProtectedRoute, PublicAuthRoute } from './components/RouteGuards';
 import { AuthProvider, type AuthProviderProps } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
-import { BaseTecnicaPage } from './pages/BaseTecnicaPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { GoogleUsernamePage } from './pages/GoogleUsernamePage';
 import { LoginPage } from './pages/LoginPage';
+import { MyRoomsPage } from './pages/MyRoomsPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { RegisterPage } from './pages/RegisterPage';
 import { RoomPage } from './pages/RoomPage';
@@ -37,12 +37,13 @@ export function App({ authOverrides }: AppProps = {}) {
 
             <Route element={<ProtectedRoute />}>
               <Route path="/panel" element={<DashboardPage />} />
+              <Route path="/salas" element={<MyRoomsPage />} />
               <Route path="/perfil" element={<ProfilePage />} />
               <Route path="/salas/:id" element={<RoomPage />} />
             </Route>
 
             <Route path="/ayuda" element={<HelpPage />} />
-            <Route path="/base-tecnica" element={<BaseTecnicaPage />} />
+            <Route path="/base-tecnica" element={<Navigate to="/" replace />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Routes>
