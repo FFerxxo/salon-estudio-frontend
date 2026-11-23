@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertCircle, ArrowLeft, RotateCcw } from 'lucide-react';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { AlertCircle, ArrowLeft, Loader2, RotateCcw, WifiOff } from 'lucide-react';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { MemberGrid } from '../components/MemberGrid';
 import { RoomBar } from '../components/RoomPopovers';
 import { StatusBanner } from '../components/StatusBanner';
@@ -8,6 +8,7 @@ import { ROOM_BACKGROUNDS, type AmbienteId } from '../content/ambientes';
 import { useAuth } from '../context/AuthContext';
 import { useTheme, type ThemeMode } from '../context/ThemeContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { useRoomRealtime, type UseRoomRealtimeResult } from '../hooks/useRoomRealtime';
 import { getRoomById, RoomsApiError, type Room } from '../services/roomsApi';
 import { copyText, resolveAuthToken } from '../utils/roomHelpers';
 import {
@@ -72,12 +73,85 @@ function RoomSkeleton({ theme }: { theme: ThemeMode }) {
   );
 }
 
+/** Aviso del estado de la conexión en vivo: conectando, reconectando o error con «Reintentar». */
+function ConnectionStatus({
+  realtime,
+  theme,
+}: {
+  realtime: UseRoomRealtimeResult;
+  theme: ThemeMode;
+}) {
+  const { estado, errorConexion, reintentarConexion } = realtime;
+
+  if (estado === 'error' && errorConexion) {
+    return (
+      <div
+        role="alert"
+        className={`rounded-xl p-3 text-sm font-semibold flex flex-wrap items-center justify-between gap-3 ${getErrorAlertClasses(
+          theme
+        )}`}
+      >
+        <span className="inline-flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <span className="text-pretty">{errorConexion.mensaje}</span>
+        </span>
+        <button
+          type="button"
+          onClick={reintentarConexion}
+          className={getSecondaryBtnClasses(theme)}
+        >
+          <RotateCcw className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <span>Reintentar</span>
+        </button>
+      </div>
+    );
+  }
+
+  if (estado === 'reconectando') {
+    return (
+      <div
+        role="status"
+        className="rounded-xl px-3 py-2 text-sm font-semibold inline-flex items-center gap-2 self-start bg-[#451a03]/90 text-[#fde68a] border border-[#fbbf24]/60"
+      >
+        <WifiOff className="w-4 h-4 shrink-0" aria-hidden="true" />
+        <span>Se perdió la conexión. Reconectando…</span>
+      </div>
+    );
+  }
+
+  if (estado === 'conectando') {
+    return (
+      <div
+        role="status"
+        className="rounded-xl px-3 py-2 text-sm font-semibold inline-flex items-center gap-2 self-start bg-[#0b1220]/85 text-[#e2e8f0] border border-white/20"
+      >
+        <Loader2 className="w-4 h-4 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+        <span>Conectando a la sala…</span>
+      </div>
+    );
+  }
+
+  if (estado === 'sin-servidor') {
+    return (
+      <p
+        role="status"
+        className="rounded-xl px-3 py-2 text-sm font-medium self-start bg-[#0b1220]/85 text-[#e2e8f0] border border-white/20"
+      >
+        La sala en vivo no está disponible en este momento.
+      </p>
+    );
+  }
+
+  return null;
+}
+
 /** Escenario de la sala colaborativa con fondo por ambiente, barra de audio y cuadrícula 2×2. */
 export function RoomPage() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const locationState = (location.state as RoomLocationState | null) ?? null;
 
+  const navigate = useNavigate();
   const { user, idToken } = useAuth();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -98,6 +172,18 @@ export function RoomPage() {
   const announceTimerRef = useRef<number | null>(null);
 
   const room = stateRoom ?? (fetchedRoom && fetchedRoom.id === id ? fetchedRoom : null);
+
+  // Se conecta al tiempo real cuando la API confirmó que la sala existe (SDECG6-50).
+  const realtime = useRoomRealtime(room?.id, user?.uid, Boolean(room));
+  const codigoErrorConexion = realtime.errorConexion?.codigo;
+
+  useEffect(() => {
+    if (codigoErrorConexion === 'NO_AUTENTICADO' || codigoErrorConexion === 'SESION_INVALIDA') {
+      navigate('/ingresar', { replace: true, state: { from: location.pathname } });
+    } else if (codigoErrorConexion === 'PERFIL_INCOMPLETO') {
+      navigate('/registro/google-username', { replace: true });
+    }
+  }, [codigoErrorConexion, navigate, location.pathname]);
 
   useDocumentTitle(room ? room.nombre : id ? `Sala ${id}` : 'Sala');
 
@@ -236,7 +322,7 @@ export function RoomPage() {
     );
   }
 
-  if (errorKind === 'not-found' || !room) {
+  if (errorKind === 'not-found' || !room || realtime.salaNoEncontrada) {
     return (
       <section
         aria-labelledby="room-not-found-heading"
@@ -335,7 +421,10 @@ export function RoomPage() {
           onCopyId={() => void handleCopyId()}
           participantsOpen={participantsOpen}
           onToggleParticipants={() => setParticipantsOpen((prev) => !prev)}
+          onExit={realtime.salir}
         />
+
+        <ConnectionStatus realtime={realtime} theme={theme} />
 
         <div className="flex-1 flex items-center py-2">
           <MemberGrid
