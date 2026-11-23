@@ -111,6 +111,8 @@ export function renderConTiempoReal(ruta: string, opciones: RenderSalaOptions = 
         )
       : opciones.conexion;
   setRealtimeFactoryForTests(conexion ? () => conexion : null);
+  HTMLMediaElement.prototype.play = vi.fn().mockResolvedValue(undefined);
+  HTMLMediaElement.prototype.pause = vi.fn();
 
   let pathname = ruta;
   const rendered = render(

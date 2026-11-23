@@ -22,7 +22,7 @@ const MOCK_PROFILE_STORAGE_KEY = 'salon_estudio_mock_profile_v1';
 const MOCK_SESSION_STORAGE_KEY = 'salon_estudio_mock_session_v1';
 const MOCK_ROOMS_STORAGE_KEY = 'salon_estudio_mock_rooms_v1';
 const USERNAME_PATTERN = /^[a-z0-9][a-z0-9._]{1,22}[a-z0-9]$/;
-const ROOM_ID_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789';
+const ROOM_ID_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 const DEFAULT_MOCK_PROFILE: StudentProfile = {
   uid: 'mock-est-1',
@@ -224,11 +224,11 @@ function clearStoredMockRooms(): void {
 function generateMockRoomId(existingRooms: Room[]): string {
   let candidate = '';
   do {
-    let suffix = '';
-    for (let i = 0; i < 4; i += 1) {
-      suffix += ROOM_ID_CHARS[Math.floor(Math.random() * ROOM_ID_CHARS.length)];
+    // Mismo formato que la API: 8 letras mayúsculas o números (p. ej. K7M2QX9A).
+    candidate = '';
+    for (let i = 0; i < 8; i += 1) {
+      candidate += ROOM_ID_CHARS[Math.floor(Math.random() * ROOM_ID_CHARS.length)];
     }
-    candidate = `sala-${suffix}`;
   } while (existingRooms.some((room) => room.id === candidate));
   return candidate;
 }

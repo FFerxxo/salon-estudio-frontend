@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CreateRoomDialog } from '../components/CreateRoomDialog';
+import { JoinRoomForm } from '../components/JoinRoomForm';
 import {
   SceneBanner,
   getSceneCardShellClasses,
@@ -103,6 +104,8 @@ function DashboardInicioView() {
           </li>
         ))}
       </ul>
+
+      <JoinRoomForm />
 
       <CreateRoomDialog
         open={createOpen}
