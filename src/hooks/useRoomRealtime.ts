@@ -25,20 +25,11 @@ export interface ErrorDeConexion {
   mensaje: string;
 }
 
-export interface SalaActualizada {
-  salaId: string;
-  nombre: string;
-}
-
 export interface UseRoomRealtimeResult {
   estado: EstadoConexion;
   errorConexion: ErrorDeConexion | null;
   /** La sala no existe para el servidor de tiempo real (ID inválido o eliminada). */
   salaNoEncontrada: boolean;
-  /** El anfitrión eliminó la sala mientras estábamos dentro. */
-  salaEliminada: boolean;
-  /** Último nombre recibido por `sala:actualizada`. */
-  nombreSala: string | null;
   participantes: Participante[];
   mensajes: Mensaje[];
   historial: EstadoHistorial;
@@ -98,8 +89,6 @@ export function useRoomRealtime(
   const [estado, setEstado] = useState<EstadoConexion>('conectando');
   const [errorConexion, setErrorConexion] = useState<ErrorDeConexion | null>(null);
   const [salaNoEncontrada, setSalaNoEncontrada] = useState(false);
-  const [salaEliminada, setSalaEliminada] = useState(false);
-  const [nombreSala, setNombreSala] = useState<string | null>(null);
   const [participantes, setParticipantes] = useState<Participante[]>([]);
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
   const [historial, setHistorial] = useState<EstadoHistorial>('cargando');
@@ -253,8 +242,6 @@ export function useRoomRealtime(
       setParticipantes([]);
       setHayMas(false);
       setSalaNoEncontrada(false);
-      setSalaEliminada(false);
-      setNombreSala(null);
     };
   }, [activo, salaId, pedirHistorial, actualizarMensajes]);
 
@@ -326,8 +313,6 @@ export function useRoomRealtime(
     estado,
     errorConexion,
     salaNoEncontrada,
-    salaEliminada,
-    nombreSala,
     participantes,
     mensajes,
     historial,

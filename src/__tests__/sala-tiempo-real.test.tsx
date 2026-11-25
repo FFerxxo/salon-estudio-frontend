@@ -72,6 +72,18 @@ describe('SDECG6-50 · Sala conectada al servidor de tiempo real', () => {
     await waitFor(() => expect(getPathname()).toBe('/ingresar'));
   });
 
+  it('si el servidor rechaza siempre la sesión, la cierra y se queda en Ingresar sin volver a la sala', async () => {
+    const conexion = new MockRealtimeConnection({ uid: 'u-ana', username: 'ana' });
+    for (let i = 0; i < 20; i += 1) conexion.fallarConexion('SESION_INVALIDA');
+    const connect = vi.spyOn(conexion, 'connect');
+    const { getPathname } = renderConTiempoReal('/salas/ABCD1234', { conexion });
+
+    expect(await screen.findByRole('heading', { name: 'Ingresar' })).toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(getPathname()).toBe('/ingresar');
+    expect(connect).toHaveBeenCalledTimes(2);
+  });
+
   it('con el perfil incompleto lleva a elegir nombre de usuario', async () => {
     const conexion = new MockRealtimeConnection({ uid: 'u-ana', username: 'ana' });
     conexion.fallarConexion('PERFIL_INCOMPLETO');

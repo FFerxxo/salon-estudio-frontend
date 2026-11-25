@@ -152,7 +152,7 @@ export function RoomPage() {
   const locationState = (location.state as RoomLocationState | null) ?? null;
 
   const navigate = useNavigate();
-  const { user, idToken } = useAuth();
+  const { user, idToken, logout } = useAuth();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -179,11 +179,14 @@ export function RoomPage() {
 
   useEffect(() => {
     if (codigoErrorConexion === 'NO_AUTENTICADO' || codigoErrorConexion === 'SESION_INVALIDA') {
-      navigate('/ingresar', { replace: true, state: { from: location.pathname } });
+      // Se cierra la sesión: si solo se navegara a /ingresar, la sesión seguiría iniciada y
+      // /ingresar devolvería a la sala en un bucle. ProtectedRoute lleva a Ingresar con `from`.
+      // Si cerrar sesión falla, se queda el aviso de error con «Reintentar» (sin bucle).
+      logout().catch(() => {});
     } else if (codigoErrorConexion === 'PERFIL_INCOMPLETO') {
       navigate('/registro/google-username', { replace: true });
     }
-  }, [codigoErrorConexion, navigate, location.pathname]);
+  }, [codigoErrorConexion, navigate, logout]);
 
   useDocumentTitle(room ? room.nombre : id ? `Sala ${id}` : 'Sala');
 
