@@ -28,6 +28,8 @@ export interface RoomBarProps {
   onCopyId: () => void;
   participantsOpen: boolean;
   onToggleParticipants: () => void;
+  /** Se llama al pulsar «Salir de la sala», antes de volver al panel (emite `sala:salir`). */
+  onExit?: () => void;
 }
 
 type PopoverKind = 'sound' | 'volume' | null;
@@ -40,6 +42,7 @@ export function RoomBar({
   onCopyId,
   participantsOpen,
   onToggleParticipants,
+  onExit,
 }: RoomBarProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -363,6 +366,7 @@ export function RoomBar({
 
         <Link
           to="/panel"
+          onClick={() => onExit?.()}
           className={`min-h-[44px] px-3.5 py-2 rounded-xl border text-[13px] font-bold inline-flex items-center gap-1.5 active:scale-[0.96] transition-[transform,background-color] duration-150 ${
             isDarkBar
               ? 'border-[#fca5a5] bg-[#7f1d1d]/80 text-[#fef2f2] hover:bg-[#991b1b]'

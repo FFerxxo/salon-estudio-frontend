@@ -39,16 +39,25 @@ export function ProtectedRoute() {
   return <Outlet />;
 }
 
-/** Redirige usuarios ya autenticados fuera de /ingresar o /registro hacia el Panel o paso pendiente. */
+/** Solo se vuelve a rutas internas de la app (p. ej. /salas/ABCD1234 tras abrir un enlace directo). */
+function destinoSeguro(from: unknown): string {
+  return typeof from === 'string' && from.startsWith('/') && !from.startsWith('//') && from !== '/ingresar'
+    ? from
+    : '/panel';
+}
+
+/** Redirige usuarios ya autenticados fuera de /ingresar o /registro hacia la ruta pedida, el Panel o el paso pendiente. */
 export function PublicAuthRoute() {
   const { status } = useAuth();
+  const location = useLocation();
 
   if (status === 'needs_username') {
     return <Navigate to="/registro/google-username" replace />;
   }
 
   if (status === 'authenticated') {
-    return <Navigate to="/panel" replace />;
+    const from = (location.state as { from?: unknown } | null)?.from;
+    return <Navigate to={destinoSeguro(from)} replace />;
   }
 
   return <Outlet />;
