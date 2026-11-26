@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertCircle, ArrowLeft, Loader2, RotateCcw, WifiOff } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { MemberGrid } from '../components/MemberGrid';
+import { RoomChat } from '../components/RoomChat';
 import { RoomBar } from '../components/RoomPopovers';
 import { StatusBanner } from '../components/StatusBanner';
 import { ROOM_BACKGROUNDS, type AmbienteId } from '../content/ambientes';
@@ -165,6 +166,7 @@ export function RoomPage() {
   const [reloadCount, setReloadCount] = useState(0);
   const [bannerDismissedForId, setBannerDismissedForId] = useState<string | null>(null);
   const [participantsOpen, setParticipantsOpen] = useState(true);
+  const [mobileTab, setMobileTab] = useState<'participantes' | 'chat'>('participantes');
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState<string | null>(null);
   const [liveAnnouncement, setLiveAnnouncement] = useState('');
@@ -433,13 +435,59 @@ export function RoomPage() {
 
         <ConnectionStatus realtime={realtime} theme={theme} />
 
-        <div className="flex-1 flex items-center py-2">
-          <MemberGrid
-            currentUser={user}
-            anfitrionUid={isHost && user?.uid ? user.uid : room.anfitrionUid}
-            participantes={realtime.participantes}
-            visible={participantsOpen}
-          />
+        {/* En celular: pestañas «Participantes / Chat». En computador: chat a la derecha. */}
+        <div role="tablist" aria-label="Secciones de la sala" className="lg:hidden grid grid-cols-2 gap-1 p-1 rounded-xl bg-[#0b1220]/80 border border-white/15">
+          {(['participantes', 'chat'] as const).map((tab) => (
+            <button
+              key={tab}
+              id={`room-tab-${tab}`}
+              type="button"
+              role="tab"
+              aria-selected={mobileTab === tab}
+              aria-controls={`room-panel-${tab}`}
+              onClick={() => setMobileTab(tab)}
+              className={`min-h-[44px] rounded-lg text-sm font-bold transition-colors ${
+                mobileTab === tab
+                  ? 'bg-[#38bdf8] text-[#0b1220]'
+                  : 'text-[#e2e8f0] hover:bg-white/10'
+              }`}
+            >
+              {tab === 'participantes' ? 'Participantes' : 'Chat'}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(320px,380px)] gap-4 min-h-0">
+          <div
+            id="room-panel-participantes"
+            role="tabpanel"
+            aria-labelledby="room-tab-participantes"
+            className={`${mobileTab === 'participantes' ? 'flex' : 'hidden'} lg:flex items-center py-2`}
+          >
+            <MemberGrid
+              currentUser={user}
+              anfitrionUid={isHost && user?.uid ? user.uid : room.anfitrionUid}
+              participantes={realtime.participantes}
+              visible={participantsOpen}
+            />
+          </div>
+
+          <div
+            id="room-panel-chat"
+            role="tabpanel"
+            aria-labelledby="room-tab-chat"
+            className={`${mobileTab === 'chat' ? 'flex' : 'hidden'} lg:flex flex-col h-[65dvh] min-h-[380px] lg:min-h-[420px] lg:h-[min(70vh,640px)]`}
+          >
+            <RoomChat
+              mensajes={realtime.mensajes}
+              miUid={user?.uid}
+              estado={realtime.estado}
+              historial={realtime.historial}
+              anuncio={realtime.anuncioChat}
+              onEnviar={realtime.enviar}
+              onReintentarHistorial={realtime.reintentarHistorial}
+            />
+          </div>
         </div>
       </div>
     </section>
