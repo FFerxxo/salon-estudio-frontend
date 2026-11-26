@@ -8,7 +8,7 @@ import {
   type FormEvent,
   type KeyboardEvent,
 } from 'react';
-import { AlertCircle, ArrowDown, Loader2, MessageSquare, RotateCcw, Send } from 'lucide-react';
+import { AlertCircle, ArrowDown, ArrowUp, Loader2, MessageSquare, RotateCcw, Send } from 'lucide-react';
 import {
   formatearHora,
   LARGO_MAXIMO_MENSAJE,
@@ -23,6 +23,9 @@ export interface RoomChatProps {
   estado: EstadoConexion;
   historial: EstadoHistorial;
   anuncio: string;
+  hayMas: boolean;
+  cargandoAnteriores: boolean;
+  onCargarAnteriores: () => Promise<number | null>;
   onEnviar: (texto: string) => Promise<AckRespuesta<{ mensaje: Mensaje }>>;
   onReintentarHistorial: () => void;
 }
@@ -78,6 +81,9 @@ export function RoomChat({
   estado,
   historial,
   anuncio,
+  hayMas,
+  cargandoAnteriores,
+  onCargarAnteriores,
   onEnviar,
   onReintentarHistorial,
 }: RoomChatProps) {
@@ -90,11 +96,17 @@ export function RoomChat({
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const alFinalRef = useRef(true);
   const ultimoIdRef = useRef<string | null>(null);
+  const primerIdRef = useRef<string | null>(null);
+  /** Distancia al final antes de cargar los anteriores, para no perder la posición de lectura. */
+  const anclaRef = useRef<number | null>(null);
 
   const [texto, setTexto] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
   const [hayNuevos, setHayNuevos] = useState(false);
+  const [yaCargoAnteriores, setYaCargoAnteriores] = useState(false);
+  const [errorAnteriores, setErrorAnteriores] = useState(false);
+  const [anuncioHistorial, setAnuncioHistorial] = useState('');
 
   const conectado = estado === 'conectado';
   const vacio = texto.trim().length === 0;
@@ -106,6 +118,33 @@ export function RoomChat({
     alFinalRef.current = true;
     setHayNuevos(false);
   }, []);
+
+  // Al agregar mensajes anteriores arriba, se mantiene lo que se estaba leyendo en su lugar.
+  useLayoutEffect(() => {
+    const primero = mensajes[0]?.id ?? null;
+    const cambioArriba = primero !== primerIdRef.current;
+    primerIdRef.current = primero;
+    const el = listaRef.current;
+    if (!cambioArriba || anclaRef.current === null || !el) return;
+    el.scrollTop = el.scrollHeight - anclaRef.current;
+    anclaRef.current = null;
+  }, [mensajes]);
+
+  const cargarAnteriores = async () => {
+    const el = listaRef.current;
+    anclaRef.current = el ? el.scrollHeight - el.scrollTop : null;
+    setErrorAnteriores(false);
+    const cantidad = await onCargarAnteriores();
+    setYaCargoAnteriores(true);
+    if (cantidad === null) {
+      anclaRef.current = null;
+      setErrorAnteriores(true);
+      return;
+    }
+    setAnuncioHistorial(
+      cantidad === 1 ? 'Se cargó 1 mensaje anterior' : `Se cargaron ${cantidad} mensajes anteriores`
+    );
+  };
 
   // Al llegar un mensaje nuevo al final: baja solo si estabas abajo o si es tuyo.
   useLayoutEffect(() => {
@@ -216,6 +255,39 @@ export function RoomChat({
           <p className="text-sm text-[#cbd5e1] text-center py-6">
             Aún no hay mensajes. Escribe el primero.
           </p>
+        )}
+
+        <div role="status" aria-live="polite" className="sr-only">
+          {anuncioHistorial}
+        </div>
+
+        {mensajes.length > 0 && hayMas && (
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={() => void cargarAnteriores()}
+              disabled={cargandoAnteriores}
+              aria-busy={cargandoAnteriores}
+              className="min-h-[40px] px-3 rounded-full border border-white/30 bg-white/10 hover:bg-white/20 text-xs font-semibold inline-flex items-center gap-1.5 disabled:opacity-70"
+            >
+              {cargandoAnteriores ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+              ) : (
+                <ArrowUp className="w-3.5 h-3.5" aria-hidden="true" />
+              )}
+              {cargandoAnteriores ? 'Cargando…' : 'Cargar mensajes anteriores'}
+            </button>
+          </div>
+        )}
+
+        {errorAnteriores && (
+          <p role="alert" className="text-xs text-center text-[#fca5a5] font-semibold">
+            No pudimos cargar los mensajes anteriores. Intenta de nuevo.
+          </p>
+        )}
+
+        {mensajes.length > 0 && !hayMas && yaCargoAnteriores && (
+          <p className="text-xs text-center text-[#94a3b8]">No hay más mensajes</p>
         )}
 
         {mensajes.length > 0 && (

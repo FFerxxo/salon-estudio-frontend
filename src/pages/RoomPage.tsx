@@ -484,6 +484,9 @@ export function RoomPage() {
               estado={realtime.estado}
               historial={realtime.historial}
               anuncio={realtime.anuncioChat}
+              hayMas={realtime.hayMas}
+              cargandoAnteriores={realtime.cargandoAnteriores}
+              onCargarAnteriores={realtime.cargarAnteriores}
               onEnviar={realtime.enviar}
               onReintentarHistorial={realtime.reintentarHistorial}
             />

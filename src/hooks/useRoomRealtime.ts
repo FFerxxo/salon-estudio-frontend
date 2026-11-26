@@ -38,7 +38,8 @@ export interface UseRoomRealtimeResult {
   anuncioSala: string;
   anuncioChat: string;
   enviar: (texto: string) => Promise<AckRespuesta<{ mensaje: Mensaje }>>;
-  cargarAnteriores: () => Promise<void>;
+  /** Carga la página anterior; devuelve cuántos mensajes llegaron o null si falló. */
+  cargarAnteriores: () => Promise<number | null>;
   reintentarHistorial: () => void;
   reintentarConexion: () => void;
   salir: () => void;
@@ -271,19 +272,20 @@ export function useRoomRealtime(
     [salaId, actualizarMensajes]
   );
 
-  const cargarAnteriores = useCallback(async () => {
+  const cargarAnteriores = useCallback(async (): Promise<number | null> => {
     const conexion = conexionRef.current;
     const masViejo = mensajesRef.current[0];
-    if (!conexion || !salaId || !masViejo) return;
+    if (!conexion || !salaId || !masViejo) return null;
     setCargandoAnteriores(true);
     const res = await conexion.request<HistorialRespuesta>('chat:historial', {
       salaId,
       antesDe: masViejo.creadoEn,
     });
     setCargandoAnteriores(false);
-    if (!res.ok) return;
+    if (!res.ok) return null;
     actualizarMensajes((prev) => unirMensajes(res.mensajes, prev));
     setHayMas(res.hayMas);
+    return res.mensajes.length;
   }, [salaId, actualizarMensajes]);
 
   const reintentarHistorial = useCallback(() => {
