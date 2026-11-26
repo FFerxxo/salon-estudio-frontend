@@ -992,7 +992,7 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
   });
 
   describe('Sala mínima (/salas/:id): RoomBar popovers y MemberGrid', () => {
-    it('inicia sin autoplay, muestra Tú/Anfitrión + Compañero 1..3, alterna Participantes, controla Ambiente sonoro y Volumen y restaura foco con Escape', async () => {
+    it('inicia sin autoplay, muestra Tú/Anfitrión sin espacios fijos, alterna Participantes, controla Ambiente sonoro y Volumen y restaura foco con Escape', async () => {
       const { user, writeTextSpy } = setupUserWithClipboard();
       const blueRoom = sampleRooms[0];
 
@@ -1024,15 +1024,14 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
       expect(audioEl).not.toHaveAttribute('autoplay');
       expect(playStub).not.toHaveBeenCalled();
 
-      // Cuadrícula MemberGrid: Tú + Anfitrión + Compañero 1, 2, 3
+      // Cuadrícula MemberGrid: sin servidor de tiempo real solo está tu cuadro (sin espacios fijos)
       const memberGrid = screen.getByLabelText('Participantes de la sala');
       expect(within(memberGrid).getByLabelText('Tu cuadro en la sala')).toBeInTheDocument();
       expect(within(memberGrid).getByText('@andres.uv')).toBeInTheDocument();
       expect(within(memberGrid).getByText('Tú')).toBeInTheDocument();
       expect(within(memberGrid).getByText('Anfitrión')).toBeInTheDocument();
-      expect(within(memberGrid).getByText('Compañero 1')).toBeInTheDocument();
-      expect(within(memberGrid).getByText('Compañero 2')).toBeInTheDocument();
-      expect(within(memberGrid).getByText('Compañero 3')).toBeInTheDocument();
+      expect(within(memberGrid).queryByText('Compañero 1')).not.toBeInTheDocument();
+      expect(screen.getByText(/Eres el único en la sala por ahora/)).toBeInTheDocument();
 
       // Toggle Participantes
       const toggleParticipantsBtn = screen.getByRole('button', {

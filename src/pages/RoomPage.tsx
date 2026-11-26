@@ -397,6 +397,10 @@ export function RoomPage() {
         <div role="status" aria-live="polite" className="sr-only">
           {liveAnnouncement}
         </div>
+        {/* «@ana entró a la sala» / «@ana salió de la sala» sin mover el foco (SDECG6-52) */}
+        <div role="status" aria-live="polite" className="sr-only" data-testid="anuncio-sala">
+          {realtime.anuncioSala}
+        </div>
 
         {showCreatedBanner && id && (
           <StatusBanner
@@ -432,7 +436,8 @@ export function RoomPage() {
         <div className="flex-1 flex items-center py-2">
           <MemberGrid
             currentUser={user}
-            isHost={isHost}
+            anfitrionUid={isHost && user?.uid ? user.uid : room.anfitrionUid}
+            participantes={realtime.participantes}
             visible={participantsOpen}
           />
         </div>
