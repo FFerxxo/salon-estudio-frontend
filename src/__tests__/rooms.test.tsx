@@ -1035,13 +1035,13 @@ describe('Salas propias, gestión US-07 y ambiente sonoro', () => {
 
       // Toggle Participantes
       const toggleParticipantsBtn = screen.getByRole('button', {
-        name: /Ocultar participantes/i,
+        name: /^Participantes/,
       });
       expect(toggleParticipantsBtn).toHaveAttribute('aria-pressed', 'true');
       await user.click(toggleParticipantsBtn);
       expect(screen.queryByLabelText('Participantes de la sala')).not.toBeInTheDocument();
       const showParticipantsBtn = screen.getByRole('button', {
-        name: /Mostrar participantes/i,
+        name: /^Participantes/,
       });
       expect(showParticipantsBtn).toHaveAttribute('aria-pressed', 'false');
       await user.click(showParticipantsBtn);

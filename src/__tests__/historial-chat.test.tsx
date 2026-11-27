@@ -32,7 +32,7 @@ describe('SDECG6-54 · Historial del chat al entrar o recargar (US-11)', () => {
     expect(await screen.findByText('Aún no hay mensajes. Escribe el primero.')).toBeInTheDocument();
   });
 
-  it('muestra «Cargando mensajes…» mientras llega el historial', async () => {
+  it('muestra «Cargando historial…» mientras llega el historial', async () => {
     const conexion = conexionCon(3);
     let liberar!: () => void;
     const original = conexion.request.bind(conexion);
@@ -44,11 +44,11 @@ describe('SDECG6-54 · Historial del chat al entrar o recargar (US-11)', () => {
     });
     renderConTiempoReal('/salas/ABCD1234', { conexion });
 
-    expect(await screen.findByText('Cargando mensajes…')).toBeInTheDocument();
+    expect(await screen.findByText('Cargando historial…')).toBeInTheDocument();
     await waitFor(() => expect(liberar).toBeTypeOf('function'));
     act(() => liberar());
     expect(await screen.findByText('Mensaje 3')).toBeInTheDocument();
-    expect(screen.queryByText('Cargando mensajes…')).not.toBeInTheDocument();
+    expect(screen.queryByText('Cargando historial…')).not.toBeInTheDocument();
   });
 
   it('al entrar carga los últimos 30 en orden y «Cargar mensajes anteriores» trae el resto', async () => {

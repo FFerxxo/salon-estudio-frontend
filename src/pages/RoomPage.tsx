@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertCircle, ArrowLeft, Loader2, RotateCcw, WifiOff } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Loader2, LogOut, RotateCcw, UserPlus, WifiOff } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { MemberGrid } from '../components/MemberGrid';
 import { RoomChat } from '../components/RoomChat';
-import { DeleteRoomDialog, RenameRoomDialog } from '../components/RoomDialogs';
+import { DeleteRoomDialog, RenameRoomDialog, RoomDeletedDialog } from '../components/RoomDialogs';
 import { RoomBar } from '../components/RoomPopovers';
 import { StatusBanner } from '../components/StatusBanner';
 import { ROOM_BACKGROUNDS, type AmbienteId } from '../content/ambientes';
@@ -170,6 +170,7 @@ export function RoomPage() {
   const [reloadCount, setReloadCount] = useState(0);
   const [bannerDismissedForId, setBannerDismissedForId] = useState<string | null>(null);
   const [participantsOpen, setParticipantsOpen] = useState(true);
+  const [chatOpen, setChatOpen] = useState(true);
   const [renameOpen, setRenameOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [renamedName, setRenamedName] = useState<{ id: string; nombre: string } | null>(null);
@@ -203,14 +204,20 @@ export function RoomPage() {
     return () => setTopbarRoomTitle(null);
   }, [topbarTitle]);
 
-  // El anfitrión eliminó la sala: aviso y vuelta al Panel (US-07).
+  // El anfitrión eliminó la sala: el invitado ve el aviso y elige «Volver al Panel» (US-07).
+  const volverAlPanelTrasEliminar = useCallback(() => {
+    navigate('/panel', { replace: true });
+  }, [navigate]);
+
+  // Aviso visible y breve de quién entró o salió (además del anuncio al lector de pantalla).
+  const [avisoVisible, setAvisoVisible] = useState('');
   useEffect(() => {
-    if (!realtime.salaEliminada) return;
-    navigate('/panel', {
-      replace: true,
-      state: { avisoSala: 'El anfitrión eliminó esta sala.' },
-    });
-  }, [realtime.salaEliminada, navigate]);
+    const texto = realtime.anuncioSala;
+    if (!/(entró a|salió de) la sala$/.test(texto)) return;
+    setAvisoVisible(texto);
+    const t = window.setTimeout(() => setAvisoVisible(''), 4000);
+    return () => window.clearTimeout(t);
+  }, [realtime.anuncioSala]);
 
   useEffect(() => {
     if (codigoErrorConexion === 'NO_AUTENTICADO' || codigoErrorConexion === 'SESION_INVALIDA') {
@@ -464,6 +471,10 @@ export function RoomPage() {
           isHost={isHost}
           onRename={() => setRenameOpen(true)}
           onDelete={() => setDeleteOpen(true)}
+          conectado={realtime.estado === 'conectado'}
+          cantidadParticipantes={realtime.participantes.length}
+          chatOpen={chatOpen}
+          onToggleChat={() => setChatOpen((prev) => !prev)}
         />
 
         <ConnectionStatus realtime={realtime} theme={theme} />
@@ -485,18 +496,39 @@ export function RoomPage() {
                   : 'text-[#e2e8f0] hover:bg-white/10'
               }`}
             >
-              {tab === 'participantes' ? 'Participantes' : 'Chat'}
+              {tab === 'participantes'
+                ? `Participantes${realtime.participantes.length > 0 ? ` (${realtime.participantes.length})` : ''}`
+                : 'Chat'}
             </button>
           ))}
         </div>
 
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(320px,380px)] gap-4 min-h-0">
+        <div
+          className={`flex-1 grid grid-cols-1 gap-4 min-h-0 ${
+            chatOpen ? 'lg:grid-cols-[minmax(0,1fr)_minmax(320px,380px)]' : ''
+          }`}
+        >
           <div
             id="room-panel-participantes"
             role="tabpanel"
             aria-labelledby="room-tab-participantes"
-            className={`${mobileTab === 'participantes' ? 'flex' : 'hidden'} lg:flex items-center py-2`}
+            className={`${mobileTab === 'participantes' ? 'flex' : 'hidden'} lg:flex relative items-center pt-12 pb-2`}
           >
+            {avisoVisible && (
+              <p
+                aria-hidden="true"
+                data-testid="aviso-sala-visible"
+                className="absolute top-1 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap min-h-[36px] px-3.5 rounded-full border border-white/20 bg-[#0b1220]/90 text-[#f8fafc] text-sm font-semibold inline-flex items-center gap-2 shadow-lg"
+              >
+                {avisoVisible.endsWith('entró a la sala') ? (
+                  <UserPlus className="w-4 h-4 shrink-0" aria-hidden="true" />
+                ) : (
+                  <LogOut className="w-4 h-4 shrink-0" aria-hidden="true" />
+                )}
+                {avisoVisible}
+              </p>
+            )}
+
             <MemberGrid
               currentUser={user}
               anfitrionUid={isHost && user?.uid ? user.uid : room.anfitrionUid}
@@ -509,7 +541,7 @@ export function RoomPage() {
             id="room-panel-chat"
             role="tabpanel"
             aria-labelledby="room-tab-chat"
-            className={`${mobileTab === 'chat' ? 'flex' : 'hidden'} lg:flex flex-col h-[65dvh] min-h-[380px] lg:min-h-[420px] lg:h-[min(70vh,640px)]`}
+            className={`${mobileTab === 'chat' ? 'flex' : 'hidden'} ${chatOpen ? 'lg:flex' : 'lg:hidden'} flex-col h-[65dvh] min-h-[380px] lg:min-h-[420px] lg:h-[min(70vh,640px)]`}
           >
             <RoomChat
               mensajes={realtime.mensajes}
@@ -522,10 +554,17 @@ export function RoomPage() {
               onCargarAnteriores={realtime.cargarAnteriores}
               onEnviar={realtime.enviar}
               onReintentarHistorial={realtime.reintentarHistorial}
+              personas={realtime.participantes.length}
             />
           </div>
         </div>
       </div>
+
+      <RoomDeletedDialog
+        open={realtime.salaEliminada && !isHost}
+        roomName={room.nombre}
+        onBack={volverAlPanelTrasEliminar}
+      />
 
       <RenameRoomDialog
         open={renameOpen && isHost}

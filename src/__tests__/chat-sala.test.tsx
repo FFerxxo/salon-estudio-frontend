@@ -81,7 +81,8 @@ describe('SDECG6-53 · Chat en tiempo real dentro de la sala (US-10)', () => {
     fireEvent.change(campo, { target: { value: 'a'.repeat(1000) } });
 
     expect(campo).toHaveAttribute('maxLength', '1000');
-    expect(screen.getByText('1000/1000 caracteres')).toBeInTheDocument();
+    expect(campo).toHaveAccessibleDescription(/1000\/1000 caracteres/);
+    expect(screen.getByText('1000/1000')).toBeInTheDocument();
   });
 
   it('si falla el envío muestra el error y «Reintentar» lo vuelve a enviar', async () => {
@@ -169,11 +170,27 @@ describe('SDECG6-53 · Chat en tiempo real dentro de la sala (US-10)', () => {
     await entrarALaSala();
 
     const tabChat = screen.getByRole('tab', { name: 'Chat' });
-    expect(screen.getByRole('tab', { name: 'Participantes' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: /^Participantes/ })).toHaveAttribute('aria-selected', 'true');
     await user.click(tabChat);
     expect(tabChat).toHaveAttribute('aria-selected', 'true');
     expect(document.getElementById('room-panel-chat')).toHaveClass('flex');
     expect(document.getElementById('room-panel-participantes')).toHaveClass('hidden');
+  });
+
+  it('sigue el boceto: «Chat de la sala», «Enviar» con texto, ayuda de Enter y botón «Chat» en la barra', async () => {
+    const user = userEvent.setup();
+    await entrarALaSala();
+
+    expect(screen.getByRole('heading', { name: 'Chat de la sala' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Enviar mensaje' })).toHaveTextContent('Enviar');
+    expect(screen.getByLabelText('Escribe un mensaje')).toHaveAccessibleDescription(/Enter para enviar/);
+    expect(screen.getByText('Conectado')).toBeInTheDocument();
+
+    const botonChat = screen.getByRole('button', { name: 'Chat' });
+    expect(botonChat).toHaveAttribute('aria-pressed', 'true');
+    await user.click(botonChat);
+    expect(botonChat).toHaveAttribute('aria-pressed', 'false');
+    expect(document.getElementById('room-panel-chat')).toHaveClass('lg:hidden');
   });
 
   it('no tiene problemas de accesibilidad con mensajes en el chat', async () => {

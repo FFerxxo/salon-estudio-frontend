@@ -20,6 +20,7 @@ import type { StudentProfile } from '../services/authApi';
 import { AmbientMotionBackdrop } from './AmbientMotionBackdrop';
 import { resolveAvatarEmoji } from './AvatarPicker';
 import { useTopbarRoomTitle } from '../hooks/useTopbarTitle';
+import { ID_ACCIONES_TOPBAR_SALA } from './RoomPopovers';
 
 const ACCESS_ROUTES = new Set(['/', '/ingresar', '/registro', '/registro/google-username']);
 
@@ -276,29 +277,33 @@ function WorkspaceLayout({ theme, toggleTheme, user, onLogout }: WorkspaceLayout
           </div>
 
           {user ? (
-            <Link
-              to="/perfil"
-              aria-label={`Cuenta de ${user.nombres || 'Estudiante'} (@${user.username || 'estudiante'})`}
-              className={`min-h-[44px] px-1.5 sm:pl-1.5 sm:pr-3 py-1 rounded-full border inline-flex items-center justify-center gap-2 text-xs font-semibold transition-[background-color,transform] duration-150 active:scale-[0.98] motion-reduce:active:scale-100 motion-reduce:transition-none ${
-                isDark
-                  ? 'bg-[#192842] border-slate-400/25 text-[#f8fafc] hover:bg-[#223556]'
-                  : 'bg-[#ffffff] border-slate-300 text-[#0f172a] hover:bg-slate-100'
-              }`}
-            >
-              <span
-                aria-hidden="true"
-                className="h-8 w-8 rounded-full bg-[#0f766e] text-white font-bold text-xs inline-flex items-center justify-center overflow-hidden shrink-0"
+            <div className="flex items-center gap-2 shrink-0">
+              {/* En celular la sala pone aquí «Salir», fijo arriba (boceto S3) */}
+              <div id={ID_ACCIONES_TOPBAR_SALA} className="flex items-center lg:hidden empty:hidden" />
+              <Link
+                to="/perfil"
+                aria-label={`Cuenta de ${user.nombres || 'Estudiante'} (@${user.username || 'estudiante'})`}
+                className={`min-h-[44px] px-1.5 sm:pl-1.5 sm:pr-3 py-1 rounded-full border inline-flex items-center justify-center gap-2 text-xs font-semibold transition-[background-color,transform] duration-150 active:scale-[0.98] motion-reduce:active:scale-100 motion-reduce:transition-none ${
+                  isDark
+                    ? 'bg-[#192842] border-slate-400/25 text-[#f8fafc] hover:bg-[#223556]'
+                    : 'bg-[#ffffff] border-slate-300 text-[#0f172a] hover:bg-slate-100'
+                }`}
               >
-                {userAvatarEmoji ? (
-                  <span className="text-[15px] leading-none">{userAvatarEmoji}</span>
-                ) : user.avatarUrl?.startsWith('https://') ? (
-                  <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  userInitial
-                )}
-              </span>
-              <span className="hidden sm:inline font-mono">@{user.username || 'estudiante'}</span>
-            </Link>
+                <span
+                  aria-hidden="true"
+                  className="h-8 w-8 rounded-full bg-[#0f766e] text-white font-bold text-xs inline-flex items-center justify-center overflow-hidden shrink-0"
+                >
+                  {userAvatarEmoji ? (
+                    <span className="text-[15px] leading-none">{userAvatarEmoji}</span>
+                  ) : user.avatarUrl?.startsWith('https://') ? (
+                    <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    userInitial
+                  )}
+                </span>
+                <span className="hidden sm:inline font-mono">@{user.username || 'estudiante'}</span>
+              </Link>
+            </div>
           ) : (
             <div className="flex items-center gap-2">
               <Link

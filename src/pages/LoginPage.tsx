@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { AlertCircle, AtSign } from 'lucide-react';
+import { AlertCircle, AtSign, Info } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { GoogleAuthButton } from '../components/GoogleAuthButton';
 import { PasswordField } from '../components/PasswordField';
@@ -39,6 +39,8 @@ export function LoginPage() {
 
   const state = (location.state as LocationState | null) ?? null;
   const redirectTarget = state?.from && state.from !== '/ingresar' ? state.from : '/panel';
+  // Llegó con el enlace directo de una sala sin sesión iniciada (US-08, boceto S3 pantalla 2).
+  const vieneDeUnaSala = redirectTarget.startsWith('/salas/');
   const [deletedBannerVisible, setDeletedBannerVisible] = useState(
     Boolean(state?.accountDeleted || pendingDeleteRedirect)
   );
@@ -151,6 +153,19 @@ export function LoginPage() {
           message="Tu cuenta fue eliminada"
           onDismiss={() => setDeletedBannerVisible(false)}
         />
+      )}
+
+      {vieneDeUnaSala && !authError && (
+        <p
+          className={`rounded-[10px] px-3 py-2.5 text-xs font-semibold flex items-center gap-2 border ${
+            theme === 'dark'
+              ? 'border-[#38bdf8]/70 bg-[#0c4a6e]/40 text-[#e0f2fe]'
+              : 'border-[#0369a1]/60 bg-[#e0f2fe] text-[#075985]'
+          }`}
+        >
+          <Info className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <span>Ingresa para entrar a la sala</span>
+        </p>
       )}
 
       {authError && (

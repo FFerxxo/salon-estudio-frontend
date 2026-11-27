@@ -1,8 +1,11 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ArrowLeft,
   Check,
+  CheckCircle2,
   Copy,
+  MessageSquare,
   Music,
   Pause,
   Pencil,
@@ -21,6 +24,7 @@ import {
   type AmbienteTrack,
 } from '../content/ambientes';
 import { useTheme } from '../context/ThemeContext';
+import { CONSULTA_PANTALLA_GRANDE, useMediaQuery } from '../hooks/useMediaQuery';
 import { type Room } from '../services/roomsApi';
 
 export interface RoomBarProps {
@@ -36,7 +40,17 @@ export interface RoomBarProps {
   isHost?: boolean;
   onRename?: () => void;
   onDelete?: () => void;
+  /** Muestra la insignia «Conectado» cuando el tiempo real está en línea. */
+  conectado?: boolean;
+  /** Personas en la sala para «Participantes (N)». */
+  cantidadParticipantes?: number;
+  /** En computador, «Chat» muestra u oculta el panel del chat. */
+  chatOpen?: boolean;
+  onToggleChat?: () => void;
 }
+
+/** En celular «Salir» va fijo en la barra superior, junto a la cuenta (boceto S3). */
+export const ID_ACCIONES_TOPBAR_SALA = 'topbar-acciones-sala';
 
 type PopoverKind = 'sound' | 'volume' | null;
 
@@ -52,7 +66,16 @@ export function RoomBar({
   isHost = false,
   onRename,
   onDelete,
+  conectado = false,
+  cantidadParticipantes,
+  chatOpen = true,
+  onToggleChat,
 }: RoomBarProps) {
+  const pantallaGrande = useMediaQuery(CONSULTA_PANTALLA_GRANDE);
+  const [destinoSalir, setDestinoSalir] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setDestinoSalir(pantallaGrande ? null : document.getElementById(ID_ACCIONES_TOPBAR_SALA));
+  }, [pantallaGrande]);
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const displayId = room.id || roomId;
@@ -252,6 +275,25 @@ export function RoomBar({
     ? 'border-[#7dd3fc] bg-[#38bdf8]/25 text-[#e0f2fe]'
     : 'border-[#075985] bg-[#075985]/15 text-[#075985]';
 
+  const textBtnBase =
+    'min-h-[44px] px-3 py-2 rounded-xl border text-[13px] font-bold items-center gap-1.5 active:scale-[0.96] transition-[transform,background-color,border-color] duration-150';
+
+  const salirLink = (
+    <Link
+      to="/panel"
+      onClick={() => onExit?.()}
+      aria-label="Salir de la sala"
+      className={`min-h-[44px] px-3.5 py-2 rounded-xl border text-[13px] font-bold inline-flex items-center gap-1.5 active:scale-[0.96] transition-[transform,background-color] duration-150 ${
+        isDarkBar || destinoSalir
+          ? 'border-[#fca5a5] bg-[#7f1d1d]/80 text-[#fef2f2] hover:bg-[#991b1b]'
+          : 'border-[#b91c1c] bg-[#fef2f2] text-[#b91c1c] hover:bg-[#fee2e2]'
+      }`}
+    >
+      <ArrowLeft className="w-4 h-4 shrink-0" aria-hidden="true" />
+      <span>{destinoSalir ? 'Salir' : 'Salir de la sala'}</span>
+    </Link>
+  );
+
   const popoverSurfaceClasses = isDark
     ? 'bg-[#0f172a] text-[#f8fafc] border-[#64748b] shadow-[0_20px_44px_rgba(2,6,23,0.6)]'
     : 'bg-white text-[#0f172a] border-[#64748b] shadow-[0_20px_44px_rgba(15,23,42,0.2)]';
@@ -307,6 +349,13 @@ export function RoomBar({
           </code>
         </button>
 
+        {conectado && (
+          <span className="min-h-[32px] px-2.5 rounded-full border text-xs font-bold inline-flex items-center gap-1.5 border-[#34d399]/70 bg-[#022c22]/80 text-[#6ee7b7]">
+            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+            <span>Conectado</span>
+          </span>
+        )}
+
         {isHost && (
           <span className="inline-flex items-center gap-1.5">
             <button
@@ -351,19 +400,22 @@ export function RoomBar({
         )}
       </div>
 
-      <div ref={controlsWrapRef} className="relative flex items-center gap-2 flex-wrap">
+      <div ref={controlsWrapRef} className="relative flex items-center gap-1.5 flex-wrap">
         <button
           type="button"
           onClick={onToggleParticipants}
           aria-pressed={participantsOpen}
           aria-controls="roomMemberGrid"
-          aria-label={participantsOpen ? 'Ocultar participantes' : 'Mostrar participantes'}
-          title="Participantes"
-          className={`size-11 rounded-xl border inline-flex items-center justify-center active:scale-[0.96] transition-[transform,background-color,border-color] duration-150 ${
-            participantsOpen ? iconBtnActive : iconBtnBase
-          }`}
+          title={participantsOpen ? 'Ocultar participantes' : 'Mostrar participantes'}
+          className={`${textBtnBase} hidden lg:inline-flex ${participantsOpen ? iconBtnActive : iconBtnBase}`}
         >
-          <Users className="w-5 h-5" aria-hidden="true" />
+          <Users className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <span>
+            Participantes
+            {typeof cantidadParticipantes === 'number' && cantidadParticipantes > 0
+              ? ` (${cantidadParticipantes})`
+              : ''}
+          </span>
         </button>
 
         <button
@@ -373,15 +425,15 @@ export function RoomBar({
           aria-expanded={openPopover === 'sound'}
           aria-controls={openPopover === 'sound' ? soundPopoverId : undefined}
           aria-label="Ambiente sonoro"
-          title="Ambiente sonoro"
           onClick={() =>
             setOpenPopover((prev) => (prev === 'sound' ? null : 'sound'))
           }
-          className={`size-11 rounded-xl border inline-flex items-center justify-center active:scale-[0.96] transition-[transform,background-color,border-color] duration-150 ${
+          className={`${textBtnBase} inline-flex ${
             openPopover === 'sound' || isPlaying ? iconBtnActive : iconBtnBase
           }`}
         >
-          <Music className="w-5 h-5" aria-hidden="true" />
+          <Music className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <span>Ambiente</span>
         </button>
 
         <button
@@ -395,29 +447,32 @@ export function RoomBar({
           onClick={() =>
             setOpenPopover((prev) => (prev === 'volume' ? null : 'volume'))
           }
-          className={`size-11 rounded-xl border inline-flex items-center justify-center active:scale-[0.96] transition-[transform,background-color,border-color] duration-150 ${
+          className={`${textBtnBase} !px-0 w-11 justify-center inline-flex ${
             openPopover === 'volume' ? iconBtnActive : iconBtnBase
           }`}
         >
           {volume === 0 ? (
-            <VolumeX className="w-5 h-5" aria-hidden="true" />
+            <VolumeX className="w-4 h-4 shrink-0" aria-hidden="true" />
           ) : (
-            <Volume2 className="w-5 h-5" aria-hidden="true" />
+            <Volume2 className="w-4 h-4 shrink-0" aria-hidden="true" />
           )}
         </button>
 
-        <Link
-          to="/panel"
-          onClick={() => onExit?.()}
-          className={`min-h-[44px] px-3.5 py-2 rounded-xl border text-[13px] font-bold inline-flex items-center gap-1.5 active:scale-[0.96] transition-[transform,background-color] duration-150 ${
-            isDarkBar
-              ? 'border-[#fca5a5] bg-[#7f1d1d]/80 text-[#fef2f2] hover:bg-[#991b1b]'
-              : 'border-[#b91c1c] bg-[#fef2f2] text-[#b91c1c] hover:bg-[#fee2e2]'
-          }`}
-        >
-          <ArrowLeft className="w-4 h-4 shrink-0" aria-hidden="true" />
-          <span>Salir de la sala</span>
-        </Link>
+        {onToggleChat && (
+          <button
+            type="button"
+            onClick={onToggleChat}
+            aria-pressed={chatOpen}
+            aria-controls="room-panel-chat"
+            title={chatOpen ? 'Ocultar chat' : 'Mostrar chat'}
+            className={`${textBtnBase} hidden lg:inline-flex ${chatOpen ? iconBtnActive : iconBtnBase}`}
+          >
+            <MessageSquare className="w-4 h-4 shrink-0" aria-hidden="true" />
+            <span>Chat</span>
+          </button>
+        )}
+
+        {destinoSalir ? createPortal(salirLink, destinoSalir) : salirLink}
 
         {openPopover === 'sound' && (
           <div

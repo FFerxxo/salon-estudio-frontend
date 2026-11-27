@@ -76,13 +76,20 @@ describe('SDECG6-55 · Acciones del anfitrión dentro de la sala y avisos en viv
     expect(screen.getByTestId('anuncio-sala')).toHaveTextContent('La sala ahora se llama Física I');
   });
 
-  it('cuando el anfitrión elimina la sala el invitado recibe el aviso y vuelve al Panel', async () => {
+  it('cuando el anfitrión elimina la sala el invitado ve el aviso y elige «Volver al Panel»', async () => {
+    const user = userEvent.setup();
     const { conexion, getPathname } = await entrarComo(luis);
 
     act(() => conexion.emitirDesdeServidor('sala:eliminada', { salaId: 'ABCD1234' }));
 
+    const aviso = await screen.findByRole('alertdialog', { name: 'El anfitrión eliminó esta sala' });
+    expect(aviso).toHaveTextContent('La sala Cálculo II fue cerrada por su anfitrión.');
+    expect(getPathname()).toBe('/salas/ABCD1234');
+    const volver = within(aviso).getByRole('button', { name: 'Volver al Panel' });
+    await waitFor(() => expect(volver).toHaveFocus());
+
+    await user.click(volver);
     await waitFor(() => expect(getPathname()).toBe('/panel'));
-    expect(await screen.findByText('El anfitrión eliminó esta sala.')).toBeInTheDocument();
   });
 
   it('ignora sala:eliminada de otra sala', async () => {

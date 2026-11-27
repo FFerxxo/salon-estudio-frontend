@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import {
@@ -339,6 +339,55 @@ export function DeleteRoomDialog({
             {deleting ? 'Eliminando…' : 'Eliminar sala'}
           </button>
         </div>
+      </div>
+    </AppDialog>
+  );
+}
+
+export interface RoomDeletedDialogProps {
+  open: boolean;
+  roomName: string;
+  onBack: () => void;
+}
+
+/**
+ * Aviso para el invitado cuando el anfitrión elimina la sala (US-07, boceto S3 pantalla 12).
+ * Se queda en la sala hasta que la persona elige «Volver al Panel»; Escape hace lo mismo.
+ */
+export function RoomDeletedDialog({ open, roomName, onBack }: RoomDeletedDialogProps) {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const descId = useId();
+  const backBtnRef = useRef<HTMLButtonElement | null>(null);
+
+  return (
+    <AppDialog
+      open={open}
+      role="alertdialog"
+      title="El anfitrión eliminó esta sala"
+      descriptionId={descId}
+      initialFocusRef={backBtnRef}
+      onClose={onBack}
+    >
+      <div className="space-y-4 text-sm">
+        <p
+          id={descId}
+          className={`leading-relaxed text-pretty ${isDark ? 'text-[#cbd5e1]' : 'text-[#334155]'}`}
+        >
+          La sala{' '}
+          <strong className={isDark ? 'text-[#f8fafc]' : 'text-[#0f172a]'}>{roomName}</strong> fue
+          cerrada por su anfitrión. Puedes regresar al panel para entrar a otra sala o crear una
+          nueva.
+        </p>
+        <button
+          ref={backBtnRef}
+          type="button"
+          onClick={onBack}
+          className={getPrimaryCtaClasses(theme)}
+        >
+          <ArrowLeft className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <span>Volver al Panel</span>
+        </button>
       </div>
     </AppDialog>
   );

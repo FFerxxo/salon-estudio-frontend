@@ -28,6 +28,8 @@ export interface RoomChatProps {
   onCargarAnteriores: () => Promise<number | null>;
   onEnviar: (texto: string) => Promise<AckRespuesta<{ mensaje: Mensaje }>>;
   onReintentarHistorial: () => void;
+  /** Personas conectadas en la sala, para el encabezado «Chat de la sala · N personas». */
+  personas?: number;
 }
 
 /** Distancia en px desde el final para considerar que se está leyendo lo último. */
@@ -142,8 +144,10 @@ export function RoomChat({
   onCargarAnteriores,
   onEnviar,
   onReintentarHistorial,
+  personas,
 }: RoomChatProps) {
   const headingId = useId();
+  const ayudaId = useId();
   const textareaId = useId();
   const contadorId = useId();
   const errorId = useId();
@@ -257,20 +261,24 @@ export function RoomChat({
     if (!conectado) setEnviando(false);
   }, [conectado]);
 
-  const describedBy = [contadorId, errorEnvio ? errorId : null].filter(Boolean).join(' ');
+  const describedBy = [ayudaId, contadorId, errorEnvio ? errorId : null].filter(Boolean).join(' ');
 
   return (
     <section
       aria-labelledby={headingId}
       className="relative flex flex-col h-full min-h-[360px] rounded-2xl border border-white/20 bg-[#0b1220]/85 text-[#f8fafc] backdrop-blur-[12px] overflow-hidden"
     >
-      <h2
-        id={headingId}
-        className="px-4 py-3 text-base font-bold border-b border-white/15 inline-flex items-center gap-2"
-      >
-        <MessageSquare className="w-4 h-4" aria-hidden="true" />
-        Chat
-      </h2>
+      <div className="px-4 py-3 border-b border-white/15 flex items-center justify-between gap-2">
+        <h2 id={headingId} className="text-[15px] font-bold inline-flex items-center gap-2">
+          <MessageSquare className="w-4 h-4" aria-hidden="true" />
+          Chat de la sala
+        </h2>
+        {typeof personas === 'number' && personas > 0 && (
+          <span className="text-xs font-semibold text-[#cbd5e1] tabular-nums">
+            {personas === 1 ? '1 persona' : `${personas} personas`}
+          </span>
+        )}
+      </div>
 
       {/* Mensajes nuevos de otros: autor, hora y texto, sin mover el foco */}
       <div role="status" aria-live="polite" className="sr-only" data-testid="anuncio-chat">
@@ -284,10 +292,29 @@ export function RoomChat({
         className="flex-1 overflow-y-auto px-3 py-3 space-y-2"
       >
         {historial === 'cargando' && mensajes.length === 0 && (
-          <p role="status" className="text-sm text-[#cbd5e1] inline-flex items-center gap-2 px-1">
-            <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-            Cargando mensajes…
-          </p>
+          <div role="status" aria-busy="true" className="space-y-3">
+            <p className="text-sm font-semibold text-[#cbd5e1] flex items-center justify-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+              Cargando historial…
+            </p>
+            {/* Esqueleto con la forma de los mensajes: avatar + burbuja, y uno propio a la derecha */}
+            <div aria-hidden="true" className="space-y-3">
+              {(['otro', 'mio', 'otro'] as const).map((tipo, i) => (
+                <div key={i} className={`flex items-start gap-2 ${tipo === 'mio' ? 'justify-end' : ''}`}>
+                  {tipo === 'otro' && <span className="size-8 shrink-0 rounded-full bg-white/10" />}
+                  <span
+                    className={`block rounded-xl border border-white/10 bg-white/[0.06] p-3 space-y-2 animate-pulse motion-reduce:animate-none ${
+                      tipo === 'mio' ? 'w-[72%]' : 'w-[66%]'
+                    }`}
+                  >
+                    <span className="block h-2 w-1/3 rounded bg-white/15" />
+                    <span className="block h-2 w-5/6 rounded bg-white/15" />
+                    {tipo === 'otro' && <span className="block h-2 w-1/2 rounded bg-white/15" />}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
 
         {historial === 'error' && mensajes.length === 0 && (
@@ -410,7 +437,7 @@ export function RoomChat({
             placeholder={
               estado === 'sin-servidor'
                 ? 'El chat no está disponible en este momento'
-                : 'Escribe un mensaje… (Enter envía, Shift+Enter salto de línea)'
+                : 'Escribe un mensaje…'
             }
             disabled={estado === 'sin-servidor'}
             aria-describedby={describedBy}
@@ -420,23 +447,31 @@ export function RoomChat({
             type="submit"
             disabled={vacio || enviando || !conectado}
             aria-label={enviando ? 'Enviando mensaje' : 'Enviar mensaje'}
-            className="size-11 shrink-0 rounded-xl bg-[#38bdf8] text-[#0b1220] inline-flex items-center justify-center hover:bg-[#7dd3fc] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="min-h-[44px] px-3.5 shrink-0 rounded-xl bg-[#38bdf8] text-[#0b1220] text-sm font-bold inline-flex items-center justify-center gap-1.5 hover:bg-[#7dd3fc] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {enviando ? (
-              <Loader2 className="w-5 h-5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+              <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
             ) : (
-              <Send className="w-5 h-5" aria-hidden="true" />
+              <Send className="w-4 h-4" aria-hidden="true" />
             )}
+            <span>{enviando ? 'Enviando…' : 'Enviar'}</span>
           </button>
         </div>
-        <p
-          id={contadorId}
-          className={`text-[11px] text-right tabular-nums ${
-            texto.length >= LARGO_MAXIMO_MENSAJE ? 'text-[#fca5a5] font-semibold' : 'text-[#94a3b8]'
-          }`}
-        >
-          {texto.length}/{LARGO_MAXIMO_MENSAJE} caracteres
-        </p>
+        <div className="flex items-center justify-between gap-2 text-[11px] font-semibold">
+          <p id={ayudaId} className="text-[#cbd5e1]">
+            Enter para enviar
+            <span className="hidden sm:inline"> · Shift+Enter, nueva línea</span>
+          </p>
+          <p
+            id={contadorId}
+            className={`tabular-nums ${
+              texto.length >= LARGO_MAXIMO_MENSAJE ? 'text-[#fca5a5]' : 'text-[#cbd5e1]'
+            }`}
+          >
+            {texto.length}/{LARGO_MAXIMO_MENSAJE}
+            <span className="sr-only"> caracteres</span>
+          </p>
+        </div>
       </form>
     </section>
   );

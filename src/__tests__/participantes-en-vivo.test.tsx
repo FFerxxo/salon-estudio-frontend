@@ -52,6 +52,9 @@ describe('SDECG6-52 · Participantes en vivo en la sala', () => {
     expect(within(grid).getByLabelText('@luis')).toBeInTheDocument();
     expect(screen.queryByText(/Eres el único/)).not.toBeInTheDocument();
     expect(screen.getByTestId('anuncio-sala')).toHaveTextContent('@luis entró a la sala');
+    // Además del anuncio al lector, un aviso visible y discreto (boceto S3)
+    expect(screen.getByTestId('aviso-sala-visible')).toHaveTextContent('@luis entró a la sala');
+    expect(screen.getByRole('button', { name: 'Participantes (2)' })).toBeInTheDocument();
 
     act(() => {
       conexion.emitirDesdeServidor('sala:participantes', { salaId: 'ABCD1234', participantes: [yo, luis, sofi] });
@@ -70,6 +73,7 @@ describe('SDECG6-52 · Participantes en vivo en la sala', () => {
     await waitFor(() => expect(within(grid).getAllByRole('listitem')).toHaveLength(2));
     expect(within(grid).queryByLabelText('@luis')).not.toBeInTheDocument();
     expect(screen.getByTestId('anuncio-sala')).toHaveTextContent('@luis salió de la sala');
+    expect(screen.getByTestId('aviso-sala-visible')).toHaveTextContent('@luis salió de la sala');
   });
 
   it('ignora los avisos de otras salas', async () => {
