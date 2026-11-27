@@ -8,7 +8,7 @@ import {
   type FormEvent,
   type KeyboardEvent,
 } from 'react';
-import { AlertCircle, ArrowDown, ArrowUp, Loader2, MessageSquare, RotateCcw, Send } from 'lucide-react';
+import { AlertCircle, ArrowDown, ArrowUp, Loader2, MessageSquare, RotateCcw, Send, UserX } from 'lucide-react';
 import {
   formatearHora,
   LARGO_MAXIMO_MENSAJE,
@@ -37,10 +37,64 @@ function estaAlFinal(el: HTMLElement): boolean {
   return el.scrollHeight - el.scrollTop - el.clientHeight <= MARGEN_FINAL;
 }
 
+/** Autor de un mensaje cuya cuenta se eliminó: al tocarlo o enfocarlo explica qué pasó (SDECG6-56). */
+function AutorEliminado() {
+  const tooltipId = useId();
+  const [abierto, setAbierto] = useState(false);
+  return (
+    <span className="relative inline-flex">
+      <button
+        type="button"
+        onClick={() => setAbierto((prev) => !prev)}
+        onFocus={() => setAbierto(true)}
+        onBlur={() => setAbierto(false)}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') setAbierto(false);
+        }}
+        aria-describedby={abierto ? tooltipId : undefined}
+        className="font-bold italic underline decoration-dotted underline-offset-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-[#38bdf8]"
+      >
+        Cuenta eliminada
+      </button>
+      {abierto && (
+        <span
+          id={tooltipId}
+          role="tooltip"
+          className="absolute left-0 bottom-full mb-1 z-10 whitespace-nowrap font-sans not-italic rounded-md bg-[#0f172a] text-[#f8fafc] px-2 py-1 text-[11px] font-semibold shadow-lg border border-white/20"
+        >
+          Esta cuenta fue eliminada
+        </span>
+      )}
+    </span>
+  );
+}
+
+function AvatarMensaje({ mensaje }: { mensaje: Mensaje }) {
+  if (mensaje.autorEliminado) {
+    return (
+      <span
+        aria-hidden="true"
+        className="size-7 shrink-0 rounded-full bg-[#475569] text-[#e2e8f0] inline-flex items-center justify-center"
+      >
+        <UserX className="w-4 h-4" />
+      </span>
+    );
+  }
+  return (
+    <span
+      aria-hidden="true"
+      className="size-7 shrink-0 rounded-full bg-[#334155] text-white text-xs font-bold inline-flex items-center justify-center"
+    >
+      {(mensaje.autorUsername || '?').charAt(0).toUpperCase()}
+    </span>
+  );
+}
+
 function MensajeItem({ mensaje, esMio }: { mensaje: Mensaje; esMio: boolean }) {
   const hora = formatearHora(mensaje.creadoEn);
   return (
-    <li className={`flex ${esMio ? 'justify-end' : 'justify-start'}`}>
+    <li className={`flex items-end gap-2 ${esMio ? 'justify-end' : 'justify-start'}`}>
+      {!esMio && <AvatarMensaje mensaje={mensaje} />}
       <article
         className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
           esMio
@@ -50,7 +104,9 @@ function MensajeItem({ mensaje, esMio }: { mensaje: Mensaje; esMio: boolean }) {
       >
         <p className="flex items-baseline gap-2 text-xs">
           <span className="font-bold font-mono">
-            {esMio ? (
+            {mensaje.autorEliminado ? (
+              <AutorEliminado />
+            ) : esMio ? (
               <>
                 <span className="sr-only">@{mensaje.autorUsername} </span>
                 <span aria-hidden="true">Tú</span>
