@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   crearConexionTiempoReal,
   MENSAJES_CONEXION,
+  SIN_RESPUESTA,
   type AckRespuesta,
   type ErrorConexion,
   type HistorialRespuesta,
@@ -10,6 +11,7 @@ import {
   type RealtimeConnection,
   type UnirseRespuesta,
 } from '../services/realtime';
+import { useLiveAnnouncement } from './useLiveAnnouncement';
 
 export type EstadoConexion =
   | 'sin-servidor'
@@ -95,8 +97,8 @@ export function useRoomRealtime(
   const [historial, setHistorial] = useState<EstadoHistorial>('cargando');
   const [hayMas, setHayMas] = useState(false);
   const [cargandoAnteriores, setCargandoAnteriores] = useState(false);
-  const [anuncioSala, setAnuncioSala] = useState('');
-  const [anuncioChat, setAnuncioChat] = useState('');
+  const [anuncioSala, anunciarSala] = useLiveAnnouncement();
+  const [anuncioChat, anunciarChat] = useLiveAnnouncement();
 
   const conexionRef = useRef<RealtimeConnection | null>(null);
   const yaSalioRef = useRef(false);
@@ -197,12 +199,12 @@ export function useRoomRealtime(
 
     const alEntrar = (datos: { salaId: string; participante: Participante }) => {
       if (datos?.salaId !== salaId || !datos.participante) return;
-      setAnuncioSala(`@${datos.participante.username} entró a la sala`);
+      anunciarSala(`@${datos.participante.username} entró a la sala`);
     };
 
     const alSalir = (datos: { salaId: string; username: string; uid: string }) => {
       if (datos?.salaId !== salaId) return;
-      setAnuncioSala(`@${datos.username} salió de la sala`);
+      anunciarSala(`@${datos.username} salió de la sala`);
     };
 
     const alRecibirMensaje = (m: Mensaje) => {
@@ -210,7 +212,7 @@ export function useRoomRealtime(
       actualizarMensajes((prev) => unirMensajes(prev, [m]));
       setHistorial('listo');
       if (m.autorUid !== uidRef.current) {
-        setAnuncioChat(textoAccesibleMensaje(m));
+        anunciarChat(textoAccesibleMensaje(m));
       }
     };
 
@@ -244,7 +246,7 @@ export function useRoomRealtime(
       setHayMas(false);
       setSalaNoEncontrada(false);
     };
-  }, [activo, salaId, pedirHistorial, actualizarMensajes]);
+  }, [activo, salaId, pedirHistorial, actualizarMensajes, anunciarSala, anunciarChat]);
 
   const enviar = useCallback(
     async (texto: string): Promise<AckRespuesta<{ mensaje: Mensaje }>> => {
@@ -260,12 +262,35 @@ export function useRoomRealtime(
           error: 'No hay conexión. Revisa tu internet e inténtalo de nuevo.',
         };
       }
+      const enviadoMs = Date.now();
+      const idsAntes = new Set(mensajesRef.current.map((m) => m.id));
       const res = await conexion.request<{ mensaje: Mensaje }>('chat:enviar', {
         salaId,
         texto: limpio,
       });
       if (res.ok && res.mensaje) {
         actualizarMensajes((prev) => unirMensajes(prev, [res.mensaje]));
+        return res;
+      }
+      // Si el servidor guardó el mensaje pero el ack no llegó a tiempo, se evita duplicarlo al reintentar.
+      if (!res.ok && res.codigo === SIN_RESPUESTA.codigo) {
+        const historialRes = await conexion.request<HistorialRespuesta>('chat:historial', {
+          salaId,
+        });
+        if (historialRes.ok) {
+          const encontrado = historialRes.mensajes.find(
+            (m) =>
+              !idsAntes.has(m.id) &&
+              m.autorUid === uidRef.current &&
+              m.texto.trim() === limpio &&
+              Date.parse(m.creadoEn) >= enviadoMs
+          );
+          if (encontrado) {
+            actualizarMensajes((prev) => unirMensajes(prev, historialRes.mensajes));
+            setHistorial('listo');
+            return { ok: true, mensaje: encontrado };
+          }
+        }
       }
       return res;
     },
