@@ -2,7 +2,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { axe } from 'vitest-axe';
-import { setRealtimeFactoryForTests } from '../services/realtime';
+import { SIN_RESPUESTA, setRealtimeFactoryForTests } from '../services/realtime';
 import { MockRealtimeConnection } from '../services/realtimeMock';
 import { mensaje, renderConTiempoReal, salaDeAna, stubApiSalas } from './helpers/salaEnVivo';
 
@@ -183,5 +183,126 @@ describe('SDECG6-53 · Chat en tiempo real dentro de la sala (US-10)', () => {
     await screen.findByText('Mensaje 2');
 
     expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('en celular los mensajes que llegan con la pestaña cerrada suman no leídos y al abrir Chat baja al final', async () => {
+    const user = userEvent.setup();
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query === '(min-width: 1024px)' ? false : false,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    try {
+      const conexion = new MockRealtimeConnection({ uid: 'u-ana', username: 'ana' });
+      conexion.sembrarMensajes('ABCD1234', [mensaje(1), mensaje(2), mensaje(3)]);
+      await entrarALaSala(conexion);
+      await screen.findByText('Mensaje 3');
+
+      const lista = screen.getByTestId('lista-chat');
+      expect(lista.scrollTop).toBe(0);
+
+      act(() => conexion.emitirDesdeServidor('chat:mensaje', mensaje(4)));
+
+      const badge = await screen.findByTestId('badge-chat-no-leidos');
+      expect(badge).toHaveTextContent('1');
+      const tabChat = screen.getByRole('tab', { name: 'Chat, 1 mensaje sin leer' });
+
+      Object.defineProperty(lista, 'scrollHeight', { value: 2000, configurable: true });
+      Object.defineProperty(lista, 'clientHeight', { value: 400, configurable: true });
+
+      await user.click(tabChat);
+
+      expect(lista.scrollTop).toBe(2000);
+      expect(screen.queryByTestId('badge-chat-no-leidos')).not.toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'Chat' })).toHaveAttribute('aria-selected', 'true');
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
+  });
+
+  it('si chat:enviar agota espera pero el servidor ya guardó el mensaje en historial, no ofrece Reintentar ni duplica', async () => {
+    const user = userEvent.setup();
+    const { conexion } = await entrarALaSala();
+
+    const original = conexion.request.bind(conexion);
+    vi.spyOn(conexion, 'request').mockImplementation(async (event, data) => {
+      if (event === 'chat:enviar') {
+        const guardados = conexion.mensajes.get('ABCD1234') ?? [];
+        conexion.mensajes.set('ABCD1234', [
+          ...guardados,
+          {
+            id: 'm-guardado-sin-ack',
+            salaId: 'ABCD1234',
+            autorUid: 'u-ana',
+            autorUsername: 'ana',
+            texto: 'Hola sin ack',
+            creadoEn: new Date().toISOString(),
+          },
+        ]);
+        return SIN_RESPUESTA as never;
+      }
+      return original(event, data);
+    });
+
+    const campo = screen.getByLabelText('Escribe un mensaje');
+    await user.type(campo, 'Hola sin ack{Enter}');
+
+    const lista = await screen.findByRole('list', { name: 'Mensajes del chat' });
+    await waitFor(() => expect(within(lista).getAllByText('Hola sin ack')).toHaveLength(1));
+    expect(conexion.cuantas('chat:historial')).toBe(2);
+    expect(campo).toHaveValue('');
+    expect(screen.queryByRole('button', { name: 'Reintentar' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('si chat:enviar agota espera y solo hay un mensaje viejo con el mismo texto, muestra Reintentar', async () => {
+    const user = userEvent.setup();
+    const conexion = new MockRealtimeConnection({ uid: 'u-ana', username: 'ana' });
+    conexion.sembrarMensajes('ABCD1234', [
+      mensaje(1, { autorUid: 'u-ana', autorUsername: 'ana', texto: 'Hola' }),
+    ]);
+    await entrarALaSala(conexion);
+    await screen.findByText('Hola');
+
+    conexion.responderUnaVez('chat:enviar', SIN_RESPUESTA);
+    await user.type(screen.getByLabelText('Escribe un mensaje'), 'Hola{Enter}');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('No se envió tu mensaje.');
+    expect(screen.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument();
+  });
+
+  it('si el autor eliminó su cuenta muestra «Cuenta eliminada» sin arroba', async () => {
+    const conexion = new MockRealtimeConnection({ uid: 'u-ana', username: 'ana' });
+    conexion.sembrarMensajes('ABCD1234', [
+      mensaje(1, { autorEliminado: true, autorUsername: 'cuenta_eliminada', texto: 'Adiós' }),
+    ]);
+    await entrarALaSala(conexion);
+
+    const lista = await screen.findByRole('list', { name: 'Mensajes del chat' });
+    expect(within(lista).getByText('Cuenta eliminada')).toBeInTheDocument();
+    expect(within(lista).queryByText(/@cuenta_eliminada/)).not.toBeInTheDocument();
+  });
+
+  it('anuncios repetidos en el chat limpian la región viva para volver a anunciarse', async () => {
+    const { conexion } = await entrarALaSala();
+
+    act(() =>
+      conexion.emitirDesdeServidor('chat:mensaje', mensaje(5, { id: 'm-rep-1', texto: 'Hola' }))
+    );
+    const region = screen.getByTestId('anuncio-chat');
+    expect(region.textContent).toMatch(/^@luis, .+: Hola$/);
+
+    act(() =>
+      conexion.emitirDesdeServidor('chat:mensaje', mensaje(5, { id: 'm-rep-2', texto: 'Hola' }))
+    );
+    expect(region.textContent).toBe('');
+    await waitFor(() => expect(region.textContent).toMatch(/^@luis, .+: Hola$/));
   });
 });

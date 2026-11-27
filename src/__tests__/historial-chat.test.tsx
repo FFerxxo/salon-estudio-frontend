@@ -32,6 +32,14 @@ describe('SDECG6-54 · Historial del chat al entrar o recargar (US-11)', () => {
     expect(await screen.findByText('Aún no hay mensajes. Escribe el primero.')).toBeInTheDocument();
   });
 
+  it('si todos los mensajes caben en la carga inicial muestra «No hay más mensajes» sin pulsar cargar anteriores', async () => {
+    const conexion = conexionCon(3);
+    renderConTiempoReal('/salas/ABCD1234', { conexion });
+
+    await screen.findByText('Mensaje 3');
+    expect(screen.getByText('No hay más mensajes')).toBeInTheDocument();
+  });
+
   it('muestra «Cargando mensajes…» mientras llega el historial', async () => {
     const conexion = conexionCon(3);
     let liberar!: () => void;
