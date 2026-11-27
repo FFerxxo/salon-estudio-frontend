@@ -278,16 +278,99 @@ describe('SDECG6-53 · Chat en tiempo real dentro de la sala (US-10)', () => {
     expect(screen.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument();
   });
 
-  it('si el autor eliminó su cuenta muestra «Cuenta eliminada» sin arroba', async () => {
+  it('si el autor eliminó su cuenta muestra «Cuenta eliminada», avatar genérico y sin arroba', async () => {
+    const conexion = new MockRealtimeConnection({ uid: 'u-ana', username: 'ana' });
+    conexion.sembrarMensajes('ABCD1234', [
+      mensaje(1, { autorEliminado: true, autorUid: 'u-borrado', autorUsername: 'cuenta_eliminada', texto: 'Adiós' }),
+    ]);
+    await entrarALaSala(conexion);
+
+    const lista = await screen.findByRole('list', { name: 'Mensajes del chat' });
+    expect(within(lista).getByText('Cuenta eliminada')).toBeInTheDocument();
+    expect(within(lista).getByTestId('avatar-cuenta-eliminada')).toHaveAttribute('aria-hidden', 'true');
+    expect(within(lista).queryByText(/@cuenta_eliminada/)).not.toBeInTheDocument();
+    expect(within(lista).queryByText(/u-borrado/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+  });
+
+  it('al hacer clic en «Cuenta eliminada» o su avatar muestra «Esta cuenta fue eliminada» y Escape o clic fuera lo cierra', async () => {
+    const user = userEvent.setup();
+    const conexion = new MockRealtimeConnection({ uid: 'u-ana', username: 'ana' });
+    conexion.sembrarMensajes('ABCD1234', [
+      mensaje(1, { autorEliminado: true, autorUid: 'u-borrado', autorUsername: 'cuenta_eliminada', texto: 'Adiós' }),
+    ]);
+    await entrarALaSala(conexion);
+
+    const trigger = await screen.findByRole('button', { name: /Cuenta eliminada/i });
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(trigger);
+    const tooltip = screen.getByRole('tooltip');
+    expect(tooltip).toHaveTextContent('Esta cuenta fue eliminada');
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    expect(trigger).toHaveAttribute('aria-describedby', tooltip.id);
+    expect(tooltip).not.toHaveTextContent(/@|u-borrado/);
+
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(screen.getByTestId('avatar-cuenta-eliminada'));
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Esta cuenta fue eliminada');
+
+    await user.click(screen.getByLabelText('Escribe un mensaje'));
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+  });
+
+  it('al enfocar con teclado el indicador de cuenta eliminada muestra «Esta cuenta fue eliminada» y al salir el foco se cierra', async () => {
+    const user = userEvent.setup();
     const conexion = new MockRealtimeConnection({ uid: 'u-ana', username: 'ana' });
     conexion.sembrarMensajes('ABCD1234', [
       mensaje(1, { autorEliminado: true, autorUsername: 'cuenta_eliminada', texto: 'Adiós' }),
     ]);
     await entrarALaSala(conexion);
 
+    const trigger = await screen.findByRole('button', { name: /Cuenta eliminada/i });
+    act(() => {
+      trigger.focus();
+    });
+    expect(trigger).toHaveFocus();
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Esta cuenta fue eliminada');
+
+    await user.tab();
+    expect(trigger).not.toHaveFocus();
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+  });
+
+  it('el lector de pantalla conserva la estructura autor, hora y texto para cuenta eliminada y pasa axe sin violaciones', async () => {
+    const user = userEvent.setup();
+    const conexion = new MockRealtimeConnection({ uid: 'u-ana', username: 'ana' });
+    conexion.sembrarMensajes('ABCD1234', [
+      mensaje(1, { autorEliminado: true, autorUsername: 'cuenta_eliminada', texto: 'Apunte guardado' }),
+      mensaje(2, { autorUid: 'u-luis', autorUsername: 'luis', texto: 'Gracias' }),
+    ]);
+    const { container } = await entrarALaSala(conexion);
+
     const lista = await screen.findByRole('list', { name: 'Mensajes del chat' });
-    expect(within(lista).getByText('Cuenta eliminada')).toBeInTheDocument();
-    expect(within(lista).queryByText(/@cuenta_eliminada/)).not.toBeInTheDocument();
+    const items = within(lista).getAllByRole('listitem');
+    expect(items).toHaveLength(2);
+
+    const articuloEliminado = within(items[0]).getByRole('article');
+    expect(articuloEliminado).toHaveTextContent(/Cuenta eliminada.*Apunte guardado/);
+    expect(within(articuloEliminado).getByText((_, el) => el?.tagName.toLowerCase() === 'time')).toBeInTheDocument();
+
+    act(() =>
+      conexion.emitirDesdeServidor(
+        'chat:mensaje',
+        mensaje(3, { autorEliminado: true, autorUsername: 'cuenta_eliminada', texto: 'En vivo' })
+      )
+    );
+    expect(screen.getByTestId('anuncio-chat').textContent).toMatch(/^Cuenta eliminada, .+: En vivo$/);
+
+    expect(await axe(container)).toHaveNoViolations();
+    await user.click(within(items[0]).getByRole('button', { name: /Cuenta eliminada/i }));
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Esta cuenta fue eliminada');
+    expect(await axe(container)).toHaveNoViolations();
   });
 
   it('anuncios repetidos en el chat limpian la región viva para volver a anunciarse', async () => {

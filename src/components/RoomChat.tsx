@@ -8,7 +8,7 @@ import {
   type FormEvent,
   type KeyboardEvent,
 } from 'react';
-import { AlertCircle, ArrowDown, ArrowUp, Loader2, MessageSquare, RotateCcw, Send } from 'lucide-react';
+import { AlertCircle, ArrowDown, ArrowUp, Info, Loader2, MessageSquare, RotateCcw, Send, User } from 'lucide-react';
 import {
   formatearHora,
   LARGO_MAXIMO_MENSAJE,
@@ -41,43 +41,123 @@ function estaAlFinal(el: HTMLElement): boolean {
 
 function MensajeItem({ mensaje, esMio }: { mensaje: Mensaje; esMio: boolean }) {
   const hora = formatearHora(mensaje.creadoEn);
+  const esEliminado = Boolean(mensaje.autorEliminado);
+  const esMioReal = esMio && !esEliminado;
+  const tooltipId = useId();
+  const filaRef = useRef<HTMLLIElement | null>(null);
+  const pointerDownRef = useRef(false);
+  const [avisoAbierto, setAvisoAbierto] = useState(false);
+
+  useEffect(() => {
+    if (!esEliminado || !avisoAbierto) return;
+
+    const alPresionarFuera = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Node && !filaRef.current?.contains(target)) {
+        setAvisoAbierto(false);
+      }
+    };
+
+    const alPresionarEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setAvisoAbierto(false);
+      }
+    };
+
+    document.addEventListener('pointerdown', alPresionarFuera);
+    document.addEventListener('keydown', alPresionarEscape);
+    return () => {
+      document.removeEventListener('pointerdown', alPresionarFuera);
+      document.removeEventListener('keydown', alPresionarEscape);
+    };
+  }, [esEliminado, avisoAbierto]);
+
   return (
-    <li className={`flex ${esMio ? 'justify-end' : 'justify-start'}`}>
-      <article
-        className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
-          esMio
-            ? 'bg-[#0f766e] text-white rounded-br-md'
-            : 'bg-white/95 text-[#0f172a] rounded-bl-md'
-        }`}
-      >
-        <p className="flex items-baseline gap-2 text-xs">
+    <li
+      ref={filaRef}
+      onBlur={(e) => {
+        if (esEliminado && !e.currentTarget.contains(e.relatedTarget as Node | null)) {
+          setAvisoAbierto(false);
+        }
+      }}
+      className={`flex flex-col ${esMioReal ? 'items-end' : 'items-start'} gap-1.5`}
+    >
+      <div className={`flex w-full items-end gap-2 ${esMioReal ? 'justify-end' : 'justify-start'}`}>
+        {esEliminado && (
           <span
-            className={
-              esMio || !mensaje.autorEliminado ? 'font-bold font-mono' : 'font-semibold text-[#334155]'
-            }
+            aria-hidden="true"
+            data-testid="avatar-cuenta-eliminada"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => setAvisoAbierto((v) => !v)}
+            className="size-8 shrink-0 rounded-full bg-[#334155] text-[#f8fafc] border border-[#94a3b8] inline-flex items-center justify-center shadow-sm cursor-pointer transition-transform duration-150 active:scale-[0.96] motion-reduce:transition-none motion-reduce:active:scale-100"
           >
-            {esMio ? (
-              <>
+            <User className="size-4" aria-hidden="true" />
+          </span>
+        )}
+        <article
+          className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
+            esMioReal
+              ? 'bg-[#0f766e] text-white rounded-br-md'
+              : esEliminado
+                ? 'bg-[#f1f5f9] text-[#0f172a] border border-dashed border-[#64748b] rounded-bl-md'
+                : 'bg-white/95 text-[#0f172a] rounded-bl-md'
+          }`}
+        >
+          <div className="flex items-baseline gap-2 text-xs">
+            {esMioReal ? (
+              <span className="font-bold font-mono">
                 <span className="sr-only">@{mensaje.autorUsername} </span>
                 <span aria-hidden="true">Tú</span>
-              </>
-            ) : mensaje.autorEliminado ? (
-              'Cuenta eliminada'
+              </span>
+            ) : esEliminado ? (
+              <button
+                type="button"
+                onPointerDown={() => {
+                  pointerDownRef.current = true;
+                }}
+                onFocus={() => {
+                  if (pointerDownRef.current) {
+                    pointerDownRef.current = false;
+                    return;
+                  }
+                  setAvisoAbierto(true);
+                }}
+                onClick={() => {
+                  pointerDownRef.current = false;
+                  setAvisoAbierto((v) => !v);
+                }}
+                aria-expanded={avisoAbierto}
+                aria-describedby={avisoAbierto ? tooltipId : undefined}
+                className="relative inline-flex items-center gap-1 min-h-[28px] px-1.5 -mx-1.5 rounded-lg font-semibold text-[#334155] underline decoration-dotted underline-offset-4 hover:text-[#0f172a] hover:bg-[#0f172a]/[0.06] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0369a1] focus-visible:ring-offset-2 focus-visible:ring-offset-[#f1f5f9] transition-[color,background-color,transform] duration-150 active:scale-[0.96] motion-reduce:transition-none motion-reduce:active:scale-100 cursor-pointer after:content-[''] after:absolute after:-inset-x-1.5 after:-top-2.5 after:-bottom-1.5"
+              >
+                <span>Cuenta eliminada</span>
+                <Info className="size-3.5 shrink-0" aria-hidden="true" />
+              </button>
             ) : (
-              `@${mensaje.autorUsername}`
+              <span className="font-bold font-mono">@{mensaje.autorUsername}</span>
             )}
-          </span>
-          <time
-            dateTime={mensaje.creadoEn}
-            className={`tabular-nums ${esMio ? 'text-[#ccfbf1]' : 'text-[#475569]'}`}
-          >
-            {hora}
-          </time>
-        </p>
-        <p className="mt-0.5 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-pretty">
-          {mensaje.texto}
-        </p>
-      </article>
+            <time
+              dateTime={mensaje.creadoEn}
+              className={`tabular-nums ${esMioReal ? 'text-[#ccfbf1]' : 'text-[#475569]'}`}
+            >
+              {hora}
+            </time>
+          </div>
+          <p className="mt-0.5 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-pretty">
+            {mensaje.texto}
+          </p>
+        </article>
+      </div>
+      {esEliminado && avisoAbierto && (
+        <div
+          id={tooltipId}
+          role="tooltip"
+          className="ml-10 max-w-[85%] rounded-xl border border-[#94a3b8] bg-[#16233b] px-3 py-2 text-xs font-medium text-[#f8fafc] shadow-md inline-flex items-center gap-2 text-pretty"
+        >
+          <Info className="size-3.5 shrink-0 text-[#7dd3fc]" aria-hidden="true" />
+          <span>Esta cuenta fue eliminada</span>
+        </div>
+      )}
     </li>
   );
 }
