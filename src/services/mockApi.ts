@@ -13,6 +13,7 @@ import {
 import type { AmbienteId } from '../content/ambientes';
 import { waitMockDelay } from './mockConfig';
 import {
+  isEmailLoginIdentifier,
   normalizeUsername,
   validateEmail,
   validatePersonName,
@@ -400,17 +401,21 @@ export async function mockUpdateMyProfile(
   return { ...next };
 }
 
-/** Simula inicio de sesión con correo electrónico. */
-export async function mockLoginWithEmail(correo: string): Promise<{
+/** Simula inicio de sesión con correo electrónico o @usuario. */
+export async function mockLoginWithEmail(identifier: string): Promise<{
   status: 'authenticated';
   user: StudentProfile;
 }> {
   await waitMockDelay();
   const current = readStoredProfile();
-  const cleanEmail = correo.trim();
+  const cleanIdentifier = identifier.trim();
+  const isEmail = isEmailLoginIdentifier(cleanIdentifier);
+  const cleanUsername = !isEmail ? normalizeUsername(cleanIdentifier) : '';
+
   const next: StudentProfile = {
     ...current,
-    correo: cleanEmail || current.correo,
+    correo: isEmail && cleanIdentifier ? cleanIdentifier : current.correo,
+    username: !isEmail && cleanUsername ? cleanUsername : current.username,
     provider: 'password',
   };
   writeStoredProfile(next);

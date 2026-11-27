@@ -122,7 +122,7 @@ describe('SDECG6-51 · Unirse a una sala con su ID (US-08)', () => {
     expect(await screen.findByRole('heading', { name: 'Ingresar' })).toBeInTheDocument();
     await user.type(screen.getByLabelText(/^Correo/), 'ana@correounivalle.edu.co');
     await user.type(screen.getByLabelText('Contraseña'), 'Secreta123!');
-    await user.click(screen.getByRole('button', { name: 'Ingresar con correo' }));
+    await user.click(screen.getByRole('button', { name: 'Ingresar' }));
 
     expect(await screen.findByRole('heading', { name: 'Cálculo II' })).toBeInTheDocument();
   });
