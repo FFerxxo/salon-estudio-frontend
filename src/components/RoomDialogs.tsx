@@ -215,6 +215,7 @@ export interface DeleteRoomDialogProps {
   room: Room | null;
   onClose: () => void;
   onDeleted: (roomId: string) => void;
+  onConfirmingChange?: (confirming: boolean) => void;
 }
 
 /** Diálogo de confirmación destructiva para eliminar una sala propia. */
@@ -223,6 +224,7 @@ export function DeleteRoomDialog({
   room,
   onClose,
   onDeleted,
+  onConfirmingChange,
 }: DeleteRoomDialogProps) {
   const { idToken } = useAuth();
   const { theme } = useTheme();
@@ -264,12 +266,14 @@ export function DeleteRoomDialog({
     if (deleting || !room) return;
     setServerError(null);
     setDeleting(true);
+    onConfirmingChange?.(true);
 
     try {
       const token = await resolveAuthToken(idToken);
       await deleteRoom(token, room.id);
       onDeleted(room.id);
     } catch (err) {
+      onConfirmingChange?.(false);
       if (err instanceof RoomsApiError) {
         setServerError(err.message || 'No pudimos eliminar la sala. Intenta de nuevo.');
       } else {
