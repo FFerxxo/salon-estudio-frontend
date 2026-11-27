@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Info, X } from 'lucide-react';
 import { CreateRoomDialog } from '../components/CreateRoomDialog';
 import { JoinRoomForm } from '../components/JoinRoomForm';
 import {
@@ -31,6 +32,10 @@ function DashboardInicioView() {
   const [{ phrase: greeting }] = useState(() => selectTugaPhrase('inicio'));
   const { refreshRooms, addRoom } = useRooms();
 
+  const location = useLocation();
+  const avisoSala = (location.state as { avisoSala?: string } | null)?.avisoSala ?? null;
+  const [avisoCerrado, setAvisoCerrado] = useState(false);
+
   const [createOpen, setCreateOpen] = useState(false);
   const [initialAmbiente, setInitialAmbiente] = useState<AmbienteId>('ninguno');
 
@@ -55,6 +60,30 @@ function DashboardInicioView() {
 
   return (
     <section aria-labelledby="panel-heading" className="pt-6 sm:pt-12 pb-6">
+      {avisoSala && !avisoCerrado && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`max-w-xl mx-auto mb-6 rounded-xl px-4 py-2.5 text-sm font-semibold flex items-center justify-between gap-3 border ${
+            isDark
+              ? 'bg-[#0c1a2e] border-[#38bdf8]/60 text-[#e0f2fe]'
+              : 'bg-[#f0f9ff] border-[#0369a1] text-[#0c4a6e]'
+          }`}
+        >
+          <span className="inline-flex items-center gap-2">
+            <Info className="w-4 h-4 shrink-0" aria-hidden="true" />
+            <span>{avisoSala}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setAvisoCerrado(true)}
+            aria-label="Cerrar aviso"
+            className="min-h-[44px] min-w-[44px] -mr-1.5 inline-flex items-center justify-center rounded-lg hover:bg-black/10"
+          >
+            <X className="w-4 h-4" aria-hidden="true" />
+          </button>
+        </div>
+      )}
       <header className="text-center space-y-2 max-w-2xl mx-auto mb-12 sm:mb-20">
         <h1
           id="panel-heading"

@@ -5,8 +5,10 @@ import {
   Copy,
   Music,
   Pause,
+  Pencil,
   Play,
   SkipForward,
+  Trash2,
   Users,
   Volume2,
   VolumeX,
@@ -30,6 +32,10 @@ export interface RoomBarProps {
   onToggleParticipants: () => void;
   /** Se llama al pulsar «Salir de la sala», antes de volver al panel (emite `sala:salir`). */
   onExit?: () => void;
+  /** Solo el anfitrión ve «Renombrar» y «Eliminar» dentro de la sala (US-07). */
+  isHost?: boolean;
+  onRename?: () => void;
+  onDelete?: () => void;
 }
 
 type PopoverKind = 'sound' | 'volume' | null;
@@ -43,6 +49,9 @@ export function RoomBar({
   participantsOpen,
   onToggleParticipants,
   onExit,
+  isHost = false,
+  onRename,
+  onDelete,
 }: RoomBarProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -297,6 +306,39 @@ export function RoomBar({
             {displayId}
           </code>
         </button>
+
+        {isHost && (
+          <span className="inline-flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={onRename}
+              aria-label={`Renombrar la sala ${room.nombre}`}
+              title="Renombrar sala"
+              className={`min-h-[40px] px-3 py-1.5 rounded-[10px] border text-[13px] font-semibold inline-flex items-center gap-1.5 active:scale-[0.96] transition-[transform,background-color] duration-150 ${
+                isDarkBar
+                  ? 'border-white/25 bg-white/10 text-[#f8fafc] hover:bg-white/20'
+                  : 'border-[#64748b] bg-white text-[#0f172a] hover:bg-slate-100'
+              }`}
+            >
+              <Pencil className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+              <span>Renombrar</span>
+            </button>
+            <button
+              type="button"
+              onClick={onDelete}
+              aria-label={`Eliminar la sala ${room.nombre}`}
+              title="Eliminar sala"
+              className={`min-h-[40px] px-3 py-1.5 rounded-[10px] border text-[13px] font-semibold inline-flex items-center gap-1.5 active:scale-[0.96] transition-[transform,background-color] duration-150 ${
+                isDarkBar
+                  ? 'border-[#fca5a5]/70 bg-[#7f1d1d]/50 text-[#fef2f2] hover:bg-[#991b1b]/70'
+                  : 'border-[#b91c1c] bg-white text-[#b91c1c] hover:bg-[#fef2f2]'
+              }`}
+            >
+              <Trash2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+              <span>Eliminar</span>
+            </button>
+          </span>
+        )}
 
         {copied && (
           <span

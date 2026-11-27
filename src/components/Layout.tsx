@@ -19,6 +19,7 @@ import { useTheme, type ThemeMode } from '../context/ThemeContext';
 import type { StudentProfile } from '../services/authApi';
 import { AmbientMotionBackdrop } from './AmbientMotionBackdrop';
 import { resolveAvatarEmoji } from './AvatarPicker';
+import { useTopbarRoomTitle } from '../hooks/useTopbarTitle';
 
 const ACCESS_ROUTES = new Set(['/', '/ingresar', '/registro', '/registro/google-username']);
 
@@ -61,11 +62,12 @@ function WorkspaceLayout({ theme, toggleTheme, user, onLogout }: WorkspaceLayout
   const isMisSalasView =
     location.pathname === '/panel' && searchParams.get('vista') === 'mis-salas';
   const isRoomRoute = location.pathname.startsWith('/salas/');
+  const roomTitle = useTopbarRoomTitle();
 
   const currentWorkspaceTitle = isMisSalasView
     ? 'Mis salones'
     : isRoomRoute
-      ? 'Mi salón'
+      ? roomTitle ?? 'Mi salón'
       : workspaceTitleMap[location.pathname] ?? 'Salón de Estudio';
 
   const showTopbarTitle = location.pathname !== '/panel' && location.pathname !== '/salas';

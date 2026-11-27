@@ -30,6 +30,10 @@ export interface UseRoomRealtimeResult {
   errorConexion: ErrorDeConexion | null;
   /** La sala no existe para el servidor de tiempo real (ID inválido o eliminada). */
   salaNoEncontrada: boolean;
+  /** El anfitrión eliminó la sala mientras estábamos dentro. */
+  salaEliminada: boolean;
+  /** Último nombre recibido por `sala:actualizada`. */
+  nombreSala: string | null;
   participantes: Participante[];
   mensajes: Mensaje[];
   historial: EstadoHistorial;
@@ -90,6 +94,8 @@ export function useRoomRealtime(
   const [estado, setEstado] = useState<EstadoConexion>('conectando');
   const [errorConexion, setErrorConexion] = useState<ErrorDeConexion | null>(null);
   const [salaNoEncontrada, setSalaNoEncontrada] = useState(false);
+  const [salaEliminada, setSalaEliminada] = useState(false);
+  const [nombreSala, setNombreSala] = useState<string | null>(null);
   const [participantes, setParticipantes] = useState<Participante[]>([]);
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
   const [historial, setHistorial] = useState<EstadoHistorial>('cargando');
@@ -214,7 +220,24 @@ export function useRoomRealtime(
       }
     };
 
+    const alActualizarSala = (datos: { salaId: string; nombre?: string; sala?: { nombre?: string } }) => {
+      if (datos?.salaId !== salaId) return;
+      const nombre = datos.nombre ?? datos.sala?.nombre;
+      if (nombre) {
+        setNombreSala(nombre);
+        setAnuncioSala(`La sala ahora se llama ${nombre}`);
+      }
+    };
+
+    const alEliminarSala = (datos: { salaId: string }) => {
+      if (datos?.salaId !== salaId) return;
+      yaSalioRef.current = true;
+      setSalaEliminada(true);
+    };
+
     conexion.on('connect', alConectar);
+    conexion.on('sala:actualizada', alActualizarSala);
+    conexion.on('sala:eliminada', alEliminarSala);
     conexion.on('disconnect', alDesconectar);
     conexion.on('connect_error', alFallarConexion);
     conexion.on('sala:participantes', alRecibirParticipantes);
@@ -227,6 +250,8 @@ export function useRoomRealtime(
     return () => {
       vivo = false;
       conexion.off('connect', alConectar);
+      conexion.off('sala:actualizada', alActualizarSala);
+      conexion.off('sala:eliminada', alEliminarSala);
       conexion.off('disconnect', alDesconectar);
       conexion.off('connect_error', alFallarConexion);
       conexion.off('sala:participantes', alRecibirParticipantes);
@@ -243,6 +268,8 @@ export function useRoomRealtime(
       setParticipantes([]);
       setHayMas(false);
       setSalaNoEncontrada(false);
+      setSalaEliminada(false);
+      setNombreSala(null);
     };
   }, [activo, salaId, pedirHistorial, actualizarMensajes]);
 
@@ -266,6 +293,9 @@ export function useRoomRealtime(
       });
       if (res.ok && res.mensaje) {
         actualizarMensajes((prev) => unirMensajes(prev, [res.mensaje]));
+      } else if (!res.ok && res.codigo === 'SALA_NO_ENCONTRADA') {
+        // La sala ya no existe aunque no haya llegado el aviso en vivo.
+        setSalaEliminada(true);
       }
       return res;
     },
@@ -315,6 +345,8 @@ export function useRoomRealtime(
     estado,
     errorConexion,
     salaNoEncontrada,
+    salaEliminada,
+    nombreSala,
     participantes,
     mensajes,
     historial,
