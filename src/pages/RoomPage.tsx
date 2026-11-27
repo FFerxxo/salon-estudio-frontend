@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertCircle, ArrowLeft, Loader2, RotateCcw, WifiOff } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { MemberGrid } from '../components/MemberGrid';
+import { RoomChat } from '../components/RoomChat';
 import { RoomBar } from '../components/RoomPopovers';
 import { StatusBanner } from '../components/StatusBanner';
 import { ROOM_BACKGROUNDS, type AmbienteId } from '../content/ambientes';
@@ -21,6 +22,14 @@ import {
 interface RoomLocationState {
   room?: Room;
   justCreated?: boolean;
+}
+
+function esPantallaGrande(): boolean {
+  if (typeof window === 'undefined') return true;
+  if (typeof window.matchMedia === 'function') {
+    return window.matchMedia('(min-width: 1024px)').matches;
+  }
+  return window.innerWidth >= 1024;
 }
 
 function getRoomScrimStyle(ambiente: AmbienteId, isDark: boolean): string {
@@ -92,7 +101,7 @@ function ConnectionStatus({
         )}`}
       >
         <span className="inline-flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
           <span className="text-pretty">{errorConexion.mensaje}</span>
         </span>
         <button
@@ -100,7 +109,7 @@ function ConnectionStatus({
           onClick={reintentarConexion}
           className={getSecondaryBtnClasses(theme)}
         >
-          <RotateCcw className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <RotateCcw className="size-4 shrink-0" aria-hidden="true" />
           <span>Reintentar</span>
         </button>
       </div>
@@ -113,7 +122,7 @@ function ConnectionStatus({
         role="status"
         className="rounded-xl px-3 py-2 text-sm font-semibold inline-flex items-center gap-2 self-start bg-[#451a03]/90 text-[#fde68a] border border-[#fbbf24]/60"
       >
-        <WifiOff className="w-4 h-4 shrink-0" aria-hidden="true" />
+        <WifiOff className="size-4 shrink-0" aria-hidden="true" />
         <span>Se perdió la conexión. Reconectando…</span>
       </div>
     );
@@ -125,7 +134,7 @@ function ConnectionStatus({
         role="status"
         className="rounded-xl px-3 py-2 text-sm font-semibold inline-flex items-center gap-2 self-start bg-[#0b1220]/85 text-[#e2e8f0] border border-white/20"
       >
-        <Loader2 className="w-4 h-4 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+        <Loader2 className="size-4 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" />
         <span>Conectando a la sala…</span>
       </div>
     );
@@ -165,17 +174,80 @@ export function RoomPage() {
   const [reloadCount, setReloadCount] = useState(0);
   const [bannerDismissedForId, setBannerDismissedForId] = useState<string | null>(null);
   const [participantsOpen, setParticipantsOpen] = useState(true);
+  const [mobileTab, setMobileTab] = useState<'participantes' | 'chat'>('participantes');
+  const [esDesktop, setEsDesktop] = useState<boolean>(esPantallaGrande);
+  const [noLeidos, setNoLeidos] = useState(0);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState<string | null>(null);
   const [liveAnnouncement, setLiveAnnouncement] = useState('');
   const copyTimerRef = useRef<number | null>(null);
   const announceTimerRef = useRef<number | null>(null);
+  const vistosRef = useRef<Set<string>>(new Set());
+  const historialInicializadoRef = useRef(false);
 
   const room = stateRoom ?? (fetchedRoom && fetchedRoom.id === id ? fetchedRoom : null);
 
   // Se conecta al tiempo real cuando la API confirmó que la sala existe (SDECG6-50).
   const realtime = useRoomRealtime(room?.id, user?.uid, Boolean(room));
   const codigoErrorConexion = realtime.errorConexion?.codigo;
+  const chatVisible = esDesktop || mobileTab === 'chat';
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const actualizar = () => setEsDesktop(esPantallaGrande());
+    actualizar();
+    window.addEventListener('resize', actualizar);
+    const media =
+      typeof window.matchMedia === 'function'
+        ? window.matchMedia('(min-width: 1024px)')
+        : null;
+    media?.addEventListener?.('change', actualizar);
+    return () => {
+      window.removeEventListener('resize', actualizar);
+      media?.removeEventListener?.('change', actualizar);
+    };
+  }, []);
+
+  useEffect(() => {
+    vistosRef.current = new Set();
+    historialInicializadoRef.current = false;
+    setNoLeidos(0);
+  }, [id]);
+
+  useEffect(() => {
+    if (chatVisible) {
+      for (const m of realtime.mensajes) {
+        vistosRef.current.add(m.id);
+      }
+      if (realtime.historial === 'listo') {
+        historialInicializadoRef.current = true;
+      }
+      setNoLeidos(0);
+      return;
+    }
+
+    if (!historialInicializadoRef.current) {
+      if (realtime.historial === 'listo') {
+        for (const m of realtime.mensajes) {
+          vistosRef.current.add(m.id);
+        }
+        historialInicializadoRef.current = true;
+      }
+      return;
+    }
+
+    let nuevos = 0;
+    for (const m of realtime.mensajes) {
+      if (vistosRef.current.has(m.id)) continue;
+      vistosRef.current.add(m.id);
+      if (m.autorUid !== user?.uid) {
+        nuevos += 1;
+      }
+    }
+    if (nuevos > 0) {
+      setNoLeidos((prev) => prev + nuevos);
+    }
+  }, [chatVisible, realtime.mensajes, realtime.historial, user?.uid]);
 
   useEffect(() => {
     if (codigoErrorConexion === 'NO_AUTENTICADO' || codigoErrorConexion === 'SESION_INVALIDA') {
@@ -397,6 +469,10 @@ export function RoomPage() {
         <div role="status" aria-live="polite" className="sr-only">
           {liveAnnouncement}
         </div>
+        {/* «@ana entró a la sala» / «@ana salió de la sala» sin mover el foco (SDECG6-52) */}
+        <div role="status" aria-live="polite" className="sr-only" data-testid="anuncio-sala">
+          {realtime.anuncioSala}
+        </div>
 
         {showCreatedBanner && id && (
           <StatusBanner
@@ -429,12 +505,77 @@ export function RoomPage() {
 
         <ConnectionStatus realtime={realtime} theme={theme} />
 
-        <div className="flex-1 flex items-center py-2">
-          <MemberGrid
-            currentUser={user}
-            isHost={isHost}
-            visible={participantsOpen}
-          />
+        {/* En celular: pestañas «Participantes / Chat». En computador: chat a la derecha. */}
+        <div role="tablist" aria-label="Secciones de la sala" className="lg:hidden grid grid-cols-2 gap-1 p-1 rounded-xl bg-[#0b1220]/80 border border-white/15">
+          {(['participantes', 'chat'] as const).map((tab) => (
+            <button
+              key={tab}
+              id={`room-tab-${tab}`}
+              type="button"
+              role="tab"
+              aria-selected={mobileTab === tab}
+              aria-controls={`room-panel-${tab}`}
+              aria-label={
+                tab === 'chat' && noLeidos > 0
+                  ? `Chat, ${noLeidos === 1 ? '1 mensaje sin leer' : `${noLeidos} mensajes sin leer`}`
+                  : undefined
+              }
+              onClick={() => setMobileTab(tab)}
+              className={`min-h-[44px] rounded-lg text-sm font-bold inline-flex items-center justify-center gap-2 transition-[background-color,color,transform] duration-150 active:scale-[0.96] motion-reduce:transition-none motion-reduce:active:scale-100 ${
+                mobileTab === tab
+                  ? 'bg-[#38bdf8] text-[#0b1220]'
+                  : 'text-[#e2e8f0] hover:bg-white/10'
+              }`}
+            >
+              <span>{tab === 'participantes' ? 'Participantes' : 'Chat'}</span>
+              {tab === 'chat' && noLeidos > 0 && (
+                <span
+                  aria-hidden="true"
+                  data-testid="badge-chat-no-leidos"
+                  className="min-w-[20px] h-5 px-1.5 rounded-full bg-[#38bdf8] text-[#0b1220] text-xs font-bold tabular-nums inline-flex items-center justify-center"
+                >
+                  {noLeidos > 99 ? '99+' : noLeidos}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(320px,380px)] gap-4 min-h-0">
+          <div
+            id="room-panel-participantes"
+            role="tabpanel"
+            aria-labelledby="room-tab-participantes"
+            className={`${mobileTab === 'participantes' ? 'flex' : 'hidden'} lg:flex items-center py-2`}
+          >
+            <MemberGrid
+              currentUser={user}
+              anfitrionUid={isHost && user?.uid ? user.uid : room.anfitrionUid}
+              participantes={realtime.participantes}
+              visible={participantsOpen}
+            />
+          </div>
+
+          <div
+            id="room-panel-chat"
+            role="tabpanel"
+            aria-labelledby="room-tab-chat"
+            className={`${mobileTab === 'chat' ? 'flex' : 'hidden'} lg:flex flex-col h-[65dvh] min-h-[380px] lg:min-h-[420px] lg:h-[min(70dvh,640px)]`}
+          >
+            <RoomChat
+              mensajes={realtime.mensajes}
+              miUid={user?.uid}
+              estado={realtime.estado}
+              historial={realtime.historial}
+              anuncio={realtime.anuncioChat}
+              hayMas={realtime.hayMas}
+              cargandoAnteriores={realtime.cargandoAnteriores}
+              visible={chatVisible}
+              onCargarAnteriores={realtime.cargarAnteriores}
+              onEnviar={realtime.enviar}
+              onReintentarHistorial={realtime.reintentarHistorial}
+            />
+          </div>
         </div>
       </div>
     </section>
