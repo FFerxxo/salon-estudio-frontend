@@ -9,6 +9,7 @@ import {
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  signInWithCustomToken,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
@@ -20,6 +21,8 @@ import {
   createStudentProfile,
   deleteMyAccount,
   getMyProfile,
+  MENSAJE_CREDENCIALES_USUARIO,
+  requestUsernameLoginToken,
   updateMyProfile,
   type StudentProfile,
   type UpdateProfilePayload,
@@ -30,6 +33,7 @@ import {
   mockCompleteGoogleUsername,
   mockLoginWithEmail,
   mockLoginWithGoogle,
+  mockLoginWithUsername,
   mockLogout,
   mockRegisterWithEmail,
 } from '../services/mockApi';
@@ -59,6 +63,7 @@ export interface AuthSessionAdapter {
   registerWithEmail(input: RegisterInput): Promise<StudentProfile>;
   loginWithEmail(correo: string, password: string): Promise<{ status: AuthStatus; user?: StudentProfile; pending?: PendingGoogleUser }>;
   loginWithGoogle(): Promise<{ status: AuthStatus; user?: StudentProfile; pending?: PendingGoogleUser }>;
+  loginWithUsername?: (username: string, password: string) => Promise<{ status: AuthStatus; user?: StudentProfile }>;
   completeGoogleUsername(payload: Omit<RegisterInput, 'password'>): Promise<StudentProfile>;
   updateProfile?: (payload: UpdateProfilePayload) => Promise<StudentProfile>;
   getMyProfile?: () => Promise<StudentProfile | null>;
@@ -75,6 +80,7 @@ interface AuthContextValue {
   clearPendingDeleteRedirect: () => void;
   registerWithEmail: (input: RegisterInput) => Promise<StudentProfile>;
   loginWithEmail: (correo: string, password: string) => Promise<AuthStatus>;
+  loginWithUsername: (username: string, password: string) => Promise<AuthStatus>;
   loginWithGoogle: () => Promise<AuthStatus>;
   completeGoogleUsername: (payload: {
     nombres: string;
@@ -99,6 +105,7 @@ const defaultAuthContext: AuthContextValue = {
     throw new Error('AuthProvider no inicializado');
   },
   loginWithEmail: async () => 'unauthenticated',
+  loginWithUsername: async () => 'unauthenticated',
   loginWithGoogle: async () => 'unauthenticated',
   completeGoogleUsername: async () => {
     throw new Error('AuthProvider no inicializado');
@@ -390,6 +397,60 @@ export function AuthProvider({
     [adapter]
   );
 
+  const loginWithUsername = useCallback(
+    async (username: string, password: string): Promise<AuthStatus> => {
+      if (adapter) {
+        if (!adapter.loginWithUsername) {
+          throw new AuthApiError(MENSAJE_CREDENCIALES_USUARIO, 401, 'INVALID_CREDENTIALS');
+        }
+        const res = await adapter.loginWithUsername(username, password);
+        setUser(res.user ?? null);
+        setPendingGoogleUser(null);
+        setStatus(res.status);
+        return res.status;
+      }
+
+      if (isMocksEnabled()) {
+        const res = await mockLoginWithUsername(username);
+        setIdToken('mock-token');
+        setUser(res.user);
+        setPendingGoogleUser(null);
+        setStatus(res.status);
+        return res.status;
+      }
+
+      if (!firebaseAuth) {
+        throw new AuthApiError(
+          'Configuración de autenticación no disponible en este entorno.',
+          503,
+          'AUTH_NOT_CONFIGURED'
+        );
+      }
+
+      try {
+        const customToken = await requestUsernameLoginToken(username, password);
+        const cred = await signInWithCustomToken(firebaseAuth, customToken);
+        const token = await cred.user.getIdToken();
+        setIdToken(token);
+        const profileResp = await getMyProfile(token);
+        if (profileResp.profileComplete && profileResp.user) {
+          setUser(profileResp.user);
+          setPendingGoogleUser(null);
+          setStatus('authenticated');
+          return 'authenticated';
+        }
+        setUser(null);
+        setPendingGoogleUser(buildPendingFromFirebase(cred.user));
+        setStatus('needs_username');
+        return 'needs_username';
+      } catch (err) {
+        if (err instanceof AuthApiError) throw err;
+        throw new AuthApiError(MENSAJE_CREDENCIALES_USUARIO, 401, 'INVALID_CREDENTIALS');
+      }
+    },
+    [adapter]
+  );
+
   const loginWithGoogle = useCallback(async (): Promise<AuthStatus> => {
     if (adapter) {
       const res = await adapter.loginWithGoogle();
@@ -650,6 +711,7 @@ export function AuthProvider({
         clearPendingDeleteRedirect,
         registerWithEmail,
         loginWithEmail,
+        loginWithUsername,
         loginWithGoogle,
         completeGoogleUsername,
         updateProfile,

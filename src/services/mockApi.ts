@@ -421,6 +421,20 @@ export async function mockLoginWithEmail(correo: string): Promise<{
   };
 }
 
+/** Simula inicio de sesión con @usuario: entra si coincide con el perfil mock guardado. */
+export async function mockLoginWithUsername(username: string): Promise<{
+  status: 'authenticated';
+  user: StudentProfile;
+}> {
+  await waitMockDelay();
+  const current = readStoredProfile();
+  if (current.username && username !== current.username) {
+    throw new AuthApiError('Usuario o contraseña incorrectos.', 401, 'INVALID_CREDENTIALS');
+  }
+  setMockSessionActive(true);
+  return { status: 'authenticated', user: { ...current } };
+}
+
 /** Simula inicio de sesión con cuenta de Google. */
 export async function mockLoginWithGoogle(): Promise<{
   status: 'authenticated';

@@ -395,3 +395,50 @@ export async function deleteMyAccount(idToken: string): Promise<void> {
     );
   }
 }
+
+/** Mensaje único para usuario o contraseña incorrectos (no revela cuál falló). */
+export const MENSAJE_CREDENCIALES_USUARIO = 'Usuario o contraseña incorrectos.';
+
+/**
+ * Ingresar con @usuario sin exponer correos (issue #9, SDECG6-45 y SDECG6-57).
+ * La API busca la cuenta por el username, valida la contraseña y devuelve
+ * un token personalizado de Firebase; el correo nunca llega al navegador.
+ *
+ * POST /api/auth/ingresar-usuario  { username, password }
+ *   200 → { token }   401 → { error, codigo: 'CREDENCIALES_INVALIDAS' }
+ */
+export async function requestUsernameLoginToken(
+  username: string,
+  password: string
+): Promise<string> {
+  const response = await fetch(`${getApiBaseUrl()}/api/auth/ingresar-usuario`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+
+  if (!response.ok) {
+    if (response.status === 400 || response.status === 401 || response.status === 404) {
+      throw new AuthApiError(MENSAJE_CREDENCIALES_USUARIO, 401, 'INVALID_CREDENTIALS');
+    }
+    if (response.status === 429) {
+      throw new AuthApiError(
+        'Demasiados intentos. Espera un momento e intenta de nuevo.',
+        429,
+        'TOO_MANY_REQUESTS'
+      );
+    }
+    throw new AuthApiError(
+      'No pudimos iniciar sesión. Intenta de nuevo.',
+      response.status,
+      `HTTP_${response.status}`
+    );
+  }
+
+  const data = (await response.json()) as { token?: string; customToken?: string };
+  const token = data.token ?? data.customToken;
+  if (!token) {
+    throw new AuthApiError('No pudimos iniciar sesión. Intenta de nuevo.', 500, 'NO_TOKEN');
+  }
+  return token;
+}

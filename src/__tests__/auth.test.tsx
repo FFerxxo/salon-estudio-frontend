@@ -372,7 +372,7 @@ describe('Sprint 1 Autenticación y Rutas Privadas (US-01, US-02, US-03)', () =>
   });
 
   describe('US-03 · Ingresar, rutas privadas y cierre de sesión', () => {
-    it('valida formato de correo en el campo «Correo» sin aceptar usuario plano', async () => {
+    it('valida el formato cuando lo escrito parece un correo en «Correo o @usuario»', async () => {
       const user = userEvent.setup();
       render(
         <MemoryRouter initialEntries={['/ingresar']}>
@@ -380,9 +380,9 @@ describe('Sprint 1 Autenticación y Rutas Privadas (US-01, US-02, US-03)', () =>
         </MemoryRouter>
       );
 
-      await user.type(screen.getByLabelText(/^Correo$/i), 'usuario_plano');
+      await user.type(screen.getByLabelText(/^Correo o @usuario$/i), 'usuario@sin-dominio');
       await user.type(screen.getByLabelText(/^Contraseña$/i), 'Clave123!');
-      await user.click(screen.getByRole('button', { name: /^Ingresar con correo$/i }));
+      await user.click(screen.getByRole('button', { name: /^Ingresar$/i }));
 
       expect(await screen.findByText(/Ingresa un correo válido/i)).toBeInTheDocument();
     });
@@ -402,14 +402,14 @@ describe('Sprint 1 Autenticación y Rutas Privadas (US-01, US-02, US-03)', () =>
       );
 
       await user.type(
-        screen.getByLabelText(/^Correo$/i),
+        screen.getByLabelText(/^Correo o @usuario$/i),
         'andres.barbosa@correounivalle.edu.co'
       );
       await user.type(screen.getByLabelText(/^Contraseña$/i), 'ClaveMala123');
-      await user.click(screen.getByRole('button', { name: /^Ingresar con correo$/i }));
+      await user.click(screen.getByRole('button', { name: /^Ingresar$/i }));
 
       expect(await screen.findByText('Correo o contraseña incorrectos.')).toBeInTheDocument();
-      expect(screen.getByLabelText(/^Correo$/i)).toHaveValue(
+      expect(screen.getByLabelText(/^Correo o @usuario$/i)).toHaveValue(
         'andres.barbosa@correounivalle.edu.co'
       );
     });
@@ -427,11 +427,11 @@ describe('Sprint 1 Autenticación y Rutas Privadas (US-01, US-02, US-03)', () =>
       expect(await screen.findByRole('heading', { name: /^Ingresar$/i })).toBeInTheDocument();
 
       await user.type(
-        screen.getByLabelText(/^Correo$/i),
+        screen.getByLabelText(/^Correo o @usuario$/i),
         'andres.barbosa@correounivalle.edu.co'
       );
       await user.type(screen.getByLabelText(/^Contraseña$/i), 'Univalle2026!');
-      await user.click(screen.getByRole('button', { name: /^Ingresar con correo$/i }));
+      await user.click(screen.getByRole('button', { name: /^Ingresar$/i }));
 
       await waitFor(() => {
         expect(

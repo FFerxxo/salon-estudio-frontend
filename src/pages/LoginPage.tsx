@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { AlertCircle, Mail } from 'lucide-react';
+import { AlertCircle, AtSign } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { GoogleAuthButton } from '../components/GoogleAuthButton';
 import { PasswordField } from '../components/PasswordField';
@@ -8,7 +8,7 @@ import { selectLoginGreeting } from '../content/saludos';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
-import { validateEmail } from '../utils/authValidation';
+import { clasificarIdentificador } from '../utils/authValidation';
 import {
   getErrorAlertClasses,
   getGlassCardClasses,
@@ -27,8 +27,13 @@ export function LoginPage() {
   useDocumentTitle('Ingresar');
   const navigate = useNavigate();
   const location = useLocation();
-  const { loginWithEmail, loginWithGoogle, pendingDeleteRedirect, clearPendingDeleteRedirect } =
-    useAuth();
+  const {
+    loginWithEmail,
+    loginWithUsername,
+    loginWithGoogle,
+    pendingDeleteRedirect,
+    clearPendingDeleteRedirect,
+  } = useAuth();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -57,7 +62,8 @@ export function LoginPage() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const mailErr = validateEmail(correo);
+    const identificador = clasificarIdentificador(correo);
+    const mailErr = identificador.tipo === 'error' ? identificador.mensaje : null;
     if (mailErr || !password) {
       setEmailError(mailErr);
       setAuthError(!password ? 'Ingresa tu contraseña para continuar.' : null);
@@ -69,7 +75,10 @@ export function LoginPage() {
     setSubmitting(true);
 
     try {
-      const nextStatus = await loginWithEmail(correo, password);
+      const nextStatus =
+        identificador.tipo === 'usuario'
+          ? await loginWithUsername(identificador.valor, password)
+          : await loginWithEmail(correo, password);
       if (nextStatus === 'needs_username') {
         navigate('/registro/google-username', { replace: true });
       } else {
@@ -77,7 +86,11 @@ export function LoginPage() {
       }
     } catch (err) {
       const message =
-        err instanceof Error && err.message ? err.message : 'Correo o contraseña incorrectos.';
+        err instanceof Error && err.message
+          ? err.message
+          : identificador.tipo === 'usuario'
+            ? 'Usuario o contraseña incorrectos.'
+            : 'Correo o contraseña incorrectos.';
       setAuthError(message);
     } finally {
       setSubmitting(false);
@@ -174,7 +187,7 @@ export function LoginPage() {
       <form noValidate onSubmit={(e) => void handleSubmit(e)} className="space-y-3">
         <div className="space-y-1.5">
           <label htmlFor="login-correo" className="block text-sm font-semibold">
-            Correo
+            Correo o @usuario
           </label>
           <div className="relative">
             <span
@@ -183,18 +196,21 @@ export function LoginPage() {
                 isDark ? 'text-[#94a3b8]' : 'text-[#475569]'
               }`}
             >
-              <Mail className="w-4 h-4" />
+              <AtSign className="w-4 h-4" />
             </span>
             <input
               id="login-correo"
-              type="email"
+              type="text"
+              inputMode="email"
+              autoCapitalize="none"
+              spellCheck={false}
               value={correo}
               onChange={(e) => {
                 setCorreo(e.target.value);
                 if (emailError) setEmailError(null);
               }}
-              autoComplete="email"
-              placeholder="nombre@correo.com"
+              autoComplete="username"
+              placeholder="nombre@correo.com o @usuario"
               aria-invalid={Boolean(emailError)}
               aria-describedby={emailError ? 'login-correo-error' : undefined}
               className={`${getInputClasses(theme, Boolean(emailError))} pl-10`}
@@ -252,7 +268,7 @@ export function LoginPage() {
             theme
           )} !min-h-[44px] h-[44px] !py-2 !text-sm active:scale-[0.97] motion-reduce:active:scale-100 motion-reduce:transition-none transition-[background-color,color,transform] duration-150`}
         >
-          {submitting ? 'Ingresando...' : 'Ingresar con correo'}
+          {submitting ? 'Ingresando...' : 'Ingresar'}
         </button>
       </form>
 

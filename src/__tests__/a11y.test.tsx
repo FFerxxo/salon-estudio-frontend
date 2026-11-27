@@ -172,13 +172,13 @@ describe('Accesibilidad Base TS-04 y Navegación Sprint 2 (Tema Marea)', () => {
       );
       const greetingEl = container.querySelector('section p.text-center');
       expect(greetingEl).toBeInTheDocument();
-      expect(screen.getByLabelText(/^Correo$/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/^Correo o @usuario$/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/^Contraseña$/i)).toBeInTheDocument();
       expect(
         screen.getByRole('button', { name: /¿Olvidaste tu contraseña\?/i })
       ).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /Continuar con Google/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /^Ingresar con correo$/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^Ingresar$/i })).toBeInTheDocument();
       expect(screen.getByRole('link', { name: /^Crear cuenta$/i })).toBeInTheDocument();
       const results = await axe(container);
       expect(results).toHaveNoViolations();
@@ -251,7 +251,7 @@ describe('Accesibilidad Base TS-04 y Navegación Sprint 2 (Tema Marea)', () => {
         </MemoryRouter>
       );
 
-      const submitBtn = screen.getByRole('button', { name: /^Ingresar con correo$/i });
+      const submitBtn = screen.getByRole('button', { name: /^Ingresar$/i });
       let safety = 0;
       while (document.activeElement !== submitBtn && safety < 25) {
         await user.tab();
@@ -261,7 +261,7 @@ describe('Accesibilidad Base TS-04 y Navegación Sprint 2 (Tema Marea)', () => {
       expect(submitBtn).toHaveFocus();
       await user.keyboard('{Enter}');
       expect(
-        await screen.findByText(/Ingresa tu correo institucional\./i)
+        await screen.findByText(/Ingresa tu correo o tu @usuario\./i)
       ).toBeInTheDocument();
     });
 

@@ -75,3 +75,32 @@ export function validatePersonName(raw: string, fieldLabel: string): string | nu
   }
   return null;
 }
+
+export type IdentificadorIngreso =
+  | { tipo: 'correo'; valor: string }
+  | { tipo: 'usuario'; valor: string }
+  | { tipo: 'error'; mensaje: string };
+
+/**
+ * Decide si lo escrito en «Correo o @usuario» es un correo o un nombre de usuario (issue #9).
+ * Es correo si tiene una @ que no está al inicio; si empieza con @ o no tiene @, es usuario.
+ */
+export function clasificarIdentificador(raw: string): IdentificadorIngreso {
+  const limpio = raw.trim();
+  if (!limpio) {
+    return { tipo: 'error', mensaje: 'Ingresa tu correo o tu @usuario.' };
+  }
+  const pareceCorreo = /^[^@\s]+@/.test(limpio);
+  if (pareceCorreo) {
+    const error = validateEmail(limpio);
+    return error ? { tipo: 'error', mensaje: error } : { tipo: 'correo', valor: limpio };
+  }
+  const usuario = normalizeUsername(limpio);
+  if (validateUsername(usuario)) {
+    return {
+      tipo: 'error',
+      mensaje: 'Escribe un correo válido o tu @usuario (ejemplo: @ana.gomez).',
+    };
+  }
+  return { tipo: 'usuario', valor: usuario };
+}
