@@ -15,6 +15,7 @@ import {
   type EstadoConexion,
   type EstadoHistorial,
 } from '../hooks/useRoomRealtime';
+import { useLiveAnnouncement } from '../hooks/useLiveAnnouncement';
 import type { AckRespuesta, Mensaje } from '../services/realtime';
 
 export interface RoomChatProps {
@@ -25,6 +26,7 @@ export interface RoomChatProps {
   anuncio: string;
   hayMas: boolean;
   cargandoAnteriores: boolean;
+  visible?: boolean;
   onCargarAnteriores: () => Promise<number | null>;
   onEnviar: (texto: string) => Promise<AckRespuesta<{ mensaje: Mensaje }>>;
   onReintentarHistorial: () => void;
@@ -49,24 +51,30 @@ function MensajeItem({ mensaje, esMio }: { mensaje: Mensaje; esMio: boolean }) {
         }`}
       >
         <p className="flex items-baseline gap-2 text-xs">
-          <span className="font-bold font-mono">
+          <span
+            className={
+              esMio || !mensaje.autorEliminado ? 'font-bold font-mono' : 'font-semibold text-[#334155]'
+            }
+          >
             {esMio ? (
               <>
                 <span className="sr-only">@{mensaje.autorUsername} </span>
                 <span aria-hidden="true">Tú</span>
               </>
+            ) : mensaje.autorEliminado ? (
+              'Cuenta eliminada'
             ) : (
               `@${mensaje.autorUsername}`
             )}
           </span>
           <time
             dateTime={mensaje.creadoEn}
-            className={esMio ? 'text-[#ccfbf1]' : 'text-[#475569]'}
+            className={`tabular-nums ${esMio ? 'text-[#ccfbf1]' : 'text-[#475569]'}`}
           >
             {hora}
           </time>
         </p>
-        <p className="mt-0.5 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+        <p className="mt-0.5 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-pretty">
           {mensaje.texto}
         </p>
       </article>
@@ -83,6 +91,7 @@ export function RoomChat({
   anuncio,
   hayMas,
   cargandoAnteriores,
+  visible = true,
   onCargarAnteriores,
   onEnviar,
   onReintentarHistorial,
@@ -94,7 +103,9 @@ export function RoomChat({
 
   const listaRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const alFinalRef = useRef(true);
+  const alFinalRef = useRef(false);
+  const pendienteBajarRef = useRef(true);
+  const prevVisibleRef = useRef(visible);
   const ultimoIdRef = useRef<string | null>(null);
   const primerIdRef = useRef<string | null>(null);
   /** Distancia al final antes de cargar los anteriores, para no perder la posición de lectura. */
@@ -104,20 +115,33 @@ export function RoomChat({
   const [enviando, setEnviando] = useState(false);
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
   const [hayNuevos, setHayNuevos] = useState(false);
-  const [yaCargoAnteriores, setYaCargoAnteriores] = useState(false);
   const [errorAnteriores, setErrorAnteriores] = useState(false);
-  const [anuncioHistorial, setAnuncioHistorial] = useState('');
+  const [anuncioHistorial, anunciarHistorial] = useLiveAnnouncement();
 
   const conectado = estado === 'conectado';
   const vacio = texto.trim().length === 0;
 
-  const bajarAlFinal = useCallback(() => {
+  const bajarAlFinal = useCallback((): boolean => {
     const el = listaRef.current;
-    if (!el) return;
+    if (!visible || !el || el.scrollHeight === 0) {
+      alFinalRef.current = false;
+      return false;
+    }
     el.scrollTop = el.scrollHeight;
     alFinalRef.current = true;
+    pendienteBajarRef.current = false;
     setHayNuevos(false);
-  }, []);
+    return true;
+  }, [visible]);
+
+  // Al mostrar el panel en celular, baja al último mensaje si había quedado pendiente.
+  useLayoutEffect(() => {
+    const seMostro = !prevVisibleRef.current && visible;
+    prevVisibleRef.current = visible;
+    if (seMostro && mensajes.length > 0 && (pendienteBajarRef.current || alFinalRef.current)) {
+      bajarAlFinal();
+    }
+  }, [visible, mensajes.length, bajarAlFinal]);
 
   // Al agregar mensajes anteriores arriba, se mantiene lo que se estaba leyendo en su lugar.
   useLayoutEffect(() => {
@@ -135,13 +159,12 @@ export function RoomChat({
     anclaRef.current = el ? el.scrollHeight - el.scrollTop : null;
     setErrorAnteriores(false);
     const cantidad = await onCargarAnteriores();
-    setYaCargoAnteriores(true);
     if (cantidad === null) {
       anclaRef.current = null;
       setErrorAnteriores(true);
       return;
     }
-    setAnuncioHistorial(
+    anunciarHistorial(
       cantidad === 1 ? 'Se cargó 1 mensaje anterior' : `Se cargaron ${cantidad} mensajes anteriores`
     );
   };
@@ -157,17 +180,30 @@ export function RoomChat({
     const primeraCarga = ultimoIdRef.current === null;
     ultimoIdRef.current = ultimo.id;
 
-    if (primeraCarga || alFinalRef.current || ultimo.autorUid === miUid) {
-      bajarAlFinal();
+    if (!visible) {
+      if (primeraCarga || alFinalRef.current || ultimo.autorUid === miUid) {
+        pendienteBajarRef.current = true;
+      } else if (!pendienteBajarRef.current) {
+        setHayNuevos(true);
+      }
+      alFinalRef.current = false;
+      return;
+    }
+
+    if (primeraCarga || alFinalRef.current || pendienteBajarRef.current || ultimo.autorUid === miUid) {
+      if (!bajarAlFinal()) {
+        pendienteBajarRef.current = true;
+      }
     } else {
       setHayNuevos(true);
     }
-  }, [mensajes, miUid, bajarAlFinal]);
+  }, [mensajes, miUid, visible, bajarAlFinal]);
 
   const alDesplazar = () => {
     const el = listaRef.current;
     if (!el) return;
-    alFinalRef.current = estaAlFinal(el);
+    pendienteBajarRef.current = false;
+    alFinalRef.current = el.scrollHeight > 0 && estaAlFinal(el);
     if (alFinalRef.current) setHayNuevos(false);
   };
 
@@ -206,13 +242,13 @@ export function RoomChat({
   return (
     <section
       aria-labelledby={headingId}
-      className="relative flex flex-col h-full min-h-[360px] rounded-2xl border border-white/20 bg-[#0b1220]/85 text-[#f8fafc] backdrop-blur-[12px] overflow-hidden"
+      className="relative flex flex-col h-full min-h-[360px] rounded-[20px] border border-white/20 bg-[#0b1220]/85 text-[#f8fafc] backdrop-blur-[12px] overflow-hidden"
     >
       <h2
         id={headingId}
         className="px-4 py-3 text-base font-bold border-b border-white/15 inline-flex items-center gap-2"
       >
-        <MessageSquare className="w-4 h-4" aria-hidden="true" />
+        <MessageSquare className="size-4" aria-hidden="true" />
         Chat
       </h2>
 
@@ -229,30 +265,30 @@ export function RoomChat({
       >
         {historial === 'cargando' && mensajes.length === 0 && (
           <p role="status" className="text-sm text-[#cbd5e1] inline-flex items-center gap-2 px-1">
-            <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+            <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
             Cargando mensajes…
           </p>
         )}
 
         {historial === 'error' && mensajes.length === 0 && (
           <div role="alert" className="text-sm rounded-xl p-3 bg-[#450a0a]/90 border border-[#fca5a5]/60 text-[#fee2e2] space-y-2">
-            <p className="inline-flex items-center gap-2 font-semibold">
-              <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
+            <p className="inline-flex items-center gap-2 font-semibold text-pretty">
+              <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
               No pudimos cargar los mensajes.
             </p>
             <button
               type="button"
               onClick={onReintentarHistorial}
-              className="min-h-[40px] px-3 rounded-lg border border-white/30 bg-white/10 hover:bg-white/20 text-sm font-semibold inline-flex items-center gap-1.5"
+              className="min-h-[44px] px-3 rounded-lg border border-white/45 bg-white/10 hover:bg-white/20 text-sm font-semibold inline-flex items-center gap-1.5 transition-[background-color,transform] duration-150 active:scale-[0.96] motion-reduce:transition-none motion-reduce:active:scale-100"
             >
-              <RotateCcw className="w-4 h-4" aria-hidden="true" />
+              <RotateCcw className="size-4" aria-hidden="true" />
               Reintentar
             </button>
           </div>
         )}
 
         {historial === 'listo' && mensajes.length === 0 && (
-          <p className="text-sm text-[#cbd5e1] text-center py-6">
+          <p className="text-sm text-[#cbd5e1] text-center py-6 text-pretty">
             Aún no hay mensajes. Escribe el primero.
           </p>
         )}
@@ -268,12 +304,12 @@ export function RoomChat({
               onClick={() => void cargarAnteriores()}
               disabled={cargandoAnteriores}
               aria-busy={cargandoAnteriores}
-              className="min-h-[40px] px-3 rounded-full border border-white/30 bg-white/10 hover:bg-white/20 text-xs font-semibold inline-flex items-center gap-1.5 disabled:opacity-70"
+              className="min-h-[44px] px-3.5 rounded-full border border-white/45 bg-white/10 hover:bg-white/20 text-xs font-semibold inline-flex items-center gap-1.5 disabled:opacity-70 transition-[background-color,transform] duration-150 active:scale-[0.96] motion-reduce:transition-none motion-reduce:active:scale-100"
             >
               {cargandoAnteriores ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
               ) : (
-                <ArrowUp className="w-3.5 h-3.5" aria-hidden="true" />
+                <ArrowUp className="size-3.5" aria-hidden="true" />
               )}
               {cargandoAnteriores ? 'Cargando…' : 'Cargar mensajes anteriores'}
             </button>
@@ -281,13 +317,13 @@ export function RoomChat({
         )}
 
         {errorAnteriores && (
-          <p role="alert" className="text-xs text-center text-[#fca5a5] font-semibold">
+          <p role="alert" className="text-xs text-center text-[#fca5a5] font-semibold text-pretty">
             No pudimos cargar los mensajes anteriores. Intenta de nuevo.
           </p>
         )}
 
-        {mensajes.length > 0 && !hayMas && yaCargoAnteriores && (
-          <p className="text-xs text-center text-[#94a3b8]">No hay más mensajes</p>
+        {mensajes.length > 0 && !hayMas && (
+          <p className="text-xs text-center text-[#94a3b8] text-pretty">No hay más mensajes</p>
         )}
 
         {mensajes.length > 0 && (
@@ -302,10 +338,10 @@ export function RoomChat({
       {hayNuevos && (
         <button
           type="button"
-          onClick={bajarAlFinal}
-          className="absolute left-1/2 -translate-x-1/2 bottom-[132px] min-h-[40px] px-4 whitespace-nowrap rounded-full bg-[#38bdf8] text-[#0b1220] text-sm font-bold shadow-lg inline-flex items-center gap-1.5"
+          onClick={() => void bajarAlFinal()}
+          className="absolute left-1/2 -translate-x-1/2 bottom-[132px] min-h-[44px] px-4 whitespace-nowrap rounded-full bg-[#38bdf8] text-[#0b1220] text-sm font-bold shadow-lg inline-flex items-center gap-1.5 hover:bg-[#7dd3fc] transition-[background-color,transform] duration-150 active:scale-[0.96] motion-reduce:transition-none motion-reduce:active:scale-100"
         >
-          <ArrowDown className="w-4 h-4" aria-hidden="true" />
+          <ArrowDown className="size-4" aria-hidden="true" />
           Mensajes nuevos
         </button>
       )}
@@ -322,15 +358,15 @@ export function RoomChat({
             className="text-xs rounded-lg px-2.5 py-2 bg-[#450a0a]/90 border border-[#fca5a5]/60 text-[#fee2e2] flex items-center justify-between gap-2"
           >
             <span className="inline-flex items-center gap-1.5">
-              <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-              <span>No se envió tu mensaje. {errorEnvio}</span>
+              <AlertCircle className="size-3.5 shrink-0" aria-hidden="true" />
+              <span className="text-pretty">No se envió tu mensaje. {errorEnvio}</span>
             </span>
             <button
               type="submit"
               disabled={!conectado || enviando}
-              className="min-h-[36px] px-2.5 rounded-md border border-white/30 bg-white/10 hover:bg-white/20 font-semibold inline-flex items-center gap-1 disabled:opacity-60"
+              className="min-h-[44px] px-3 rounded-md border border-white/45 bg-white/10 hover:bg-white/20 font-semibold inline-flex items-center gap-1.5 disabled:opacity-60 transition-[background-color,transform] duration-150 active:scale-[0.96] motion-reduce:transition-none motion-reduce:active:scale-100"
             >
-              <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
+              <RotateCcw className="size-3.5" aria-hidden="true" />
               Reintentar
             </button>
           </div>
@@ -358,18 +394,18 @@ export function RoomChat({
             }
             disabled={estado === 'sin-servidor'}
             aria-describedby={describedBy}
-            className="flex-1 resize-none rounded-xl border border-white/25 bg-[#0f172a] text-[#f8fafc] placeholder:text-[#94a3b8] px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#38bdf8] disabled:opacity-60"
+            className="flex-1 resize-none rounded-lg border border-white/45 bg-[#0f172a] text-[#f8fafc] placeholder:text-[#94a3b8] px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#38bdf8] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0f172a] disabled:opacity-60"
           />
           <button
             type="submit"
             disabled={vacio || enviando || !conectado}
             aria-label={enviando ? 'Enviando mensaje' : 'Enviar mensaje'}
-            className="size-11 shrink-0 rounded-xl bg-[#38bdf8] text-[#0b1220] inline-flex items-center justify-center hover:bg-[#7dd3fc] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="size-11 shrink-0 rounded-lg bg-[#38bdf8] text-[#0b1220] inline-flex items-center justify-center hover:bg-[#7dd3fc] disabled:opacity-50 disabled:cursor-not-allowed transition-[background-color,transform] duration-150 active:scale-[0.96] motion-reduce:transition-none motion-reduce:active:scale-100"
           >
             {enviando ? (
-              <Loader2 className="w-5 h-5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+              <Loader2 className="size-5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
             ) : (
-              <Send className="w-5 h-5" aria-hidden="true" />
+              <Send className="size-5" aria-hidden="true" />
             )}
           </button>
         </div>
