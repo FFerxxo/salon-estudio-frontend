@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -28,6 +28,20 @@ const workspaceTitleMap: Record<string, string> = {
   '/perfil': 'Perfil',
 };
 
+interface RoomTopbarState {
+  pathname: string;
+  title: string;
+}
+
+type SetRoomTopbarTitle = (pathname: string, title: string | null) => void;
+
+const RoomTopbarContext = createContext<SetRoomTopbarTitle>(() => {});
+
+/** Permite a la vista de sala fijar «Mi salón» (anfitrión) o el nombre real (invitado) en la barra superior. */
+export function useRoomTopbarTitle(): SetRoomTopbarTitle {
+  return useContext(RoomTopbarContext);
+}
+
 interface WorkspaceLayoutProps {
   theme: ThemeMode;
   toggleTheme: () => void;
@@ -55,20 +69,38 @@ function WorkspaceLayout({ theme, toggleTheme, user, onLogout }: WorkspaceLayout
     }
   }, [sidebarCollapsed]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [roomTopbar, setRoomTopbar] = useState<RoomTopbarState | null>(null);
+
+  const setRoomTopbarTitle = useCallback<SetRoomTopbarTitle>((pathname, title) => {
+    setRoomTopbar((prev) => {
+      if (!title) {
+        return prev && prev.pathname === pathname ? null : prev;
+      }
+      if (prev?.pathname === pathname && prev.title === title) {
+        return prev;
+      }
+      return { pathname, title };
+    });
+  }, []);
 
   const isDark = theme === 'dark';
   const searchParams = new URLSearchParams(location.search);
   const isMisSalasView =
     location.pathname === '/panel' && searchParams.get('vista') === 'mis-salas';
   const isRoomRoute = location.pathname.startsWith('/salas/');
+  const activeRoomTopbar =
+    roomTopbar && roomTopbar.pathname === location.pathname ? roomTopbar.title : null;
 
   const currentWorkspaceTitle = isMisSalasView
     ? 'Mis salones'
     : isRoomRoute
-      ? 'Mi salón'
+      ? activeRoomTopbar
       : workspaceTitleMap[location.pathname] ?? 'Salón de Estudio';
 
-  const showTopbarTitle = location.pathname !== '/panel' && location.pathname !== '/salas';
+  const showTopbarTitle =
+    location.pathname !== '/panel' &&
+    location.pathname !== '/salas' &&
+    Boolean(currentWorkspaceTitle);
 
   const sidebarItems = [
     {
@@ -332,15 +364,17 @@ function WorkspaceLayout({ theme, toggleTheme, user, onLogout }: WorkspaceLayout
               : 'overflow-y-auto px-4 py-5 sm:px-8 sm:py-7'
           }`}
         >
-          {isRoomRoute ? (
-            <div className="flex-1 min-h-0 flex flex-col w-full">
-              <Outlet />
-            </div>
-          ) : (
-            <div className="w-full max-w-[1080px] mx-auto">
-              <Outlet />
-            </div>
-          )}
+          <RoomTopbarContext.Provider value={setRoomTopbarTitle}>
+            {isRoomRoute ? (
+              <div className="flex-1 min-h-0 flex flex-col w-full">
+                <Outlet />
+              </div>
+            ) : (
+              <div className="w-full max-w-[1080px] mx-auto">
+                <Outlet />
+              </div>
+            )}
+          </RoomTopbarContext.Provider>
         </main>
       </div>
     </div>

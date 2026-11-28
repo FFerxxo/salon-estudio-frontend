@@ -5,8 +5,10 @@ import {
   Copy,
   Music,
   Pause,
+  Pencil,
   Play,
   SkipForward,
+  Trash2,
   Users,
   Volume2,
   VolumeX,
@@ -24,8 +26,11 @@ import { type Room } from '../services/roomsApi';
 export interface RoomBarProps {
   room: Room;
   roomId: string;
+  isHost?: boolean;
   copied: boolean;
   onCopyId: () => void;
+  onRename?: () => void;
+  onDelete?: () => void;
   participantsOpen: boolean;
   onToggleParticipants: () => void;
   /** Se llama al pulsar «Salir de la sala», antes de volver al panel (emite `sala:salir`). */
@@ -38,8 +43,11 @@ type PopoverKind = 'sound' | 'volume' | null;
 export function RoomBar({
   room,
   roomId,
+  isHost = false,
   copied,
   onCopyId,
+  onRename,
+  onDelete,
   participantsOpen,
   onToggleParticipants,
   onExit,
@@ -236,7 +244,7 @@ export function RoomBar({
   };
 
   const iconBtnBase = isDarkBar
-    ? 'border-white/25 bg-white/10 text-[#f8fafc] hover:bg-white/20'
+    ? 'border-white/45 bg-white/10 text-[#f8fafc] hover:bg-white/20'
     : 'border-[#64748b] bg-slate-900/5 text-[#0f172a] hover:bg-slate-900/10';
 
   const iconBtnActive = isDarkBar
@@ -285,9 +293,9 @@ export function RoomBar({
           type="button"
           onClick={onCopyId}
           aria-label={`Copiar ID de la sala ${displayId}`}
-          className={`min-h-[40px] px-3 py-1.5 rounded-[10px] border text-[13px] font-semibold inline-flex items-center gap-1.5 active:scale-[0.96] transition-[transform,background-color] duration-150 ${
+          className={`min-h-[44px] px-3 py-1.5 rounded-[10px] border text-[13px] font-semibold inline-flex items-center gap-1.5 active:scale-[0.96] transition-[transform,background-color] duration-150 motion-reduce:transition-none motion-reduce:active:scale-100 ${
             isDarkBar
-              ? 'border-white/25 bg-white/10 text-[#f8fafc] hover:bg-white/20'
+              ? 'border-white/45 bg-white/10 text-[#f8fafc] hover:bg-white/20'
               : 'border-[#64748b] bg-white text-[#0f172a] hover:bg-slate-100'
           }`}
         >
@@ -310,6 +318,32 @@ export function RoomBar({
       </div>
 
       <div ref={controlsWrapRef} className="relative flex items-center gap-2 flex-wrap">
+        {isHost && onRename && (
+          <button
+            type="button"
+            onClick={onRename}
+            className={`min-h-[44px] px-3 py-2 rounded-xl border text-[13px] font-semibold inline-flex items-center gap-1.5 active:scale-[0.96] transition-[transform,background-color] duration-150 motion-reduce:transition-none motion-reduce:active:scale-100 ${iconBtnBase}`}
+          >
+            <Pencil className="w-4 h-4 shrink-0" aria-hidden="true" />
+            <span>Renombrar</span>
+          </button>
+        )}
+
+        {isHost && onDelete && (
+          <button
+            type="button"
+            onClick={onDelete}
+            className={`min-h-[44px] px-3 py-2 rounded-xl border text-[13px] font-semibold inline-flex items-center gap-1.5 active:scale-[0.96] transition-[transform,background-color] duration-150 motion-reduce:transition-none motion-reduce:active:scale-100 ${
+              isDarkBar
+                ? 'border-[#f87171] bg-[#450a0a]/65 text-[#fecaca] hover:bg-[#7f1d1d]/80'
+                : 'border-[#b91c1c] bg-[#fef2f2] text-[#b91c1c] hover:bg-[#fee2e2]'
+            }`}
+          >
+            <Trash2 className="w-4 h-4 shrink-0" aria-hidden="true" />
+            <span>Eliminar</span>
+          </button>
+        )}
+
         <button
           type="button"
           onClick={onToggleParticipants}
@@ -317,7 +351,7 @@ export function RoomBar({
           aria-controls="roomMemberGrid"
           aria-label={participantsOpen ? 'Ocultar participantes' : 'Mostrar participantes'}
           title="Participantes"
-          className={`size-11 rounded-xl border inline-flex items-center justify-center active:scale-[0.96] transition-[transform,background-color,border-color] duration-150 ${
+          className={`size-11 rounded-xl border inline-flex items-center justify-center active:scale-[0.96] transition-[transform,background-color,border-color] duration-150 motion-reduce:transition-none motion-reduce:active:scale-100 ${
             participantsOpen ? iconBtnActive : iconBtnBase
           }`}
         >
@@ -335,7 +369,7 @@ export function RoomBar({
           onClick={() =>
             setOpenPopover((prev) => (prev === 'sound' ? null : 'sound'))
           }
-          className={`size-11 rounded-xl border inline-flex items-center justify-center active:scale-[0.96] transition-[transform,background-color,border-color] duration-150 ${
+          className={`size-11 rounded-xl border inline-flex items-center justify-center active:scale-[0.96] transition-[transform,background-color,border-color] duration-150 motion-reduce:transition-none motion-reduce:active:scale-100 ${
             openPopover === 'sound' || isPlaying ? iconBtnActive : iconBtnBase
           }`}
         >
@@ -353,7 +387,7 @@ export function RoomBar({
           onClick={() =>
             setOpenPopover((prev) => (prev === 'volume' ? null : 'volume'))
           }
-          className={`size-11 rounded-xl border inline-flex items-center justify-center active:scale-[0.96] transition-[transform,background-color,border-color] duration-150 ${
+          className={`size-11 rounded-xl border inline-flex items-center justify-center active:scale-[0.96] transition-[transform,background-color,border-color] duration-150 motion-reduce:transition-none motion-reduce:active:scale-100 ${
             openPopover === 'volume' ? iconBtnActive : iconBtnBase
           }`}
         >
@@ -367,7 +401,7 @@ export function RoomBar({
         <Link
           to="/panel"
           onClick={() => onExit?.()}
-          className={`min-h-[44px] px-3.5 py-2 rounded-xl border text-[13px] font-bold inline-flex items-center gap-1.5 active:scale-[0.96] transition-[transform,background-color] duration-150 ${
+          className={`min-h-[44px] px-3.5 py-2 rounded-xl border text-[13px] font-bold inline-flex items-center gap-1.5 active:scale-[0.96] transition-[transform,background-color] duration-150 motion-reduce:transition-none motion-reduce:active:scale-100 ${
             isDarkBar
               ? 'border-[#fca5a5] bg-[#7f1d1d]/80 text-[#fef2f2] hover:bg-[#991b1b]'
               : 'border-[#b91c1c] bg-[#fef2f2] text-[#b91c1c] hover:bg-[#fee2e2]'

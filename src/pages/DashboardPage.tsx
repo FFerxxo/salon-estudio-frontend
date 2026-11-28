@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { CreateRoomDialog } from '../components/CreateRoomDialog';
 import { JoinRoomForm } from '../components/JoinRoomForm';
 import {
@@ -7,6 +7,7 @@ import {
   getSceneCardShellClasses,
   getSceneInnerClasses,
 } from '../components/SceneBanner';
+import { StatusBanner } from '../components/StatusBanner';
 import { AMBIENTES, type AmbienteId } from '../content/ambientes';
 import { selectTugaPhrase } from '../content/vozTuga';
 import { useRooms } from '../context/RoomsContext';
@@ -24,9 +25,28 @@ const CREATE_OPTIONS: { ambiente: AmbienteId; label: string; ariaLabel: string; 
 
 function DashboardInicioView() {
   useDocumentTitle('Inicio');
+  const location = useLocation();
   const navigate = useNavigate();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+
+  const roomDeletedByHost = Boolean(
+    (location.state as { roomDeletedByHost?: boolean } | null)?.roomDeletedByHost
+  );
+  const [hostDeletedBannerVisible, setHostDeletedBannerVisible] = useState(roomDeletedByHost);
+
+  useEffect(() => {
+    if (!roomDeletedByHost) return;
+    setHostDeletedBannerVisible(true);
+    try {
+      const current = window.history.state as { usr?: { roomDeletedByHost?: boolean } } | null;
+      if (current?.usr?.roomDeletedByHost) {
+        window.history.replaceState({ ...current, usr: null }, '');
+      }
+    } catch {
+      // Sin acceso al historial: el aviso solo podría repetirse al recargar.
+    }
+  }, [roomDeletedByHost]);
 
   const [{ phrase: greeting }] = useState(() => selectTugaPhrase('inicio'));
   const { refreshRooms, addRoom } = useRooms();
@@ -55,6 +75,16 @@ function DashboardInicioView() {
 
   return (
     <section aria-labelledby="panel-heading" className="pt-6 sm:pt-12 pb-6">
+      {hostDeletedBannerVisible && (
+        <div className="max-w-xl mx-auto mb-6">
+          <StatusBanner
+            tone="warning"
+            message="El anfitrión eliminó esta sala"
+            onDismiss={() => setHostDeletedBannerVisible(false)}
+          />
+        </div>
+      )}
+
       <header className="text-center space-y-2 max-w-2xl mx-auto mb-12 sm:mb-20">
         <h1
           id="panel-heading"

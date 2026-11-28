@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AlertCircle, ArrowLeft, Loader2, RotateCcw, WifiOff } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useRoomTopbarTitle } from '../components/Layout';
 import { MemberGrid } from '../components/MemberGrid';
 import { RoomChat } from '../components/RoomChat';
+import { DeleteRoomDialog, RenameRoomDialog } from '../components/RoomDialogs';
 import { RoomBar } from '../components/RoomPopovers';
 import { StatusBanner } from '../components/StatusBanner';
 import { ROOM_BACKGROUNDS, type AmbienteId } from '../content/ambientes';
 import { useAuth } from '../context/AuthContext';
+import { useRooms } from '../context/RoomsContext';
 import { useTheme, type ThemeMode } from '../context/ThemeContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { useRoomRealtime, type UseRoomRealtimeResult } from '../hooks/useRoomRealtime';
@@ -162,6 +165,8 @@ export function RoomPage() {
 
   const navigate = useNavigate();
   const { user, idToken, logout } = useAuth();
+  const { updateRoom, removeRoom } = useRooms();
+  const setRoomTopbarTitle = useRoomTopbarTitle();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -169,6 +174,9 @@ export function RoomPage() {
     locationState?.room && locationState.room.id === id ? locationState.room : null;
 
   const [fetchedRoom, setFetchedRoom] = useState<Room | null>(null);
+  const [roomPatch, setRoomPatch] = useState<{ id: string; nombre: string } | null>(null);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [loading, setLoading] = useState(!stateRoom);
   const [errorKind, setErrorKind] = useState<'none' | 'not-found' | 'generic'>('none');
   const [reloadCount, setReloadCount] = useState(0);
@@ -184,8 +192,17 @@ export function RoomPage() {
   const announceTimerRef = useRef<number | null>(null);
   const vistosRef = useRef<Set<string>>(new Set());
   const historialInicializadoRef = useRef(false);
+  const hostDeletingRef = useRef(false);
 
-  const room = stateRoom ?? (fetchedRoom && fetchedRoom.id === id ? fetchedRoom : null);
+  const baseRoom = stateRoom ?? (fetchedRoom && fetchedRoom.id === id ? fetchedRoom : null);
+  const room = baseRoom
+    ? roomPatch && roomPatch.id === baseRoom.id
+      ? { ...baseRoom, nombre: roomPatch.nombre }
+      : baseRoom
+    : null;
+  const isHost = Boolean(
+    room && ((user?.uid && room.anfitrionUid === user.uid) || locationState?.justCreated)
+  );
 
   // Se conecta al tiempo real cuando la API confirmó que la sala existe (SDECG6-50).
   const realtime = useRoomRealtime(room?.id, user?.uid, Boolean(room));
@@ -211,7 +228,10 @@ export function RoomPage() {
   useEffect(() => {
     vistosRef.current = new Set();
     historialInicializadoRef.current = false;
+    hostDeletingRef.current = false;
     setNoLeidos(0);
+    setRenameOpen(false);
+    setDeleteOpen(false);
   }, [id]);
 
   useEffect(() => {
@@ -261,6 +281,71 @@ export function RoomPage() {
   }, [codigoErrorConexion, navigate, logout]);
 
   useDocumentTitle(room ? room.nombre : id ? `Sala ${id}` : 'Sala');
+
+  const currentPathname = location.pathname;
+  const showRoomContent =
+    !loading && errorKind === 'none' && Boolean(room) && !realtime.salaNoEncontrada;
+
+  useLayoutEffect(() => {
+    if (!showRoomContent || !room) {
+      setRoomTopbarTitle(currentPathname, null);
+      return;
+    }
+    setRoomTopbarTitle(currentPathname, isHost ? 'Mi salón' : room.nombre);
+    return () => {
+      setRoomTopbarTitle(currentPathname, null);
+    };
+  }, [showRoomContent, room, isHost, currentPathname, setRoomTopbarTitle]);
+
+  const baseRoomRef = useRef(baseRoom);
+  baseRoomRef.current = baseRoom;
+
+  useEffect(() => {
+    const actualizada = realtime.salaActualizada;
+    if (!actualizada || actualizada.salaId !== id) return;
+    setRoomPatch((prev) =>
+      prev?.id === actualizada.salaId && prev.nombre === actualizada.nombre
+        ? prev
+        : { id: actualizada.salaId, nombre: actualizada.nombre }
+    );
+    if (isHost && baseRoomRef.current && baseRoomRef.current.id === actualizada.salaId) {
+      updateRoom({ ...baseRoomRef.current, nombre: actualizada.nombre });
+    }
+    if (!isHost) {
+      setLiveAnnouncement(`El anfitrión cambió el nombre de la sala a ${actualizada.nombre}`);
+    }
+  }, [realtime.salaActualizada, id, isHost, updateRoom]);
+
+  useEffect(() => {
+    if (!realtime.salaEliminada) return;
+    if (hostDeletingRef.current) return;
+    setRenameOpen(false);
+    setDeleteOpen(false);
+    navigate('/panel', {
+      replace: true,
+      state: { roomDeletedByHost: true },
+    });
+  }, [realtime.salaEliminada, navigate]);
+
+  const handleRoomRenamed = useCallback(
+    (updated: Room) => {
+      setRoomPatch({ id: updated.id, nombre: updated.nombre });
+      updateRoom(updated);
+      setRenameOpen(false);
+      setLiveAnnouncement(`Nombre de sala actualizado a ${updated.nombre}`);
+    },
+    [updateRoom]
+  );
+
+  const handleRoomDeleted = useCallback(
+    (deletedId: string) => {
+      hostDeletingRef.current = true;
+      removeRoom(deletedId);
+      setDeleteOpen(false);
+      navigate('/panel', { replace: true });
+    },
+    [removeRoom, navigate]
+  );
 
   useEffect(() => {
     return () => {
@@ -432,9 +517,6 @@ export function RoomPage() {
     );
   }
 
-  const isHost =
-    Boolean(user?.uid && room.anfitrionUid === user.uid) ||
-    Boolean(locationState?.justCreated);
   const showCreatedBanner = Boolean(
     locationState?.justCreated && id && bannerDismissedForId !== id
   );
@@ -496,8 +578,11 @@ export function RoomPage() {
         <RoomBar
           room={room}
           roomId={id ?? room.id}
+          isHost={isHost}
           copied={copied}
           onCopyId={() => void handleCopyId()}
+          onRename={isHost ? () => setRenameOpen(true) : undefined}
+          onDelete={isHost ? () => setDeleteOpen(true) : undefined}
           participantsOpen={participantsOpen}
           onToggleParticipants={() => setParticipantsOpen((prev) => !prev)}
           onExit={realtime.salir}
@@ -578,6 +663,26 @@ export function RoomPage() {
           </div>
         </div>
       </div>
+
+      {isHost && (
+        <>
+          <RenameRoomDialog
+            open={renameOpen}
+            room={room}
+            onClose={() => setRenameOpen(false)}
+            onRenamed={handleRoomRenamed}
+          />
+          <DeleteRoomDialog
+            open={deleteOpen}
+            room={room}
+            onClose={() => setDeleteOpen(false)}
+            onDeleted={handleRoomDeleted}
+            onConfirmingChange={(confirming) => {
+              hostDeletingRef.current = confirming;
+            }}
+          />
+        </>
+      )}
     </section>
   );
 }

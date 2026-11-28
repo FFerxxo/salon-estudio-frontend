@@ -32,6 +32,10 @@ export interface UseRoomRealtimeResult {
   errorConexion: ErrorDeConexion | null;
   /** La sala no existe para el servidor de tiempo real (ID inválido o eliminada). */
   salaNoEncontrada: boolean;
+  /** El anfitrión eliminó la sala mientras estabas conectado (evento o rechazo al enviar). */
+  salaEliminada: boolean;
+  /** Último cambio de nombre recibido en vivo por `sala:actualizada`. */
+  salaActualizada: { salaId: string; nombre: string } | null;
   participantes: Participante[];
   mensajes: Mensaje[];
   historial: EstadoHistorial;
@@ -92,6 +96,10 @@ export function useRoomRealtime(
   const [estado, setEstado] = useState<EstadoConexion>('conectando');
   const [errorConexion, setErrorConexion] = useState<ErrorDeConexion | null>(null);
   const [salaNoEncontrada, setSalaNoEncontrada] = useState(false);
+  const [salaEliminada, setSalaEliminada] = useState(false);
+  const [salaActualizada, setSalaActualizada] = useState<{ salaId: string; nombre: string } | null>(
+    null
+  );
   const [participantes, setParticipantes] = useState<Participante[]>([]);
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
   const [historial, setHistorial] = useState<EstadoHistorial>('cargando');
@@ -120,6 +128,10 @@ export function useRoomRealtime(
       setHistorial((prev) => (mensajesRef.current.length > 0 ? prev : 'cargando'));
       const res = await conexion.request<HistorialRespuesta>('chat:historial', { salaId: id });
       if (!res.ok) {
+        if (res.codigo === 'SALA_NO_ENCONTRADA') {
+          yaSalioRef.current = true;
+          setSalaEliminada(true);
+        }
         setHistorial('error');
         return;
       }
@@ -216,6 +228,19 @@ export function useRoomRealtime(
       }
     };
 
+    const alActualizarSala = (datos: { salaId: string; nombre: string }) => {
+      if (datos?.salaId !== salaId) return;
+      const nombre = typeof datos.nombre === 'string' ? datos.nombre.trim() : '';
+      if (!nombre) return;
+      setSalaActualizada({ salaId: datos.salaId, nombre });
+    };
+
+    const alEliminarSala = (datos: { salaId: string }) => {
+      if (datos?.salaId !== salaId) return;
+      yaSalioRef.current = true;
+      setSalaEliminada(true);
+    };
+
     conexion.on('connect', alConectar);
     conexion.on('disconnect', alDesconectar);
     conexion.on('connect_error', alFallarConexion);
@@ -223,6 +248,8 @@ export function useRoomRealtime(
     conexion.on('sala:participante-entro', alEntrar);
     conexion.on('sala:participante-salio', alSalir);
     conexion.on('chat:mensaje', alRecibirMensaje);
+    conexion.on('sala:actualizada', alActualizarSala);
+    conexion.on('sala:eliminada', alEliminarSala);
     setEstado('conectando');
     conexion.connect();
 
@@ -235,6 +262,8 @@ export function useRoomRealtime(
       conexion.off('sala:participante-entro', alEntrar);
       conexion.off('sala:participante-salio', alSalir);
       conexion.off('chat:mensaje', alRecibirMensaje);
+      conexion.off('sala:actualizada', alActualizarSala);
+      conexion.off('sala:eliminada', alEliminarSala);
       if (!yaSalioRef.current && conexion.connected) {
         void conexion.request('sala:salir', { salaId });
       }
@@ -245,6 +274,8 @@ export function useRoomRealtime(
       setParticipantes([]);
       setHayMas(false);
       setSalaNoEncontrada(false);
+      setSalaEliminada(false);
+      setSalaActualizada(null);
     };
   }, [activo, salaId, pedirHistorial, actualizarMensajes, anunciarSala, anunciarChat]);
 
@@ -270,6 +301,11 @@ export function useRoomRealtime(
       });
       if (res.ok && res.mensaje) {
         actualizarMensajes((prev) => unirMensajes(prev, [res.mensaje]));
+        return res;
+      }
+      if (!res.ok && res.codigo === 'SALA_NO_ENCONTRADA') {
+        yaSalioRef.current = true;
+        setSalaEliminada(true);
         return res;
       }
       // Si el servidor guardó el mensaje pero el ack no llegó a tiempo, se evita duplicarlo al reintentar.
@@ -307,7 +343,13 @@ export function useRoomRealtime(
       antesDe: masViejo.creadoEn,
     });
     setCargandoAnteriores(false);
-    if (!res.ok) return null;
+    if (!res.ok) {
+      if (res.codigo === 'SALA_NO_ENCONTRADA') {
+        yaSalioRef.current = true;
+        setSalaEliminada(true);
+      }
+      return null;
+    }
     actualizarMensajes((prev) => unirMensajes(res.mensajes, prev));
     setHayMas(res.hayMas);
     return res.mensajes.length;
@@ -340,6 +382,8 @@ export function useRoomRealtime(
     estado,
     errorConexion,
     salaNoEncontrada,
+    salaEliminada,
+    salaActualizada,
     participantes,
     mensajes,
     historial,
