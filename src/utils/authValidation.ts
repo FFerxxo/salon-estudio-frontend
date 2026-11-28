@@ -34,6 +34,24 @@ export function validateUsername(raw: string): string | null {
   return null;
 }
 
+/** Indica si el identificador ingresado en Ingresar tiene formato de correo electrónico. */
+export function isEmailLoginIdentifier(raw: string): boolean {
+  const trimmed = raw.trim();
+  return !trimmed.startsWith('@') && EMAIL_PATTERN.test(trimmed);
+}
+
+/** Valida el campo «Correo o @usuario» sin rechazar usuarios con o sin @ inicial. */
+export function validateLoginIdentifier(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed === '@') {
+    return 'Ingresa tu correo o @usuario.';
+  }
+  if (!trimmed.startsWith('@') && trimmed.includes('@') && !EMAIL_PATTERN.test(trimmed)) {
+    return 'Ingresa un correo válido (ejemplo: estudiante@correounivalle.edu.co) o tu @usuario.';
+  }
+  return null;
+}
+
 /** Valida un correo electrónico no vacío con formato válido. */
 export function validateEmail(raw: string): string | null {
   const email = raw.trim();

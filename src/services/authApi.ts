@@ -78,6 +78,10 @@ export class AuthApiError extends Error {
   }
 }
 
+export const INVALID_CREDENTIALS_MESSAGE = 'Usuario o contraseña incorrectos.';
+export const TOO_MANY_ATTEMPTS_MESSAGE =
+  'Demasiados intentos. Espera unos minutos e intenta de nuevo.';
+
 function getApiBaseUrl(): string {
   return (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/$/, '');
 }
@@ -209,6 +213,62 @@ async function parseErrorResponse(
   }
 
   return new AuthApiError(message, response.status, code, field, fieldErrors);
+}
+
+/** Autentica por @usuario vía POST /api/auth/ingresar-usuario y devuelve el customToken de Firebase. */
+export async function loginWithUsername(
+  username: string,
+  password: string
+): Promise<{ customToken: string }> {
+  let response: Response;
+  try {
+    response = await fetch(`${getApiBaseUrl()}/api/auth/ingresar-usuario`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: username.trim(),
+        password,
+      }),
+    });
+  } catch {
+    throw new AuthApiError(
+      'No pudimos conectarnos con el servidor. Intenta de nuevo en unos segundos.',
+      503,
+      'NETWORK_ERROR'
+    );
+  }
+
+  if (!response.ok) {
+    if (response.status === 429) {
+      let msg = TOO_MANY_ATTEMPTS_MESSAGE;
+      try {
+        const body = (await response.json()) as { error?: string; message?: string };
+        msg = body.error || body.message || msg;
+      } catch {
+        // Mantiene el mensaje predeterminado cuando no hay cuerpo JSON
+      }
+      throw new AuthApiError(msg, 429, 'TOO_MANY_ATTEMPTS');
+    }
+
+    if (response.status === 401) {
+      throw new AuthApiError(INVALID_CREDENTIALS_MESSAGE, 401, 'INVALID_CREDENTIALS');
+    }
+
+    throw await parseErrorResponse(response);
+  }
+
+  const data = (await response.json()) as { customToken?: string };
+  if (!data.customToken) {
+    throw new AuthApiError(
+      'No pudimos completar el ingreso en este momento. Intenta de nuevo.',
+      502,
+      'MISSING_CUSTOM_TOKEN'
+    );
+  }
+
+  return { customToken: data.customToken };
 }
 
 /** Verifica disponibilidad del @username contra GET /api/usuarios/disponible?username=. */

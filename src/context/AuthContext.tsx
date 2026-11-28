@@ -9,6 +9,7 @@ import {
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  signInWithCustomToken,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
@@ -17,9 +18,12 @@ import {
 } from 'firebase/auth';
 import {
   AuthApiError,
+  INVALID_CREDENTIALS_MESSAGE,
+  TOO_MANY_ATTEMPTS_MESSAGE,
   createStudentProfile,
   deleteMyAccount,
   getMyProfile,
+  loginWithUsername,
   updateMyProfile,
   type StudentProfile,
   type UpdateProfilePayload,
@@ -35,6 +39,7 @@ import {
 } from '../services/mockApi';
 import { isMocksEnabled } from '../services/mockConfig';
 import { markReturningUser } from '../content/saludos';
+import { isEmailLoginIdentifier } from '../utils/authValidation';
 
 export type AuthStatus = 'loading' | 'unauthenticated' | 'needs_username' | 'authenticated';
 
@@ -340,9 +345,9 @@ export function AuthProvider({
   );
 
   const loginWithEmail = useCallback(
-    async (correo: string, password: string): Promise<AuthStatus> => {
+    async (identifier: string, password: string): Promise<AuthStatus> => {
       if (adapter) {
-        const res = await adapter.loginWithEmail(correo, password);
+        const res = await adapter.loginWithEmail(identifier, password);
         setUser(res.user ?? null);
         setPendingGoogleUser(res.pending ?? null);
         setStatus(res.status);
@@ -350,7 +355,7 @@ export function AuthProvider({
       }
 
       if (isMocksEnabled()) {
-        const res = await mockLoginWithEmail(correo);
+        const res = await mockLoginWithEmail(identifier);
         setIdToken('mock-token');
         setUser(res.user ?? null);
         setPendingGoogleUser(null);
@@ -367,7 +372,13 @@ export function AuthProvider({
       }
 
       try {
-        const cred = await signInWithEmailAndPassword(firebaseAuth, correo.trim(), password);
+        const cleanIdentifier = identifier.trim();
+        const cred = isEmailLoginIdentifier(cleanIdentifier)
+          ? await signInWithEmailAndPassword(firebaseAuth, cleanIdentifier, password)
+          : await (async () => {
+              const { customToken } = await loginWithUsername(cleanIdentifier, password);
+              return signInWithCustomToken(firebaseAuth, customToken);
+            })();
         const token = await cred.user.getIdToken();
         setIdToken(token);
         const profileResp = await getMyProfile(token);
@@ -383,8 +394,19 @@ export function AuthProvider({
         return 'needs_username';
       } catch (err) {
         if (err instanceof AuthApiError) throw err;
-        // Mensaje genérico obligatorio para US-03 (anti-enumeración)
-        throw new AuthApiError('Correo o contraseña incorrectos.', 401, 'INVALID_CREDENTIALS');
+        const fbCode = getFirebaseErrorCode(err);
+        if (fbCode === 'auth/too-many-requests') {
+          throw new AuthApiError(TOO_MANY_ATTEMPTS_MESSAGE, 429, 'TOO_MANY_ATTEMPTS');
+        }
+        if (fbCode === 'auth/network-request-failed') {
+          throw new AuthApiError(
+            'No pudimos conectarnos para validar tu acceso. Revisa tu conexión e intenta de nuevo.',
+            503,
+            'NETWORK_ERROR'
+          );
+        }
+        // Mensaje unificado obligatorio para US-02 y US-03 (anti-enumeración)
+        throw new AuthApiError(INVALID_CREDENTIALS_MESSAGE, 401, 'INVALID_CREDENTIALS');
       }
     },
     [adapter]

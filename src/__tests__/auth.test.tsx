@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { axe } from 'vitest-axe';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
@@ -7,12 +8,46 @@ import { INITIAL_GREETINGS_ES, RETURNING_GREETINGS_EN } from '../content/saludos
 import type { AuthSessionAdapter } from '../context/AuthContext';
 import {
   AuthApiError,
+  INVALID_CREDENTIALS_MESSAGE,
+  TOO_MANY_ATTEMPTS_MESSAGE,
   checkUsernameAvailability,
   createStudentProfile,
   getMyProfile,
   updateMyProfile,
   type StudentProfile,
 } from '../services/authApi';
+import { resetMockState } from '../services/mockApi';
+import { setMockDelayForTests } from '../services/mockConfig';
+
+const firebaseAuthMocks = vi.hoisted(() => ({
+  signInWithCustomToken: vi.fn(),
+  signInWithEmailAndPassword: vi.fn(),
+  createUserWithEmailAndPassword: vi.fn(),
+  signInWithPopup: vi.fn(),
+  signOut: vi.fn(async () => {}),
+  updateProfile: vi.fn(async () => {}),
+  onAuthStateChanged: vi.fn(() => () => {}),
+}));
+
+vi.mock('firebase/auth', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('firebase/auth')>();
+  return {
+    ...actual,
+    signInWithCustomToken: firebaseAuthMocks.signInWithCustomToken,
+    signInWithEmailAndPassword: firebaseAuthMocks.signInWithEmailAndPassword,
+    createUserWithEmailAndPassword: firebaseAuthMocks.createUserWithEmailAndPassword,
+    signInWithPopup: firebaseAuthMocks.signInWithPopup,
+    signOut: firebaseAuthMocks.signOut,
+    updateProfile: firebaseAuthMocks.updateProfile,
+    onAuthStateChanged: firebaseAuthMocks.onAuthStateChanged,
+  };
+});
+
+vi.mock('../services/firebase', () => ({
+  firebaseAuth: { currentUser: null },
+  googleProvider: {},
+  hasFirebaseConfig: false,
+}));
 
 function createMockAdapter(overrides: Partial<AuthSessionAdapter> = {}): AuthSessionAdapter {
   const defaultProfile: StudentProfile = {
@@ -92,6 +127,12 @@ describe('Sprint 1 Autenticación y Rutas Privadas (US-01, US-02, US-03)', () =>
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+    firebaseAuthMocks.signInWithCustomToken.mockReset();
+    firebaseAuthMocks.signInWithEmailAndPassword.mockReset();
+    setMockDelayForTests(null);
+    resetMockState();
     window.localStorage?.clear?.();
   });
 
@@ -372,7 +413,7 @@ describe('Sprint 1 Autenticación y Rutas Privadas (US-01, US-02, US-03)', () =>
   });
 
   describe('US-03 · Ingresar, rutas privadas y cierre de sesión', () => {
-    it('valida formato de correo en el campo «Correo» sin aceptar usuario plano', async () => {
+    it('valida correos malformados con @ después del inicio sin rechazar @usuario ni usuario plano', async () => {
       const user = userEvent.setup();
       render(
         <MemoryRouter initialEntries={['/ingresar']}>
@@ -380,9 +421,10 @@ describe('Sprint 1 Autenticación y Rutas Privadas (US-01, US-02, US-03)', () =>
         </MemoryRouter>
       );
 
-      await user.type(screen.getByLabelText(/^Correo$/i), 'usuario_plano');
+      const idInput = screen.getByLabelText(/^Correo o @usuario$/i);
+      await user.type(idInput, 'mal@');
       await user.type(screen.getByLabelText(/^Contraseña$/i), 'Clave123!');
-      await user.click(screen.getByRole('button', { name: /^Ingresar con correo$/i }));
+      await user.click(screen.getByRole('button', { name: /^Ingresar$/i }));
 
       expect(await screen.findByText(/Ingresa un correo válido/i)).toBeInTheDocument();
     });
@@ -391,7 +433,7 @@ describe('Sprint 1 Autenticación y Rutas Privadas (US-01, US-02, US-03)', () =>
       const user = userEvent.setup();
       const adapter = createMockAdapter({
         loginWithEmail: vi.fn(async () => {
-          throw new AuthApiError('Correo o contraseña incorrectos.', 401, 'INVALID_CREDENTIALS');
+          throw new AuthApiError(INVALID_CREDENTIALS_MESSAGE, 401, 'INVALID_CREDENTIALS');
         }),
       });
 
@@ -402,14 +444,14 @@ describe('Sprint 1 Autenticación y Rutas Privadas (US-01, US-02, US-03)', () =>
       );
 
       await user.type(
-        screen.getByLabelText(/^Correo$/i),
+        screen.getByLabelText(/^Correo o @usuario$/i),
         'andres.barbosa@correounivalle.edu.co'
       );
       await user.type(screen.getByLabelText(/^Contraseña$/i), 'ClaveMala123');
-      await user.click(screen.getByRole('button', { name: /^Ingresar con correo$/i }));
+      await user.click(screen.getByRole('button', { name: /^Ingresar$/i }));
 
-      expect(await screen.findByText('Correo o contraseña incorrectos.')).toBeInTheDocument();
-      expect(screen.getByLabelText(/^Correo$/i)).toHaveValue(
+      expect(await screen.findByText(INVALID_CREDENTIALS_MESSAGE)).toBeInTheDocument();
+      expect(screen.getByLabelText(/^Correo o @usuario$/i)).toHaveValue(
         'andres.barbosa@correounivalle.edu.co'
       );
     });
@@ -427,11 +469,11 @@ describe('Sprint 1 Autenticación y Rutas Privadas (US-01, US-02, US-03)', () =>
       expect(await screen.findByRole('heading', { name: /^Ingresar$/i })).toBeInTheDocument();
 
       await user.type(
-        screen.getByLabelText(/^Correo$/i),
+        screen.getByLabelText(/^Correo o @usuario$/i),
         'andres.barbosa@correounivalle.edu.co'
       );
       await user.type(screen.getByLabelText(/^Contraseña$/i), 'Univalle2026!');
-      await user.click(screen.getByRole('button', { name: /^Ingresar con correo$/i }));
+      await user.click(screen.getByRole('button', { name: /^Ingresar$/i }));
 
       await waitFor(() => {
         expect(
@@ -792,6 +834,312 @@ describe('Sprint 1 Autenticación y Rutas Privadas (US-01, US-02, US-03)', () =>
       expect(
         screen.getByText(/Usa entre 3 y 20 letras, números o guion bajo/i)
       ).toBeInTheDocument();
+    });
+  });
+
+  describe('SDECG6-57 · Ingresar con Correo o @usuario (US-02)', () => {
+    const profilePayload = {
+      uid: 'u-pres-1',
+      nombres: 'Presentación',
+      apellidos: 'Sprint',
+      username: 'presentacion_s1',
+      email: 'presentacion@correounivalle.edu.co',
+      avatarUrl: '🚀',
+      proveedor: 'password',
+    };
+
+    function setupSuccessfulFirebaseCredential() {
+      const fakeCred = {
+        user: {
+          uid: 'u-pres-1',
+          email: 'presentacion@correounivalle.edu.co',
+          displayName: 'Presentación Sprint',
+          photoURL: null,
+          getIdToken: vi.fn(async () => 'id-tok-123'),
+        },
+      };
+      firebaseAuthMocks.signInWithCustomToken.mockResolvedValue(fakeCred);
+      firebaseAuthMocks.signInWithEmailAndPassword.mockResolvedValue(fakeCred);
+    }
+
+    it('al ingresar con @presentacion_s1 llama POST /api/auth/ingresar-usuario, ejecuta signInWithCustomToken y entra al Panel', async () => {
+      const user = userEvent.setup();
+      setupSuccessfulFirebaseCredential();
+      const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith('/api/auth/ingresar-usuario')) {
+          return new Response(JSON.stringify({ customToken: 'custom-tok-1' }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        if (url.endsWith('/api/usuarios/me')) {
+          return new Response(JSON.stringify(profilePayload), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        return new Response(JSON.stringify({ salas: [] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      render(
+        <MemoryRouter initialEntries={['/ingresar']}>
+          <App />
+        </MemoryRouter>
+      );
+
+      const idInput = screen.getByLabelText(/^Correo o @usuario$/i);
+      await user.click(idInput);
+      await user.paste('@presentacion_s1');
+      await user.type(screen.getByLabelText(/^Contraseña$/i), 'ClaveSegura1');
+      await user.click(screen.getByRole('button', { name: /^Ingresar$/i }));
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('Puedes elegir entre dos ambientes o crear el tuyo')
+        ).toBeInTheDocument();
+      });
+
+      const loginCall = fetchMock.mock.calls.find(([url]) =>
+        String(url).endsWith('/api/auth/ingresar-usuario')
+      ) as [string, RequestInit] | undefined;
+      expect(loginCall).toBeDefined();
+      expect(loginCall![1].method).toBe('POST');
+      expect(JSON.parse(String(loginCall![1].body))).toEqual({
+        username: '@presentacion_s1',
+        password: 'ClaveSegura1',
+      });
+      expect(firebaseAuthMocks.signInWithCustomToken).toHaveBeenCalledWith(
+        expect.anything(),
+        'custom-tok-1'
+      );
+      expect(firebaseAuthMocks.signInWithEmailAndPassword).not.toHaveBeenCalled();
+    });
+
+    it('al ingresar con presentacion_s1 sin @ también usa POST /api/auth/ingresar-usuario y signInWithCustomToken', async () => {
+      const user = userEvent.setup();
+      setupSuccessfulFirebaseCredential();
+      const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith('/api/auth/ingresar-usuario')) {
+          return new Response(JSON.stringify({ customToken: 'custom-tok-2' }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        if (url.endsWith('/api/usuarios/me')) {
+          return new Response(JSON.stringify(profilePayload), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        return new Response(JSON.stringify({ salas: [] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      render(
+        <MemoryRouter initialEntries={['/ingresar']}>
+          <App />
+        </MemoryRouter>
+      );
+
+      await user.type(screen.getByLabelText(/^Correo o @usuario$/i), 'presentacion_s1');
+      await user.type(screen.getByLabelText(/^Contraseña$/i), 'ClaveSegura1');
+      await user.click(screen.getByRole('button', { name: /^Ingresar$/i }));
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('Puedes elegir entre dos ambientes o crear el tuyo')
+        ).toBeInTheDocument();
+      });
+
+      const loginCall = fetchMock.mock.calls.find(([url]) =>
+        String(url).endsWith('/api/auth/ingresar-usuario')
+      ) as [string, RequestInit] | undefined;
+      expect(loginCall).toBeDefined();
+      expect(JSON.parse(String(loginCall![1].body))).toEqual({
+        username: 'presentacion_s1',
+        password: 'ClaveSegura1',
+      });
+      expect(firebaseAuthMocks.signInWithCustomToken).toHaveBeenCalledWith(
+        expect.anything(),
+        'custom-tok-2'
+      );
+      expect(firebaseAuthMocks.signInWithEmailAndPassword).not.toHaveBeenCalled();
+    });
+
+    it('al ingresar con correo@ejemplo.com usa signInWithEmailAndPassword sin llamar a ingresar-usuario', async () => {
+      const user = userEvent.setup();
+      setupSuccessfulFirebaseCredential();
+      const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith('/api/usuarios/me')) {
+          return new Response(JSON.stringify(profilePayload), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        return new Response(JSON.stringify({ salas: [] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      render(
+        <MemoryRouter initialEntries={['/ingresar']}>
+          <App />
+        </MemoryRouter>
+      );
+
+      await user.type(screen.getByLabelText(/^Correo o @usuario$/i), 'correo@ejemplo.com');
+      await user.type(screen.getByLabelText(/^Contraseña$/i), 'ClaveSegura1');
+      await user.click(screen.getByRole('button', { name: /^Ingresar$/i }));
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('Puedes elegir entre dos ambientes o crear el tuyo')
+        ).toBeInTheDocument();
+      });
+
+      expect(firebaseAuthMocks.signInWithEmailAndPassword).toHaveBeenCalledWith(
+        expect.anything(),
+        'correo@ejemplo.com',
+        'ClaveSegura1'
+      );
+      expect(firebaseAuthMocks.signInWithCustomToken).not.toHaveBeenCalled();
+      expect(
+        fetchMock.mock.calls.some(([url]) => String(url).endsWith('/api/auth/ingresar-usuario'))
+      ).toBe(false);
+    });
+
+    it('muestra el mismo mensaje unificado ante 401 con @usuario y ante error de contraseña en Firebase con correo', async () => {
+      const user = userEvent.setup();
+      const fetchMock = vi.fn(async () =>
+        new Response(JSON.stringify({ error: 'Invalid credentials' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      );
+      vi.stubGlobal('fetch', fetchMock);
+      firebaseAuthMocks.signInWithEmailAndPassword.mockRejectedValue({
+        code: 'auth/invalid-credential',
+      });
+
+      const { container, unmount } = render(
+        <MemoryRouter initialEntries={['/ingresar']}>
+          <App />
+        </MemoryRouter>
+      );
+
+      await user.type(screen.getByLabelText(/^Correo o @usuario$/i), '@no_existe');
+      await user.type(screen.getByLabelText(/^Contraseña$/i), 'Mala123');
+      await user.click(screen.getByRole('button', { name: /^Ingresar$/i }));
+
+      expect(await screen.findByText(INVALID_CREDENTIALS_MESSAGE)).toBeInTheDocument();
+      expect(await axe(container)).toHaveNoViolations();
+      unmount();
+
+      render(
+        <MemoryRouter initialEntries={['/ingresar']}>
+          <App />
+        </MemoryRouter>
+      );
+
+      await user.type(screen.getByLabelText(/^Correo o @usuario$/i), 'correo@ejemplo.com');
+      await user.type(screen.getByLabelText(/^Contraseña$/i), 'Mala123');
+      await user.click(screen.getByRole('button', { name: /^Ingresar$/i }));
+
+      expect(await screen.findByText(INVALID_CREDENTIALS_MESSAGE)).toBeInTheDocument();
+    });
+
+    it('muestra mensaje de demasiados intentos ante HTTP 429 y ante auth/too-many-requests', async () => {
+      const user = userEvent.setup();
+      const fetchMock = vi.fn(async () =>
+        new Response(JSON.stringify({ error: TOO_MANY_ATTEMPTS_MESSAGE }), {
+          status: 429,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      );
+      vi.stubGlobal('fetch', fetchMock);
+      firebaseAuthMocks.signInWithEmailAndPassword.mockRejectedValue({
+        code: 'auth/too-many-requests',
+      });
+
+      const { unmount } = render(
+        <MemoryRouter initialEntries={['/ingresar']}>
+          <App />
+        </MemoryRouter>
+      );
+
+      await user.type(screen.getByLabelText(/^Correo o @usuario$/i), '@presentacion_s1');
+      await user.type(screen.getByLabelText(/^Contraseña$/i), 'ClaveSegura1');
+      await user.click(screen.getByRole('button', { name: /^Ingresar$/i }));
+
+      expect(await screen.findByText(TOO_MANY_ATTEMPTS_MESSAGE)).toBeInTheDocument();
+      unmount();
+
+      render(
+        <MemoryRouter initialEntries={['/ingresar']}>
+          <App />
+        </MemoryRouter>
+      );
+
+      await user.type(screen.getByLabelText(/^Correo o @usuario$/i), 'correo@ejemplo.com');
+      await user.type(screen.getByLabelText(/^Contraseña$/i), 'ClaveSegura1');
+      await user.click(screen.getByRole('button', { name: /^Ingresar$/i }));
+
+      expect(await screen.findByText(TOO_MANY_ATTEMPTS_MESSAGE)).toBeInTheDocument();
+    });
+
+    it('funciona en modo mock (VITE_USE_MOCKS=true) tanto con @usuario como con correo y pasa axe', async () => {
+      const user = userEvent.setup();
+      vi.stubEnv('VITE_USE_MOCKS', 'true');
+      setMockDelayForTests(0);
+      resetMockState();
+
+      const { container, unmount } = render(
+        <MemoryRouter initialEntries={['/ingresar']}>
+          <App />
+        </MemoryRouter>
+      );
+
+      expect(await axe(container)).toHaveNoViolations();
+      await user.type(screen.getByLabelText(/^Correo o @usuario$/i), '@presentacion_s1');
+      await user.type(screen.getByLabelText(/^Contraseña$/i), 'ClaveSegura1');
+      await user.click(screen.getByRole('button', { name: /^Ingresar$/i }));
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('Puedes elegir entre dos ambientes o crear el tuyo')
+        ).toBeInTheDocument();
+      });
+      expect(screen.getByText(/@presentacion_s1/i)).toBeInTheDocument();
+      unmount();
+
+      resetMockState();
+      render(
+        <MemoryRouter initialEntries={['/ingresar']}>
+          <App />
+        </MemoryRouter>
+      );
+
+      await user.type(screen.getByLabelText(/^Correo o @usuario$/i), 'correo@ejemplo.com');
+      await user.type(screen.getByLabelText(/^Contraseña$/i), 'ClaveSegura1');
+      await user.click(screen.getByRole('button', { name: /^Ingresar$/i }));
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('Puedes elegir entre dos ambientes o crear el tuyo')
+        ).toBeInTheDocument();
+      });
     });
   });
 });
