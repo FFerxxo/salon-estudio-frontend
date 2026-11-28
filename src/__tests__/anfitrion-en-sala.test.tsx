@@ -58,19 +58,26 @@ describe('SDECG6-55 · Anfitrión en sala, actualización y eliminación en vivo
 
     await user.click(renameBtn);
     const dialog = await screen.findByRole('dialog', { name: 'Renombrar sala' });
-    const input = within(dialog).getByLabelText('Nuevo nombre de la sala');
-    expect(input).toHaveValue('Cálculo II');
+    const input = within(dialog).getByLabelText<HTMLInputElement>('Nuevo nombre de la sala');
+    await waitFor(() => {
+      expect(input).toHaveFocus();
+      expect(input.selectionStart).toBe(0);
+      expect(input.selectionEnd).toBe('Cálculo II'.length);
+    });
 
     await user.clear(input);
     await user.type(input, 'Cálculo II · taller final');
+    expect(input).toHaveValue('Cálculo II · taller final');
     await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
 
     await waitFor(() => {
       expect(screen.queryByRole('dialog', { name: 'Renombrar sala' })).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: 'Cálculo II · taller final' })
+      ).toBeInTheDocument();
+      expect(document.title).toBe('Cálculo II · taller final · Tuga - Salón de Estudio');
+      expect(within(screen.getByRole('banner')).getByText('Mi salón')).toBeInTheDocument();
     });
-    expect(screen.getByRole('heading', { name: 'Cálculo II · taller final' })).toBeInTheDocument();
-    expect(document.title).toBe('Cálculo II · taller final · Tuga - Salón de Estudio');
-    expect(within(screen.getByRole('banner')).getByText('Mi salón')).toBeInTheDocument();
   });
 
   it('el anfitrión puede eliminar la sala desde dentro y volver al Panel sin el aviso de invitado ni carrera con sala:eliminada', async () => {
@@ -196,11 +203,13 @@ describe('SDECG6-55 · Anfitrión en sala, actualización y eliminación en vivo
       });
     });
 
-    expect(
-      await screen.findByRole('heading', { name: 'Cálculo II · repaso' })
-    ).toBeInTheDocument();
-    expect(within(screen.getByRole('banner')).getByText('Cálculo II · repaso')).toBeInTheDocument();
-    expect(document.title).toBe('Cálculo II · repaso · Tuga - Salón de Estudio');
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Cálculo II · repaso' })).toBeInTheDocument();
+      expect(
+        within(screen.getByRole('banner')).getByText('Cálculo II · repaso')
+      ).toBeInTheDocument();
+      expect(document.title).toBe('Cálculo II · repaso · Tuga - Salón de Estudio');
+    });
   });
 
   it('al recibir sala:eliminada devuelve al invitado a /panel y muestra «El anfitrión eliminó esta sala»', async () => {
